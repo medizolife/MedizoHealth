@@ -1,0 +1,75 @@
+/* ─── Mobile App Design System & Global Styles ─── */
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f8fafc;
+  color: #1e293b;
+  touch-action: manipulation;
+}
+
+/* Safe area support for iOS notched devices */
+body {
+  padding-bottom: calc(72px + env(safe-area-inset-bottom));
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+}
+
+/* Mobile Touch Targets & Buttons */
+button, input, select, textarea, .MuiButton-root, .MuiIconButton-root {
+  touch-action: manipulation;
+}
+
+.MuiButton-root {
+  min-height: 44px;
+  border-radius: 12px !important;
+  text-transform: none !important;
+  font-weight: 600 !important;
+}
+
+/* Card Mobile App Styling */
+.MuiPaper-root {
+  border-radius: 16px !important;
+}
+
+/* Custom Mobile Scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(19, 79, 77, 0.2);
+  border-radius: 4px;
+}
+
+/* Mobile Pull-to-Refresh & Smooth Scroll */
+.mobile-scroll-container {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* Touch active ripple effect */
+.touch-active {
+  transition: transform 0.1s ease;
+}
+.touch-active:active {
+  transform: scale(0.97);
+}

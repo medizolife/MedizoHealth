@@ -1,0 +1,295 @@
+'use client';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { getPrescriptionById, updatePrescription } from '../services/prescriptions';
+import { getPatientById } from '../services/patients';
+import { findUserById } from '../utils/auth';
+import { Prescription } from '../types/prescription';
+import { Doctor, Patient } from '../types/auth';
+import { 
+  Container,
+  Typography,
+  Box,
+  Paper,
+  Divider,
+  Grid,
+  Button,
+  CircularProgress,
+  Chip,
+  IconButton,
+  Dialog,
+  DialogContent,
+  DialogTitle
+} from '@mui/material';
+import QRCode from 'qrcode.react';
+import { 
+  Print as PrintIcon, 
+  Download as DownloadIcon, 
+  Done as DoneIcon,
+  Share as ShareIcon,
+  Close as CloseIcon,
+  QrCode2 as QrIcon
+} from '@mui/icons-material';
+
+const PrescriptionDetail = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { authState } = useAuth();
+  const { user } = authState;
+  
+  const [prescription, setPrescription] = useState<Prescription | null>(null);
+  const [doctor, setDoctor] = useState<Doctor | null>(null);
+  const [patient, setPatient] = useState<Patient | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [qrModalOpen, setQrModalOpen] = useState(false);
+  
+  useEffect(() => {
+    const fetchPrescriptionDetails = async () => {
+      try {
+        if (!id) return;
+        setLoading(true);
+        const prescriptionData = await getPrescriptionById(id);
+        setPrescription(prescriptionData);
+        
+        if (prescriptionData.patientId) {
+          try {
+            const patientData = await getPatientById(prescriptionData.patientId);
+            setPatient(patientData);
+          } catch (e) {
+            console.log('Patient details fetch failed');
+          }
+        }
+        
+        if (prescriptionData.doctorId) {
+          const doctorData = findUserById(prescriptionData.doctorId);
+          setDoctor(doctorData as Doctor);
+        }
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching prescription details:', err);
+        setError('Failed to load prescription details');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchPrescriptionDetails();
+  }, [id]);
+  
+  const handlePrint = () => {
+    window.print();
+  };
+  
+  const handleShare = async () => {
+    if (navigator.share && prescription) {
+      try {
+        await navigator.share({
+          title: `Medizo Digital Prescription - ${prescription.medication || 'Medication'}`,
+          text: `View digital prescription for ${patient ? `${patient.firstName} ${patient.lastName}` : 'Patient'}`,
+          url: window.location.href,
+        });
+      } catch (err) {
+        console.log('Share canceled');
+      }
+    } else {
+      navigator.clipboard?.writeText(window.location.href);
+      alert('Link copied to clipboard!');
+    }
+  };
+
+  const handleMarkComplete = async () => {
+    try {
+      if (!prescription || !id) return;
+      const updated = await updatePrescription(id, { status: 'completed' });
+      setPrescription(updated);
+    } catch (err) {
+      console.error('Error updating status:', err);
+    }
+  };
+  
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', p: 6 }}>
+        <CircularProgress sx={{ color: '#134F4D' }} />
+      </Box>
+    );
+  }
+  
+  if (error || !prescription) {
+    return (
+      <Container maxWidth="xs" sx={{ mt: 4, px: 2 }}>
+        <Paper sx={{ p: 3, textAlign: 'center', borderRadius: '20px' }}>
+          <Typography color="error" sx={{ mb: 2 }}>{error || 'Prescription not found'}</Typography>
+          <Button variant="contained" onClick={() => navigate('/dashboard')} sx={{ bgcolor: '#134F4D' }}>
+            Back to Feed
+          </Button>
+        </Paper>
+      </Container>
+    );
+  }
+  
+  const isDoctor = user?.role === 'doctor';
+  
+  return (
+    <Container maxWidth="xs" sx={{ pt: 2, pb: 4, px: 2 }}>
+      <Paper elevation={0} sx={{ p: 2.5, borderRadius: '24px', border: '1px solid rgba(19, 79, 77, 0.15)', bgcolor: '#ffffff' }}>
+        {/* Mobile Header Bar */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Box>
+            <Typography variant="caption" sx={{ color: '#134F4D', fontWeight: 700, letterSpacing: 1 }}>
+              DIGITAL PRESCRIPTION
+            </Typography>
+            <Typography variant="h6" sx={{ fontWeight: 800, color: '#0f172a' }}>
+              #{prescription.id?.substring(0, 8) || 'RX-001'}
+            </Typography>
+          </Box>
+          <Chip 
+            label={prescription.status ? prescription.status.toUpperCase() : 'ACTIVE'} 
+            color={prescription.status === 'completed' ? 'success' : 'primary'}
+            sx={{ fontWeight: 700, borderRadius: '8px', height: 26, fontSize: '0.75rem' }}
+          />
+        </Box>
+        
+        <Divider sx={{ mb: 2 }} />
+        
+        {/* Medication Details Card */}
+        <Box sx={{ bgcolor: '#f8fafc', p: 2, borderRadius: '16px', mb: 2, border: '1px solid #e2e8f0' }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#134F4D', mb: 1 }}>
+            💊 {prescription.medication || 'Prescribed Medication'}
+          </Typography>
+          <Typography variant="body2" sx={{ mb: 0.5, color: '#334155' }}>
+            <strong>Dosage:</strong> {prescription.dosage || 'As directed'}
+          </Typography>
+          <Typography variant="body2" sx={{ mb: 0.5, color: '#334155' }}>
+            <strong>Frequency:</strong> {prescription.frequency || 'Once daily'}
+          </Typography>
+          <Typography variant="body2" sx={{ mb: 0.5, color: '#334155' }}>
+            <strong>Duration:</strong> {prescription.duration || 'As needed'}
+          </Typography>
+          {prescription.instructions && (
+            <Typography variant="body2" sx={{ mt: 1, color: '#475569', fontStyle: 'italic' }}>
+              Instructions: "{prescription.instructions}"
+            </Typography>
+          )}
+        </Box>
+        
+        {/* Doctor & Patient Info */}
+        <Grid container spacing={1.5} sx={{ mb: 2 }}>
+          <Grid item xs={6}>
+            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: '12px', bgcolor: '#f1f5f9' }}>
+              <Typography variant="caption" color="text.secondary">DOCTOR</Typography>
+              <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                {doctor ? `Dr. ${doctor.lastName}` : 'Attending MD'}
+              </Typography>
+              <Typography variant="caption" color="text.secondary" display="block">
+                {doctor?.specialization || 'Healthcare'}
+              </Typography>
+            </Paper>
+          </Grid>
+          <Grid item xs={6}>
+            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: '12px', bgcolor: '#f1f5f9' }}>
+              <Typography variant="caption" color="text.secondary">PATIENT</Typography>
+              <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                {patient ? `${patient.firstName} ${patient.lastName}` : 'Registered Patient'}
+              </Typography>
+              <Typography variant="caption" color="text.secondary" display="block">
+                Issued: {new Date(prescription.createdAt || Date.now()).toLocaleDateString()}
+              </Typography>
+            </Paper>
+          </Grid>
+        </Grid>
+
+        {/* QR Verification trigger */}
+        <Paper 
+          onClick={() => setQrModalOpen(true)}
+          sx={{ 
+            p: 2, 
+            textAlign: 'center', 
+            borderRadius: '16px', 
+            bgcolor: '#e6f4f1', 
+            border: '1px dashed #134F4D',
+            cursor: 'pointer',
+            mb: 2
+          }}
+        >
+          <QrIcon sx={{ fontSize: 32, color: '#134F4D', mb: 0.5 }} />
+          <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#134F4D' }}>
+            Tap to View Verification QR Code
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            Authenticity token for pharmacy verification
+          </Typography>
+        </Paper>
+
+        {/* Mobile Actions Stack */}
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Button
+            fullWidth
+            variant="contained"
+            startIcon={<ShareIcon />}
+            onClick={handleShare}
+            sx={{ height: 48, bgcolor: '#134F4D', fontWeight: 700, '&:hover': { bgcolor: '#0e3b3a' } }}
+          >
+            Share Prescription
+          </Button>
+
+          <Button
+            fullWidth
+            variant="outlined"
+            startIcon={<PrintIcon />}
+            onClick={handlePrint}
+            sx={{ height: 44, borderColor: '#134F4D', color: '#134F4D' }}
+          >
+            Print / Save PDF
+          </Button>
+          
+          {isDoctor && prescription.status !== 'completed' && (
+            <Button
+              fullWidth
+              variant="contained"
+              color="success"
+              startIcon={<DoneIcon />}
+              onClick={handleMarkComplete}
+              sx={{ height: 44 }}
+            >
+              Mark Completed
+            </Button>
+          )}
+
+          <Button 
+            fullWidth
+            variant="text" 
+            onClick={() => navigate('/dashboard')}
+            sx={{ color: '#64748b', mt: 1 }}
+          >
+            Back to Dashboard
+          </Button>
+        </Box>
+      </Paper>
+
+      {/* QR Code Full Screen Modal */}
+      <Dialog 
+        open={qrModalOpen} 
+        onClose={() => setQrModalOpen(false)}
+        PaperProps={{ sx: { borderRadius: '24px', p: 2, textAlign: 'center' } }}
+      >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
+          <Typography variant="h6" sx={{ fontWeight: 800, color: '#134F4D' }}>QR Verification</Typography>
+          <IconButton onClick={() => setQrModalOpen(false)}><CloseIcon /></IconButton>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ p: 2, bgcolor: '#ffffff', borderRadius: '16px', display: 'inline-block', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}>
+            <QRCode value={prescription.id || 'VALID-RX'} size={200} />
+          </Box>
+          <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 2 }}>
+            Digital Signature Token: {prescription.id || 'RX-MEDIZO'}
+          </Typography>
+        </DialogContent>
+      </Dialog>
+    </Container>
+  );
+};
+
+export default PrescriptionDetail;
