@@ -1150,60 +1150,154 @@ const AppContent = () => {
 
       <Container maxWidth="lg" sx={{ mt: 4, mb: 4, flexGrow: 1 }}>
         {(!isAuthenticated || (isAuthenticated && activeContent === 'dashboard')) && (
-          <Box sx={{ my: 4, textAlign: 'center' }}>
-            <Typography variant="h3" component="h1" gutterBottom>
+          <Box sx={{ my: { xs: 2.5, md: 4 }, textAlign: 'center', px: { xs: 1, sm: 2 } }}>
+            <Chip 
+              label="🌱 Digital Healthcare Platform" 
+              size="small"
+              sx={{ 
+                bgcolor: 'rgba(19, 79, 77, 0.10)', 
+                color: '#134F4D', 
+                fontWeight: 700, 
+                mb: 1.5,
+                fontSize: { xs: '0.75rem', sm: '0.85rem' }
+              }} 
+            />
+            <Typography 
+              variant="h4" 
+              component="h1" 
+              sx={{ 
+                fontWeight: 800, 
+                color: '#0f172a',
+                fontSize: { xs: '1.75rem', sm: '2.25rem', md: '2.75rem' },
+                lineHeight: 1.25,
+                mb: 1
+              }}
+            >
               Digital Prescription Platform
             </Typography>
-            <Typography variant="h5" component="h2" color="text.secondary" gutterBottom>
-              Connecting doctors and patients seamlessly
+            <Typography 
+              variant="body1" 
+              color="text.secondary" 
+              sx={{ 
+                maxWidth: 540, 
+                mx: 'auto',
+                fontSize: { xs: '0.95rem', sm: '1.1rem' }
+              }}
+            >
+              Connecting doctors and patients seamlessly with QR verification
             </Typography>
           </Box>
         )}
 
         {!isAuthenticated && (
-          <Paper elevation={3} sx={{ p: 4, mt: 4, mb: 0, borderRadius: '16px 16px 0 0', background: 'rgba(255,255,255,0.70)', backdropFilter: 'blur(10px)', boxShadow: '0 8px 40px rgba(0,0,0,0.12)' }}>
-            <Grid container spacing={4}>
-              <Grid item xs={12} md={6}>
-                <Box sx={{ p: 2 }}>
-                  <Typography variant="h4" component="h2" gutterBottom>
-                    For Doctors
-                  </Typography>
-                  <Typography variant="body1" paragraph>
-                    Create digital prescriptions with QR code verification. Manage your patients and track prescription history efficiently.
-                  </Typography>
-                  <Button 
-                    variant="contained" 
-                    size="large" 
-                    color="primary"
-                    onClick={() => handleOpenAuthDialog(0, 'doctor')}
-                    startIcon={<PersonIcon />}
-                  >
-                    Login as Doctor
-                  </Button>
+          <Grid container spacing={{ xs: 2, md: 3 }} sx={{ mt: 1, mb: 3 }}>
+            {/* For Doctors Card */}
+            <Grid item xs={12} md={6}>
+              <Paper 
+                elevation={0} 
+                sx={{ 
+                  p: { xs: 2.5, sm: 3.5 }, 
+                  borderRadius: '24px', 
+                  bgcolor: '#ffffff',
+                  border: '1.5px solid rgba(19, 79, 77, 0.20)',
+                  boxShadow: '0 10px 30px rgba(19, 79, 77, 0.08)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  height: '100%',
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                  '&:hover': { transform: 'translateY(-3px)', boxShadow: '0 14px 36px rgba(19, 79, 77, 0.15)' }
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
+                  <Avatar sx={{ bgcolor: '#134F4D', color: '#fff', width: 44, height: 44 }}>
+                    <LocalHospitalIcon />
+                  </Avatar>
+                  <Box>
+                    <Chip label="For Doctors" size="small" sx={{ bgcolor: '#e6f4f1', color: '#134F4D', fontWeight: 700, height: 22, fontSize: '0.7rem' }} />
+                    <Typography variant="h6" sx={{ fontWeight: 800, color: '#0f172a', lineHeight: 1.2 }}>
+                      Doctor Portal
+                    </Typography>
+                  </Box>
                 </Box>
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <Box sx={{ p: 2 }}>
-                  <Typography variant="h4" component="h2" gutterBottom>
-                    For Patients
-                  </Typography>
-                  <Typography variant="body1" paragraph>
-                    Access your prescriptions securely. Download digital copies with QR verification. Never lose a prescription again.
-                  </Typography>
-                  <Button 
-                    variant="outlined" 
-                    size="large" 
-                    color="secondary"
-                    onClick={() => handleOpenAuthDialog(0, 'patient')}
-                    startIcon={<PersonIcon />}
-                    sx={{ backgroundColor: 'white' }}
-                  >
-                    Login as Patient
-                  </Button>
-                </Box>
-              </Grid>
+                
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5, flexGrow: 1, lineHeight: 1.6 }}>
+                  Create digital prescriptions with embedded QR codes, manage patient records, and access complete medical history instantly.
+                </Typography>
+
+                <Button 
+                  variant="contained" 
+                  fullWidth
+                  size="large"
+                  onClick={() => handleOpenAuthDialog(0, 'doctor')}
+                  startIcon={<PersonIcon />}
+                  sx={{ 
+                    height: 48, 
+                    borderRadius: '14px',
+                    bgcolor: '#134F4D',
+                    fontSize: '0.95rem',
+                    fontWeight: 700,
+                    '&:hover': { bgcolor: '#0d3836' }
+                  }}
+                >
+                  Login as Doctor
+                </Button>
+              </Paper>
             </Grid>
-          </Paper>
+
+            {/* For Patients Card */}
+            <Grid item xs={12} md={6}>
+              <Paper 
+                elevation={0} 
+                sx={{ 
+                  p: { xs: 2.5, sm: 3.5 }, 
+                  borderRadius: '24px', 
+                  bgcolor: '#ffffff',
+                  border: '1.5px solid rgba(236, 72, 153, 0.20)',
+                  boxShadow: '0 10px 30px rgba(236, 72, 153, 0.08)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  height: '100%',
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                  '&:hover': { transform: 'translateY(-3px)', boxShadow: '0 14px 36px rgba(236, 72, 153, 0.15)' }
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
+                  <Avatar sx={{ bgcolor: '#ec4899', color: '#fff', width: 44, height: 44 }}>
+                    <MedicationIcon />
+                  </Avatar>
+                  <Box>
+                    <Chip label="For Patients" size="small" sx={{ bgcolor: '#fce7f3', color: '#be185d', fontWeight: 700, height: 22, fontSize: '0.7rem' }} />
+                    <Typography variant="h6" sx={{ fontWeight: 800, color: '#0f172a', lineHeight: 1.2 }}>
+                      Patient Portal
+                    </Typography>
+                  </Box>
+                </Box>
+                
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5, flexGrow: 1, lineHeight: 1.6 }}>
+                  Access your prescriptions securely, verify digital signatures via QR code, and download PDF medical records anytime.
+                </Typography>
+
+                <Button 
+                  variant="outlined" 
+                  fullWidth
+                  size="large"
+                  onClick={() => handleOpenAuthDialog(0, 'patient')}
+                  startIcon={<PersonIcon />}
+                  sx={{ 
+                    height: 48, 
+                    borderRadius: '14px',
+                    borderColor: '#be185d',
+                    color: '#be185d',
+                    fontSize: '0.95rem',
+                    fontWeight: 700,
+                    '&:hover': { borderColor: '#9d174d', bgcolor: '#fdf2f8' }
+                  }}
+                >
+                  Login as Patient
+                </Button>
+              </Paper>
+            </Grid>
+          </Grid>
         )}
 
         {/* ─── HOW IT WORKS & FEATURES (landing page only) ─── */}
