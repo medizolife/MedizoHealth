@@ -23,6 +23,18 @@ export default function RootLayout({
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap"
         />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                var isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 768;
+                if (isMobile && (window.location.hostname === 'medizo.life' || window.location.hostname === 'www.medizo.life')) {
+                  window.location.href = 'https://m.medizo.life' + window.location.pathname + window.location.search;
+                }
+              })();
+            `,
+          }}
+        />
       </head>
       <body>
         <ThemeRegistry>
