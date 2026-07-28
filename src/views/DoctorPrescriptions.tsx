@@ -107,19 +107,31 @@ export default function DoctorPrescriptions() {
 
   const handleDownloadPDF = async (prescriptionId: string) => {
     try {
-      const response = await api.get(`/prescriptions/${prescriptionId}/pdf`, {
-        responseType: 'blob'
-      });
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      let response;
+      try {
+        response = await api.get(`/prescriptions/${prescriptionId}/download`, {
+          responseType: 'blob'
+        });
+      } catch (e) {
+        response = await api.get(`/prescriptions/${prescriptionId}/pdf`, {
+          responseType: 'blob'
+        });
+      }
+
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
       link.setAttribute('download', `prescription_${prescriptionId}.pdf`);
       document.body.appendChild(link);
       link.click();
-      link.remove();
+      setTimeout(() => {
+        link.remove();
+        window.URL.revokeObjectURL(url);
+      }, 100);
     } catch (err) {
       console.error('Error downloading PDF:', err);
-      alert('Failed to download PDF');
+      alert('Failed to download PDF. Please check server connection.');
     }
   };
 
