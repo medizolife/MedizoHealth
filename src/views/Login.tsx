@@ -137,7 +137,7 @@ const Login = () => {
             id="email"
             label="Email Address"
             name="email"
-            placeholder="e.g. doctor@medizo.life or patient@medizo.life"
+            placeholder="Enter your email"
             autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}

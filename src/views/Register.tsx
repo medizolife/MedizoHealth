@@ -207,7 +207,7 @@ const Register = () => {
                 label="Email Address"
                 name="email"
                 type="email"
-                placeholder="e.g. john.doe@example.com"
+                placeholder="Enter your email"
                 value={formData.email}
                 onChange={handleChange}
                 InputLabelProps={{ sx: { color: '#2A6B5D', fontWeight: 600 } }}
