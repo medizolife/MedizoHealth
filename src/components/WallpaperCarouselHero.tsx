@@ -15,6 +15,7 @@ import {
   Search as SearchIcon,
   Verified as VerifiedIcon,
   MedicalServices as StethoscopeIcon,
+  LocalPharmacy as PharmacyIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { useThemeContext } from '../contexts/ThemeContext';
