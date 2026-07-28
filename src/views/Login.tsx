@@ -51,42 +51,57 @@ const Login = () => {
   };
   
   return (
-    <Container component="main" maxWidth="xs" sx={{ pt: { xs: 1, sm: 2 }, pb: 2, px: 2 }} className="animate-slide-up">
+    <Box 
+      component="main" 
+      sx={{ 
+        minHeight: 'calc(100dvh - 136px)',
+        display: 'flex',
+        flexDirection: 'column',
+        justify: 'center',
+        alignItems: 'center',
+        px: 2,
+        py: 1,
+        boxSizing: 'border-box'
+      }} 
+      className="animate-slide-up"
+    >
       <Paper 
         elevation={0} 
         className="glass-panel"
         sx={{ 
-          p: { xs: 2.5, sm: 3 }, 
+          width: '100%',
+          maxWidth: 380,
+          p: { xs: 2.25, sm: 3 }, 
           borderRadius: '24px !important', 
           bgcolor: 'rgba(255, 255, 255, 0.92) !important',
           border: '1px solid rgba(137, 215, 183, 0.4) !important',
           boxShadow: '0 12px 32px rgba(26, 49, 44, 0.08) !important'
         }}
       >
-        <Box sx={{ textAlign: 'center', mb: 2 }}>
+        <Box sx={{ textAlign: 'center', mb: 1.5 }}>
           <Box
             component="img"
             src="/LOGO.png"
             alt="Medizo Logo"
             sx={{ 
-              width: 48, 
-              height: 48, 
-              borderRadius: '14px', 
-              mb: 1,
+              width: 42, 
+              height: 42, 
+              borderRadius: '12px', 
+              mb: 0.75,
               border: '2px solid #89D7B7',
               boxShadow: '0 4px 12px rgba(66, 132, 117, 0.18)'
             }}
           />
-          <Typography variant="h6" sx={{ fontWeight: 800, color: '#1A312C', letterSpacing: '-0.02em' }}>
+          <Typography variant="h6" sx={{ fontWeight: 800, color: '#1A312C', letterSpacing: '-0.02em', fontSize: '1.15rem' }}>
             Welcome to Medizo
           </Typography>
-          <Typography variant="caption" sx={{ color: '#428475', fontWeight: 600, display: 'block', mt: 0.2 }}>
+          <Typography variant="caption" sx={{ color: '#428475', fontWeight: 600, display: 'block', mt: 0.1, fontSize: '0.75rem' }}>
             Sign in to access your digital prescriptions
           </Typography>
         </Box>
 
         {error && (
-          <Alert severity="error" sx={{ mb: 1.5, py: 0.5, borderRadius: '12px', bgcolor: 'rgba(239, 68, 68, 0.1)', color: '#b91c1c', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+          <Alert severity="error" sx={{ mb: 1.25, py: 0.25, borderRadius: '12px', bgcolor: 'rgba(239, 68, 68, 0.1)', color: '#b91c1c', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
             {error}
           </Alert>
         )}
@@ -104,18 +119,19 @@ const Login = () => {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             InputLabelProps={{
-              sx: { color: '#2A6B5D', fontWeight: 600 }
+              sx: { color: '#2A6B5D', fontWeight: 600, fontSize: '0.85rem' }
             }}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
-                  <EmailIcon sx={{ color: '#428475', fontSize: 20 }} />
+                  <EmailIcon sx={{ color: '#428475', fontSize: 18 }} />
                 </InputAdornment>
               ),
               sx: { 
                 borderRadius: '14px',
                 bgcolor: 'rgba(255, 255, 255, 0.95)',
                 color: '#123029',
+                fontSize: '0.9rem',
                 '& input::placeholder': {
                   color: '#4D9B8C',
                   opacity: 0.85,
@@ -140,12 +156,12 @@ const Login = () => {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             InputLabelProps={{
-              sx: { color: '#2A6B5D', fontWeight: 600 }
+              sx: { color: '#2A6B5D', fontWeight: 600, fontSize: '0.85rem' }
             }}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
-                  <LockIcon sx={{ color: '#428475', fontSize: 20 }} />
+                  <LockIcon sx={{ color: '#428475', fontSize: 18 }} />
                 </InputAdornment>
               ),
               endAdornment: (
@@ -165,6 +181,7 @@ const Login = () => {
                 borderRadius: '14px',
                 bgcolor: 'rgba(255, 255, 255, 0.95)',
                 color: '#123029',
+                fontSize: '0.9rem',
                 '& input::placeholder': {
                   color: '#4D9B8C',
                   opacity: 0.85,
@@ -176,7 +193,7 @@ const Login = () => {
             }}
           />
 
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 0.5, mb: 0.5 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 0.25, mb: 0.5 }}>
             <Typography
               variant="caption"
               onClick={handleForgotPassword}
@@ -184,7 +201,7 @@ const Login = () => {
                 color: '#428475',
                 fontWeight: 700,
                 cursor: 'pointer',
-                fontSize: '0.75rem',
+                fontSize: '0.725rem',
                 '&:hover': { color: '#1A312C', textDecoration: 'underline' }
               }}
             >
@@ -199,24 +216,24 @@ const Login = () => {
             size="medium"
             disabled={loading}
             sx={{ 
-              mt: 1.5, 
-              mb: 1.5, 
-              height: 46, 
+              mt: 1.25, 
+              mb: 1.25, 
+              height: 44, 
               bgcolor: '#1A312C', 
               color: '#89D7B7',
               borderRadius: '14px',
-              fontSize: '0.95rem',
+              fontSize: '0.9rem',
               fontWeight: 800,
-              boxShadow: '0 6px 20px rgba(26, 49, 44, 0.2)',
+              boxShadow: '0 6px 18px rgba(26, 49, 44, 0.2)',
               border: '1px solid #89D7B7',
               '&:hover': { bgcolor: '#0F1D1A' } 
             }}
           >
-            {loading ? <CircularProgress size={22} sx={{ color: '#89D7B7' }} /> : 'Sign In'}
+            {loading ? <CircularProgress size={20} sx={{ color: '#89D7B7' }} /> : 'Sign In'}
           </Button>
 
-          <Divider sx={{ my: 1.5, borderColor: 'rgba(137, 215, 183, 0.3)' }}>
-            <Typography variant="caption" sx={{ color: '#428475', fontWeight: 700, px: 1, fontSize: '0.7rem' }}>
+          <Divider sx={{ my: 1.25, borderColor: 'rgba(137, 215, 183, 0.3)' }}>
+            <Typography variant="caption" sx={{ color: '#428475', fontWeight: 700, px: 1, fontSize: '0.675rem' }}>
               NEW TO MEDIZO?
             </Typography>
           </Divider>
@@ -228,13 +245,13 @@ const Login = () => {
             variant="outlined"
             size="medium"
             sx={{ 
-              height: 44, 
+              height: 42, 
               borderColor: '#428475', 
               color: '#1A312C',
               borderRadius: '14px',
               fontWeight: 800,
               borderWidth: '1.5px',
-              fontSize: '0.875rem',
+              fontSize: '0.85rem',
               '&:hover': { bgcolor: 'rgba(137, 215, 183, 0.15)', borderColor: '#1A312C' }
             }}
           >
@@ -242,7 +259,7 @@ const Login = () => {
           </Button>
         </Box>
       </Paper>
-    </Container>
+    </Box>
   );
 };
 

@@ -26,7 +26,7 @@ const App = () => {
     <CustomThemeProvider>
       <AuthProvider>
         <Router>
-          <Box sx={{ minHeight: '100vh', pb: 9 }}>
+          <Box sx={{ minHeight: '100dvh', pb: '72px', boxSizing: 'border-box' }}>
             <Header />
             <Routes>
               <Route 
