@@ -137,9 +137,13 @@ const Login = () => {
             id="email"
             label="Email Address"
             name="email"
+            placeholder="e.g. doctor@medizo.life or patient@medizo.life"
             autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            InputLabelProps={{
+              sx: { color: '#2A6B5D', fontWeight: 600 }
+            }}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -148,8 +152,14 @@ const Login = () => {
               ),
               sx: { 
                 borderRadius: '16px',
-                bgcolor: 'rgba(255, 255, 255, 0.8)',
-                '& fieldset': { borderColor: 'rgba(137, 215, 183, 0.4)' },
+                bgcolor: 'rgba(255, 255, 255, 0.95)',
+                color: '#123029',
+                '& input::placeholder': {
+                  color: '#4D9B8C',
+                  opacity: 0.85,
+                  fontWeight: 500,
+                },
+                '& fieldset': { borderColor: 'rgba(137, 215, 183, 0.5)' },
                 '&:hover fieldset': { borderColor: '#428475 !important' }
               }
             }}
@@ -161,11 +171,15 @@ const Login = () => {
             fullWidth
             name="password"
             label="Password"
+            placeholder="Enter your password"
             type={showPassword ? 'text' : 'password'}
             id="password"
             autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            InputLabelProps={{
+              sx: { color: '#2A6B5D', fontWeight: 600 }
+            }}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -186,8 +200,14 @@ const Login = () => {
               ),
               sx: { 
                 borderRadius: '16px',
-                bgcolor: 'rgba(255, 255, 255, 0.8)',
-                '& fieldset': { borderColor: 'rgba(137, 215, 183, 0.4)' },
+                bgcolor: 'rgba(255, 255, 255, 0.95)',
+                color: '#123029',
+                '& input::placeholder': {
+                  color: '#4D9B8C',
+                  opacity: 0.85,
+                  fontWeight: 500,
+                },
+                '& fieldset': { borderColor: 'rgba(137, 215, 183, 0.5)' },
                 '&:hover fieldset': { borderColor: '#428475 !important' }
               }
             }}

@@ -160,13 +160,17 @@ const Register = () => {
                 fullWidth
                 id="firstName"
                 label="First Name"
+                placeholder="e.g. John"
                 value={formData.firstName}
                 onChange={handleChange}
+                InputLabelProps={{ sx: { color: '#2A6B5D', fontWeight: 600 } }}
                 InputProps={{ 
                   sx: { 
                     borderRadius: '14px',
-                    bgcolor: 'rgba(255, 255, 255, 0.8)',
-                    '& fieldset': { borderColor: 'rgba(137, 215, 183, 0.4)' },
+                    bgcolor: 'rgba(255, 255, 255, 0.95)',
+                    color: '#123029',
+                    '& input::placeholder': { color: '#4D9B8C', opacity: 0.85, fontWeight: 500 },
+                    '& fieldset': { borderColor: 'rgba(137, 215, 183, 0.5)' },
                     '&:hover fieldset': { borderColor: '#428475 !important' }
                   } 
                 }}
@@ -179,13 +183,17 @@ const Register = () => {
                 id="lastName"
                 label="Last Name"
                 name="lastName"
+                placeholder="e.g. Doe"
                 value={formData.lastName}
                 onChange={handleChange}
+                InputLabelProps={{ sx: { color: '#2A6B5D', fontWeight: 600 } }}
                 InputProps={{ 
                   sx: { 
                     borderRadius: '14px',
-                    bgcolor: 'rgba(255, 255, 255, 0.8)',
-                    '& fieldset': { borderColor: 'rgba(137, 215, 183, 0.4)' },
+                    bgcolor: 'rgba(255, 255, 255, 0.95)',
+                    color: '#123029',
+                    '& input::placeholder': { color: '#4D9B8C', opacity: 0.85, fontWeight: 500 },
+                    '& fieldset': { borderColor: 'rgba(137, 215, 183, 0.5)' },
                     '&:hover fieldset': { borderColor: '#428475 !important' }
                   } 
                 }}
@@ -199,13 +207,17 @@ const Register = () => {
                 label="Email Address"
                 name="email"
                 type="email"
+                placeholder="e.g. john.doe@example.com"
                 value={formData.email}
                 onChange={handleChange}
+                InputLabelProps={{ sx: { color: '#2A6B5D', fontWeight: 600 } }}
                 InputProps={{ 
                   sx: { 
                     borderRadius: '14px',
-                    bgcolor: 'rgba(255, 255, 255, 0.8)',
-                    '& fieldset': { borderColor: 'rgba(137, 215, 183, 0.4)' },
+                    bgcolor: 'rgba(255, 255, 255, 0.95)',
+                    color: '#123029',
+                    '& input::placeholder': { color: '#4D9B8C', opacity: 0.85, fontWeight: 500 },
+                    '& fieldset': { borderColor: 'rgba(137, 215, 183, 0.5)' },
                     '&:hover fieldset': { borderColor: '#428475 !important' }
                   } 
                 }}
@@ -217,10 +229,12 @@ const Register = () => {
                 fullWidth
                 name="password"
                 label="Password"
+                placeholder="Minimum 6 characters"
                 type={showPassword ? 'text' : 'password'}
                 id="password"
                 value={formData.password}
                 onChange={handleChange}
+                InputLabelProps={{ sx: { color: '#2A6B5D', fontWeight: 600 } }}
                 InputProps={{
                   endAdornment: (
                     <InputAdornment position="end">
@@ -236,8 +250,10 @@ const Register = () => {
                   ),
                   sx: { 
                     borderRadius: '14px',
-                    bgcolor: 'rgba(255, 255, 255, 0.8)',
-                    '& fieldset': { borderColor: 'rgba(137, 215, 183, 0.4)' },
+                    bgcolor: 'rgba(255, 255, 255, 0.95)',
+                    color: '#123029',
+                    '& input::placeholder': { color: '#4D9B8C', opacity: 0.85, fontWeight: 500 },
+                    '& fieldset': { borderColor: 'rgba(137, 215, 183, 0.5)' },
                     '&:hover fieldset': { borderColor: '#428475 !important' }
                   }
                 }}
@@ -249,12 +265,14 @@ const Register = () => {
                 fullWidth
                 name="confirmPassword"
                 label="Confirm Password"
+                placeholder="Re-enter your password"
                 type={showConfirmPassword ? 'text' : 'password'}
                 id="confirmPassword"
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 error={!!passwordError}
                 helperText={passwordError}
+                InputLabelProps={{ sx: { color: '#2A6B5D', fontWeight: 600 } }}
                 InputProps={{
                   endAdornment: (
                     <InputAdornment position="end">
@@ -270,8 +288,10 @@ const Register = () => {
                   ),
                   sx: { 
                     borderRadius: '14px',
-                    bgcolor: 'rgba(255, 255, 255, 0.8)',
-                    '& fieldset': { borderColor: 'rgba(137, 215, 183, 0.4)' },
+                    bgcolor: 'rgba(255, 255, 255, 0.95)',
+                    color: '#123029',
+                    '& input::placeholder': { color: '#4D9B8C', opacity: 0.85, fontWeight: 500 },
+                    '& fieldset': { borderColor: 'rgba(137, 215, 183, 0.5)' },
                     '&:hover fieldset': { borderColor: '#428475 !important' }
                   }
                 }}
