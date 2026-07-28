@@ -217,7 +217,67 @@ export const CustomThemeProvider = ({ children }: { children: ReactNode }) => {
               boxShadow: 'none',
             }
           }
-        }
+        },
+        MuiInputLabel: {
+          styleOverrides: {
+            root: {
+              color: currentTokens.textSecondary,
+              fontWeight: 600,
+              '&.Mui-focused': {
+                color: currentTokens.primary,
+              },
+            },
+          },
+        },
+        MuiOutlinedInput: {
+          styleOverrides: {
+            root: {
+              color: currentTokens.textPrimary,
+              '& .MuiOutlinedInput-notchedOutline': {
+                borderColor: mode === 'light' 
+                  ? 'rgba(42, 107, 93, 0.35)' 
+                  : 'rgba(102, 205, 170, 0.3)',
+              },
+              '&:hover .MuiOutlinedInput-notchedOutline': {
+                borderColor: currentTokens.primary,
+              },
+              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                borderColor: currentTokens.primary,
+              },
+            },
+            input: {
+              color: currentTokens.textPrimary,
+              '&::placeholder': {
+                color: currentTokens.textSecondary,
+                opacity: 0.8,
+              },
+            },
+          },
+        },
+        MuiInputBase: {
+          styleOverrides: {
+            root: {
+              color: currentTokens.textPrimary,
+            },
+            input: {
+              color: currentTokens.textPrimary,
+              '&::placeholder': {
+                color: currentTokens.textSecondary,
+                opacity: 0.8,
+              },
+            },
+          },
+        },
+        MuiSelect: {
+          styleOverrides: {
+            select: {
+              color: currentTokens.textPrimary,
+            },
+            icon: {
+              color: currentTokens.textSecondary,
+            },
+          },
+        },
       }
     });
   }, [palette, mode, currentTokens]);
