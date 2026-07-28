@@ -41,6 +41,7 @@ interface Prescription {
   patientName: string;
   patientEmail: string;
   diagnosis: string;
+  provisionalDiagnosis?: string[];
   medications: Array<{
     name: string;
     dosage: string;

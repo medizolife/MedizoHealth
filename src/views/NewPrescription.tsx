@@ -871,23 +871,25 @@ const NewPrescription = () => {
                         setMedSearchOpen(false);
                       }
                     }}
-                    PaperProps={{
-                      elevation: 12,
-                      sx: {
-                        borderRadius: '20px',
-                        mt: 1,
-                        bgcolor: mode === 'dark' ? 'rgba(18, 38, 34, 0.96)' : 'rgba(255, 255, 255, 0.98)',
-                        backdropFilter: 'blur(20px)',
-                        border: '1.5px solid var(--color-mint)',
-                        boxShadow: mode === 'dark' 
-                          ? '0 16px 40px rgba(0,0,0,0.6)' 
-                          : '0 16px 40px rgba(42, 107, 93, 0.18)',
-                        overflow: 'hidden',
-                        '& .MuiAutocomplete-listbox': {
-                          p: 1,
-                          maxHeight: '260px',
-                          '&::-webkit-scrollbar': { width: '6px' },
-                          '&::-webkit-scrollbar-thumb': { bgcolor: 'var(--color-forest)', borderRadius: '10px' }
+                    slotProps={{
+                      paper: {
+                        elevation: 12,
+                        sx: {
+                          borderRadius: '20px',
+                          mt: 1,
+                          bgcolor: mode === 'dark' ? 'rgba(18, 38, 34, 0.96)' : 'rgba(255, 255, 255, 0.98)',
+                          backdropFilter: 'blur(20px)',
+                          border: '1.5px solid var(--color-mint)',
+                          boxShadow: mode === 'dark' 
+                            ? '0 16px 40px rgba(0,0,0,0.6)' 
+                            : '0 16px 40px rgba(42, 107, 93, 0.18)',
+                          overflow: 'hidden',
+                          '& .MuiAutocomplete-listbox': {
+                            p: 1,
+                            maxHeight: '260px',
+                            '&::-webkit-scrollbar': { width: '6px' },
+                            '&::-webkit-scrollbar-thumb': { bgcolor: 'var(--color-forest)', borderRadius: '10px' }
+                          }
                         }
                       }
                     }}
@@ -1758,7 +1760,8 @@ const NewPrescription = () => {
                   lastName: newPatientData.lastName,
                   email: newPatientData.email,
                   role: 'patient',
-                  contactNumber: newPatientData.phone
+                  contactNumber: newPatientData.phone,
+                  createdAt: new Date().toISOString()
                 };
                 setPatients(prev => [newP, ...prev]);
                 setSelectedPatient(newP);
@@ -1878,7 +1881,8 @@ const NewPrescription = () => {
                             firstName: 'Patient (' + patientIdToLookup.trim() + ')',
                             lastName: '',
                             email: patientIdToLookup.trim().includes('@') ? patientIdToLookup.trim() : `${patientIdToLookup.trim()}@medizo.com`,
-                            role: 'patient'
+                            role: 'patient',
+                            createdAt: new Date().toISOString()
                           };
                           setFoundPatient(mockMatch);
                         }
