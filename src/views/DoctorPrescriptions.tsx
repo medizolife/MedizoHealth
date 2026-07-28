@@ -123,12 +123,20 @@ export default function DoctorPrescriptions() {
   };
 
   const filteredPrescriptions = prescriptions.filter(p => {
-    const query = searchQuery.toLowerCase();
+    if (!searchQuery || !searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase().trim();
+    const patientName = (p.patientName || '').toLowerCase();
+    const patientEmail = (p.patientEmail || '').toLowerCase();
+    const diagnosis = (p.diagnosis || (Array.isArray(p.provisionalDiagnosis) ? p.provisionalDiagnosis.join(' ') : '')).toLowerCase();
+    const notes = (p.notes || '').toLowerCase();
+    const medMatch = Array.isArray(p.medications) && p.medications.some(m => (m?.name || '').toLowerCase().includes(query));
+    
     return (
-      p.patientName.toLowerCase().includes(query) ||
-      p.patientEmail.toLowerCase().includes(query) ||
-      p.diagnosis.toLowerCase().includes(query) ||
-      p.medications.some(m => m.name.toLowerCase().includes(query))
+      patientName.includes(query) ||
+      patientEmail.includes(query) ||
+      diagnosis.includes(query) ||
+      notes.includes(query) ||
+      medMatch
     );
   });
 

@@ -1865,9 +1865,9 @@ const NewPrescription = () => {
                       setTimeout(() => {
                         const query = patientIdToLookup.trim().toLowerCase();
                         const match = patients.find(p => 
-                          p.id.toLowerCase().includes(query) || 
-                          p.email.toLowerCase().includes(query) || 
-                          `${p.firstName} ${p.lastName}`.toLowerCase().includes(query)
+                          (p?.id || '').toLowerCase().includes(query) || 
+                          (p?.email || '').toLowerCase().includes(query) || 
+                          `${p?.firstName || ''} ${p?.lastName || ''}`.toLowerCase().includes(query)
                         );
                         if (match) {
                           setFoundPatient(match);
