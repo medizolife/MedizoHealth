@@ -16,7 +16,13 @@ import {
   Chip,
   Card,
   CardContent,
-  IconButton
+  IconButton,
+  Avatar,
+  TextField,
+  InputAdornment,
+  Tooltip,
+  Badge,
+  Grid
 } from '@mui/material';
 import { 
   Add as AddIcon, 
@@ -24,25 +30,42 @@ import {
   CheckCircle as ActiveIcon, 
   History as HistoryIcon,
   ChevronRight as ChevronRightIcon,
-  People as PeopleIcon
+  People as PeopleIcon,
+  Search as SearchIcon,
+  NotificationsActive as NotificationsIcon,
+  LocalHospital as HospitalIcon,
+  VerifiedUser as VerifiedIcon,
+  CalendarToday as CalendarIcon,
+  MedicalServices as StethoscopeIcon,
+  PersonAdd as PersonAddIcon,
+  QrCodeScanner as QrIcon,
+  FilterList as FilterIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useThemeContext } from '../contexts/ThemeContext';
 import { getPrescriptions } from '../services/prescriptions';
 import { Prescription } from '../types/prescription';
 import EnhancedPatientManagement from '../components/EnhancedPatientManagement';
+import WallpaperCarouselHero from '../components/WallpaperCarouselHero';
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const { authState } = useAuth();
   const { user } = authState;
+  const { mode } = useThemeContext();
   
   const [tabValue, setTabValue] = useState(0);
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+  const [searchQuery, setSearchQuery] = useState('');
+
   useEffect(() => {
+    if (!authState.isAuthenticated) {
+      setLoading(false);
+      return;
+    }
     const fetchPrescriptions = async () => {
       try {
         setLoading(true);
@@ -57,89 +80,307 @@ const Dashboard = () => {
       }
     };
     fetchPrescriptions();
-  }, []);
+  }, [authState.isAuthenticated]);
   
-  const activePrescriptions = prescriptions.filter(p => p.status !== 'completed');
-  const completedPrescriptions = prescriptions.filter(p => p.status === 'completed');
-  
-  return (
-    <Container maxWidth="sm" sx={{ pt: 2, pb: 4, px: 2 }}>
-      {/* Mobile Greeting Header */}
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="overline" sx={{ color: '#134F4D', fontWeight: 700, letterSpacing: 1.5 }}>
-          HEALTH DASHBOARD
-        </Typography>
-        <Typography variant="h5" sx={{ fontWeight: 800, color: '#0f172a' }}>
-          Hello, {user?.role === 'doctor' ? `Dr. ${user?.lastName || ''}` : `${user?.firstName || 'User'}`} 👋
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          {user?.role === 'doctor' ? 'Manage your patients and active prescriptions' : 'Track your current medications & medical records'}
-        </Typography>
-      </Box>
+  // Filter prescriptions based on search and status
+  const activePrescriptions = prescriptions.filter((p: any) => {
+    const matchesSearch = !searchQuery || 
+      (p.medication && p.medication.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (p.patientName && p.patientName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (p.provisionalDiagnosis && p.provisionalDiagnosis.some((d: string) => d.toLowerCase().includes(searchQuery.toLowerCase())));
+    return p.status !== 'completed' && matchesSearch;
+  });
 
-      {/* Mobile Quick Stats Summary */}
-      <Box sx={{ display: 'flex', gap: 1.5, mb: 3 }}>
-        <Card sx={{ flex: 1, bgcolor: '#e6f4f1', border: '1px solid rgba(19,79,77,0.2)', borderRadius: '16px' }}>
-          <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <ActiveIcon sx={{ color: '#134F4D' }} />
-              <Typography variant="h6" sx={{ fontWeight: 800, color: '#134F4D' }}>
-                {activePrescriptions.length}
-              </Typography>
+  const completedPrescriptions = prescriptions.filter((p: any) => {
+    const matchesSearch = !searchQuery || 
+      (p.medication && p.medication.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (p.patientName && p.patientName.toLowerCase().includes(searchQuery.toLowerCase()));
+    return p.status === 'completed' && matchesSearch;
+  });
+
+  const currentDate = new Date().toLocaleDateString('en-US', { 
+    weekday: 'short', 
+    month: 'short', 
+    day: 'numeric' 
+  });
+
+  return (
+    <Container maxWidth="md" sx={{ pt: 2, pb: 6, px: { xs: 2, sm: 3 } }}>
+      
+      {/* ─── Wallpaper Carousel Hero Greeting Header ─── */}
+      <WallpaperCarouselHero searchQuery={searchQuery} onSearchChange={setSearchQuery} />
+
+      {/* ─── Glass Metric Stat Cards ─── */}
+      <Grid container spacing={2} sx={{ mb: 3 }} className="animate-slide-up">
+        {/* Active Prescriptions Stat Card */}
+        <Grid item xs={6} sm={user?.role === 'doctor' ? 3 : 4}>
+          <Card 
+            className="glass-card-teal touch-active shimmer-card"
+            onClick={() => setTabValue(0)}
+            sx={{ cursor: 'pointer', p: 2, height: '100%', position: 'relative', overflow: 'hidden' }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+              <Box sx={{ p: 1, borderRadius: '12px', bgcolor: 'rgba(255, 255, 255, 0.25)', display: 'flex' }}>
+                <MedicationIcon sx={{ color: '#ffffff', fontSize: 22 }} />
+              </Box>
+              <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#66CDAA' }} className="pulse-glowing" />
             </Box>
-            <Typography variant="caption" sx={{ fontWeight: 600, color: '#134F4D' }}>
+            <Typography variant="h4" sx={{ fontWeight: 800, color: '#ffffff !important', letterSpacing: '-0.03em' }}>
+              {activePrescriptions.length}
+            </Typography>
+            <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.95) !important', fontWeight: 800, fontSize: '0.75rem' }}>
               Active Prescriptions
             </Typography>
-          </CardContent>
-        </Card>
+          </Card>
+        </Grid>
 
-        <Card sx={{ flex: 1, bgcolor: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '16px' }}>
-          <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <HistoryIcon sx={{ color: '#64748b' }} />
-              <Typography variant="h6" sx={{ fontWeight: 800, color: '#475569' }}>
-                {completedPrescriptions.length}
+        {/* Doctor-only: Patient Counter Stat Card */}
+        {user?.role === 'doctor' && (
+          <Grid item xs={6} sm={3}>
+            <Card 
+              className="glass-card-cream touch-active shimmer-card"
+              onClick={() => setTabValue(2)}
+              sx={{ cursor: 'pointer', p: 2, height: '100%' }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                <Box sx={{ p: 1, borderRadius: '12px', bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.2)' : 'rgba(42, 107, 93, 0.12)', display: 'flex' }}>
+                  <PeopleIcon sx={{ color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-forest)', fontSize: 22 }} />
+                </Box>
+                <Chip label="Live" size="small" sx={{ height: 18, fontSize: '0.65rem', fontWeight: 800, bgcolor: 'var(--color-forest)', color: '#ffffff' }} />
+              </Box>
+              <Typography variant="h4" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#123029', letterSpacing: '-0.03em' }}>
+                {prescriptions.length > 0 ? Array.from(new Set(prescriptions.map((p: any) => p.patientId || p.patientName))).length : 0}
               </Typography>
+              <Typography variant="caption" sx={{ color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-forest)', fontWeight: 800, fontSize: '0.75rem' }}>
+                Total Patients
+              </Typography>
+            </Card>
+          </Grid>
+        )}
+
+        {/* Completed Records Card */}
+        <Grid item xs={6} sm={user?.role === 'doctor' ? 3 : 4}>
+          <Card 
+            className="glass-card-cream touch-active shimmer-card"
+            onClick={() => setTabValue(1)}
+            sx={{ cursor: 'pointer', p: 2, height: '100%' }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+              <Box sx={{ p: 1, borderRadius: '12px', bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.2)' : 'rgba(42, 107, 93, 0.12)', display: 'flex' }}>
+                <HistoryIcon sx={{ color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-forest)', fontSize: 22 }} />
+              </Box>
             </Box>
-            <Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b' }}>
+            <Typography variant="h4" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#123029', letterSpacing: '-0.03em' }}>
+              {completedPrescriptions.length}
+            </Typography>
+            <Typography variant="caption" sx={{ color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-forest)', fontWeight: 800, fontSize: '0.75rem' }}>
               Completed Records
             </Typography>
-          </CardContent>
-        </Card>
-      </Box>
+          </Card>
+        </Grid>
 
-      {/* Tabs */}
-      <Paper elevation={0} sx={{ borderRadius: '16px', overflow: 'hidden', border: '1px solid rgba(0,0,0,0.08)', bgcolor: '#fff' }}>
+        {/* Doctor: Quick Action Button Panel | Patient: My Health Profile Card */}
+        {user?.role === 'doctor' ? (
+          <Grid item xs={6} sm={3}>
+            <Card 
+              className="glass-card-dark touch-active"
+              onClick={() => navigate('/prescriptions/new')}
+              sx={{ 
+                cursor: 'pointer', 
+                p: 2, 
+                height: '100%', 
+                bgcolor: 'var(--color-forest) !important',
+                color: '#ffffff !important',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+                textAlign: 'center',
+                border: '1px solid var(--color-mint) !important',
+                boxShadow: '0 8px 24px rgba(42, 107, 93, 0.3)'
+              }}
+            >
+              <Box sx={{ p: 1.2, borderRadius: '50%', bgcolor: 'rgba(255, 255, 255, 0.2)', color: '#ffffff', mb: 1, display: 'flex' }}>
+                <AddIcon sx={{ fontSize: 24 }} />
+              </Box>
+              <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#ffffff !important', fontSize: '0.8rem' }}>
+                + New Prescription
+              </Typography>
+            </Card>
+          </Grid>
+        ) : (
+          <Grid item xs={12} sm={4}>
+            <Card 
+              className="glass-card-cream touch-active"
+              onClick={() => navigate('/profile')}
+              sx={{ 
+                cursor: 'pointer', 
+                p: 2, 
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2
+              }}
+            >
+              <Box sx={{ p: 1.2, borderRadius: '14px', bgcolor: 'rgba(66, 132, 117, 0.15)', color: '#428475', display: 'flex' }}>
+                <VerifiedIcon sx={{ fontSize: 28 }} />
+              </Box>
+              <Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#123029' }}>
+                  My Health Profile
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'var(--color-forest)', fontWeight: 600 }}>
+                  View & Edit Info
+                </Typography>
+              </Box>
+            </Card>
+          </Grid>
+        )}
+      </Grid>
+
+      {/* ─── Glass Floating Action Control Bar ─── */}
+      {user?.role === 'doctor' && (
+        <Paper 
+          className="glass-panel animate-slide-up"
+          sx={{ 
+            p: 1.2, 
+            mb: 3, 
+            display: 'flex', 
+            gap: 1, 
+            overflowX: 'auto',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            bgcolor: mode === 'dark' ? 'rgba(20, 38, 34, 0.94) !important' : 'rgba(255, 255, 255, 0.94) !important',
+            border: '1px solid var(--glass-border) !important'
+          }}
+        >
+          <Box sx={{ display: 'flex', gap: 1, overflowX: 'auto', py: 0.5, px: 0.5, width: '100%' }}>
+            <Chip 
+              icon={<StethoscopeIcon sx={{ color: '#ffffff !important' }} />}
+              label="Create Prescription"
+              clickable
+              onClick={() => navigate('/prescriptions/new')}
+              sx={{ 
+                bgcolor: 'var(--color-forest)', 
+                color: '#ffffff', 
+                fontWeight: 800, 
+                px: 1,
+                py: 2.2,
+                borderRadius: '16px',
+                boxShadow: '0 4px 14px rgba(42, 107, 93, 0.3)',
+                '&:hover': { bgcolor: '#1d4b41' }
+              }} 
+            />
+
+            <Chip 
+              icon={<PersonAddIcon sx={{ color: mode === 'dark' ? '#FAF2F5 !important' : '#123029 !important' }} />}
+              label="Manage Patients"
+              clickable
+              onClick={() => setTabValue(2)}
+              sx={{ 
+                bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.25)' : 'rgba(42, 107, 93, 0.12)', 
+                color: mode === 'dark' ? '#FAF2F5' : '#123029', 
+                fontWeight: 800, 
+                px: 1,
+                py: 2.2,
+                borderRadius: '16px',
+                border: '1px solid var(--color-mint)',
+                '&:hover': { bgcolor: 'rgba(102, 205, 170, 0.3)' }
+              }} 
+            />
+
+            <Chip 
+              icon={<HospitalIcon sx={{ color: mode === 'dark' ? '#FAF2F5 !important' : '#123029 !important' }} />}
+              label="All Records"
+              clickable
+              onClick={() => navigate('/prescriptions/all')}
+              sx={{ 
+                bgcolor: mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)', 
+                color: mode === 'dark' ? '#FAF2F5' : '#123029', 
+                fontWeight: 800, 
+                px: 1,
+                py: 2.2,
+                borderRadius: '16px',
+                border: '1px solid rgba(0, 0, 0, 0.1)',
+                '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.08)' }
+              }} 
+            />
+          </Box>
+        </Paper>
+      )}
+
+      {/* ─── Segmented Glass Tabs & Content List ─── */}
+      <Paper className="glass-panel animate-slide-up" sx={{ overflow: 'hidden' }}>
         <Tabs
           value={tabValue}
           onChange={(_e, v) => setTabValue(v)}
           variant="fullWidth"
           sx={{
-            borderBottom: '1px solid #f1f5f9',
-            '& .MuiTab-root': { fontWeight: 700, fontSize: '0.85rem' },
-            '& .Mui-selected': { color: '#134F4D' }
+            borderBottom: '1px solid rgba(137, 215, 183, 0.3)',
+            bgcolor: 'rgba(26, 49, 44, 0.04)',
+            '& .MuiTab-root': { 
+              fontWeight: 800, 
+              fontSize: '0.875rem',
+              color: '#428475',
+              py: 2,
+              transition: 'all 0.2s ease',
+              '&.Mui-selected': { 
+                color: '#1A312C',
+                bgcolor: 'rgba(255, 255, 255, 0.9)'
+              } 
+            },
+            '& .MuiTabs-indicator': {
+              backgroundColor: '#1A312C',
+              height: 3,
+              borderRadius: '3px 3px 0 0'
+            }
           }}
         >
           <Tab label={`Active (${activePrescriptions.length})`} />
           <Tab label={`Completed (${completedPrescriptions.length})`} />
-          {user?.role === 'doctor' && <Tab label="Patients" icon={<PeopleIcon sx={{ fontSize: 18 }} />} iconPosition="start" />}
+          {user?.role === 'doctor' && (
+            <Tab 
+              label="Patients" 
+              icon={<PeopleIcon sx={{ fontSize: 18, color: tabValue === 2 ? '#1A312C' : '#428475' }} />} 
+              iconPosition="start" 
+            />
+          )}
         </Tabs>
         
         {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-            <CircularProgress size={32} sx={{ color: '#134F4D' }} />
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 6 }}>
+            <CircularProgress size={36} sx={{ color: '#428475', mb: 2 }} />
+            <Typography variant="caption" sx={{ fontWeight: 700, color: '#428475' }}>
+              Loading health records...
+            </Typography>
           </Box>
         ) : error ? (
-          <Box sx={{ p: 3, textAlign: 'center' }}>
-            <Typography color="error" variant="body2">{error}</Typography>
+          <Box sx={{ p: 4, textAlign: 'center' }}>
+            <Typography color="error" variant="body2" sx={{ fontWeight: 600 }}>{error}</Typography>
           </Box>
         ) : (
-          <Box sx={{ p: 1 }}>
+          <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
+            
+            {/* Active Prescriptions Tab */}
             {tabValue === 0 && (
               activePrescriptions.length === 0 ? (
-                <Box sx={{ py: 4, textAlign: 'center' }}>
-                  <MedicationIcon sx={{ fontSize: 48, color: '#cbd5e1', mb: 1 }} />
-                  <Typography variant="body2" color="text.secondary">No active prescriptions found</Typography>
+                <Box sx={{ py: 6, textAlign: 'center' }}>
+                  <Box sx={{ p: 2, borderRadius: '50%', bgcolor: 'rgba(137, 215, 183, 0.2)', width: 72, height: 72, mx: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2 }}>
+                    <MedicationIcon sx={{ fontSize: 36, color: '#428475' }} />
+                  </Box>
+                  <Typography variant="h6" sx={{ fontWeight: 800, color: '#1A312C', mb: 0.5 }}>
+                    No Active Prescriptions
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 300, mx: 'auto', mb: 2 }}>
+                    {searchQuery ? 'No records match your search criteria.' : 'Create a new digital prescription to display active health records here.'}
+                  </Typography>
+                  {user?.role === 'doctor' && (
+                    <Chip 
+                      label="+ Issue First Prescription" 
+                      onClick={() => navigate('/prescriptions/new')}
+                      sx={{ bgcolor: '#1A312C', color: '#89D7B7', fontWeight: 800, cursor: 'pointer', px: 1, py: 2 }}
+                    />
+                  )}
                 </Box>
               ) : (
                 <List disablePadding>
@@ -148,35 +389,75 @@ const Dashboard = () => {
                       <ListItem 
                         button 
                         onClick={() => navigate(`/prescriptions/${prescription.id}`)}
-                        sx={{ borderRadius: '12px', my: 0.5, p: 1.5 }}
+                        className="touch-active"
+                        sx={{ 
+                          borderRadius: '16px', 
+                          my: 1, 
+                          p: 2,
+                          bgcolor: 'rgba(255, 255, 255, 0.75)',
+                          border: '1px solid rgba(137, 215, 183, 0.4)',
+                          boxShadow: '0 4px 16px rgba(26, 49, 44, 0.04)',
+                          transition: 'all 0.2s ease',
+                          '&:hover': {
+                            bgcolor: 'rgba(255, 244, 225, 0.9)',
+                            transform: 'translateY(-2px)',
+                            boxShadow: '0 8px 24px rgba(26, 49, 44, 0.08)'
+                          }
+                        }}
                       >
+                        <Box sx={{ p: 1.5, borderRadius: '14px', bgcolor: 'rgba(66, 132, 117, 0.12)', mr: 2, display: 'flex', alignItems: 'center' }}>
+                          <MedicationIcon sx={{ color: '#428475', fontSize: 26 }} />
+                        </Box>
+                        
                         <ListItemText
                           primary={
-                            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#0f172a' }}>
-                              {prescription.medication || (prescription.provisionalDiagnosis && prescription.provisionalDiagnosis[0]) || 'Prescription Document'}
-                            </Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 0.5 }}>
+                              <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#1A312C' }}>
+                                {prescription.medication || (prescription.provisionalDiagnosis && prescription.provisionalDiagnosis[0]) || 'Prescription Document'}
+                              </Typography>
+                              <Chip 
+                                label="Active" 
+                                size="small" 
+                                sx={{ 
+                                  height: 20, 
+                                  fontSize: '0.65rem', 
+                                  fontWeight: 800, 
+                                  bgcolor: '#89D7B7', 
+                                  color: '#1A312C'
+                                }} 
+                              />
+                            </Box>
                           }
                           secondary={
-                            <Typography variant="caption" color="text.secondary">
-                              Dosage: {prescription.dosage || 'As directed'} • {new Date(prescription.createdAt || Date.now()).toLocaleDateString()}
+                            <Typography variant="caption" sx={{ color: '#428475', fontWeight: 600, display: 'block' }}>
+                              Patient: {(prescription as any).patientName || 'Linked Patient'} • Dosage: {prescription.dosage || 'As directed'}
+                              <span style={{ display: 'block', color: '#64748b', fontSize: '0.72rem', marginTop: '2px' }}>
+                                Issued: {new Date(prescription.createdAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                              </span>
                             </Typography>
                           }
                         />
-                        <Chip label="Active" size="small" color="primary" sx={{ height: 22, fontSize: '0.7rem', fontWeight: 700, mr: 1 }} />
-                        <ChevronRightIcon sx={{ color: '#94a3b8' }} />
+                        <ChevronRightIcon sx={{ color: '#428475' }} />
                       </ListItem>
-                      {idx < activePrescriptions.length - 1 && <Divider component="li" />}
                     </React.Fragment>
                   ))}
                 </List>
               )
             )}
 
+            {/* Completed Prescriptions Tab */}
             {tabValue === 1 && (
               completedPrescriptions.length === 0 ? (
-                <Box sx={{ py: 4, textAlign: 'center' }}>
-                  <HistoryIcon sx={{ fontSize: 48, color: '#cbd5e1', mb: 1 }} />
-                  <Typography variant="body2" color="text.secondary">No completed records found</Typography>
+                <Box sx={{ py: 6, textAlign: 'center' }}>
+                  <Box sx={{ p: 2, borderRadius: '50%', bgcolor: 'rgba(26, 49, 44, 0.08)', width: 72, height: 72, mx: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2 }}>
+                    <HistoryIcon sx={{ fontSize: 36, color: '#1A312C' }} />
+                  </Box>
+                  <Typography variant="h6" sx={{ fontWeight: 800, color: '#1A312C', mb: 0.5 }}>
+                    No Completed Records
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Completed prescriptions and archived medical files will appear here.
+                  </Typography>
                 </Box>
               ) : (
                 <List disablePadding>
@@ -185,11 +466,21 @@ const Dashboard = () => {
                       <ListItem 
                         button 
                         onClick={() => navigate(`/prescriptions/${prescription.id}`)}
-                        sx={{ borderRadius: '12px', my: 0.5, p: 1.5 }}
+                        className="touch-active"
+                        sx={{ 
+                          borderRadius: '16px', 
+                          my: 1, 
+                          p: 2,
+                          bgcolor: 'rgba(244, 248, 246, 0.8)',
+                          border: '1px solid rgba(0,0,0,0.06)'
+                        }}
                       >
+                        <Box sx={{ p: 1.5, borderRadius: '14px', bgcolor: 'rgba(0,0,0,0.04)', mr: 2 }}>
+                          <HistoryIcon sx={{ color: '#64748b', fontSize: 26 }} />
+                        </Box>
                         <ListItemText
                           primary={
-                            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#0f172a' }}>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#334155' }}>
                               {prescription.medication || (prescription.provisionalDiagnosis && prescription.provisionalDiagnosis[0]) || 'Prescription Record'}
                             </Typography>
                           }
@@ -201,23 +492,24 @@ const Dashboard = () => {
                         />
                         <ChevronRightIcon sx={{ color: '#94a3b8' }} />
                       </ListItem>
-                      {idx < completedPrescriptions.length - 1 && <Divider component="li" />}
                     </React.Fragment>
                   ))}
                 </List>
               )
             )}
 
+            {/* Patients Tab */}
             {tabValue === 2 && user?.role === 'doctor' && (
-              <Box sx={{ p: 1 }}>
+              <Box sx={{ p: 0.5 }}>
                 <EnhancedPatientManagement />
               </Box>
             )}
+
           </Box>
         )}
       </Paper>
 
-      {/* Floating Action Button for Doctors */}
+      {/* Floating Action Button for Doctor */}
       {user?.role === 'doctor' && (
         <Fab 
           color="primary" 
@@ -225,16 +517,20 @@ const Dashboard = () => {
           onClick={() => navigate('/prescriptions/new')}
           sx={{ 
             position: 'fixed', 
-            bottom: 80, 
-            right: 20, 
-            bgcolor: '#134F4D', 
-            '&:hover': { bgcolor: '#0e3b3a' },
-            boxShadow: '0 8px 24px rgba(19,79,77,0.3)'
+            bottom: 86, 
+            right: 24, 
+            bgcolor: '#1A312C', 
+            color: '#89D7B7',
+            '&:hover': { bgcolor: '#0F1D1A' },
+            boxShadow: '0 10px 28px rgba(26, 49, 44, 0.4)',
+            border: '1px solid #89D7B7'
           }}
+          className="pulse-glowing"
         >
-          <AddIcon />
+          <AddIcon sx={{ fontSize: 28 }} />
         </Fab>
       )}
+
     </Container>
   );
 };

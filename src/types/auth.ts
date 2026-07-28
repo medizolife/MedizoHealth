@@ -4,6 +4,8 @@ export interface User {
   lastName: string;
   email: string;
   role: 'doctor' | 'patient';
+  profileImage?: string;
+  specialization?: string;
   createdAt: string;
   updatedAt?: string;
 }

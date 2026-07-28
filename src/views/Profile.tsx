@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useThemeContext } from '../contexts/ThemeContext';
 import { 
   Container, 
   Typography, 
@@ -33,6 +34,7 @@ import {
 import { updateDoctorProfile, uploadProfileImage, uploadClinicLogo, uploadSignature } from '../services/doctors';
 import { updatePatientProfile } from '../services/patients';
 import { Doctor, Patient } from '../types/auth';
+import WallpaperCarouselHero from '../components/WallpaperCarouselHero';
 
 const Profile = () => {
   const { authState } = useAuth();
@@ -252,194 +254,392 @@ const Profile = () => {
     );
   }
   
+  const { palette, mode, setPalette, toggleMode } = useThemeContext();
+
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
-        My Profile
-      </Typography>
+    <Container maxWidth="md" sx={{ pt: { xs: 2, sm: 3 }, pb: 6, px: { xs: 2, sm: 3 } }} className="animate-slide-up">
       
-      <Paper elevation={3} sx={{ p: 3, mt: 3 }}>
+      {/* ─── Dynamic Wallpaper Carousel Hero Header ─── */}
+      <WallpaperCarouselHero showSearch={false} />
+      
+      {/* ─── Theme & Appearance Settings Card ─── */}
+      <Paper 
+        className={mode === 'dark' ? 'apple-glass-card-dark' : 'apple-glass-card'} 
+        sx={{ 
+          p: 3, 
+          mb: 3, 
+          borderRadius: '24px !important'
+        }}
+      >
+        <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+          🎨 Theme & Appearance Settings
+        </Typography>
+        <Typography variant="body2" sx={{ color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-teal)', fontWeight: 600, mb: 2 }}>
+          Choose your favorite light theme color or switch to high-contrast dark mode.
+        </Typography>
+
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} sm={8}>
+            <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-teal)', textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', mb: 1 }}>
+              Color Palettes
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              <Button
+                variant={palette === 'seafoam' ? 'contained' : 'outlined'}
+                onClick={() => setPalette('seafoam')}
+                sx={{
+                  borderRadius: '14px',
+                  fontWeight: 800,
+                  bgcolor: palette === 'seafoam' ? '#2A6B5D' : 'transparent',
+                  color: palette === 'seafoam' ? '#ffffff' : mode === 'dark' ? '#FAF2F5' : '#2A6B5D',
+                  borderColor: '#2A6B5D'
+                }}
+              >
+                Seafoam 🌿
+              </Button>
+              <Button
+                variant={palette === 'beige' ? 'contained' : 'outlined'}
+                onClick={() => setPalette('beige')}
+                sx={{
+                  borderRadius: '14px',
+                  fontWeight: 800,
+                  bgcolor: palette === 'beige' ? '#735740' : 'transparent',
+                  color: palette === 'beige' ? '#ffffff' : mode === 'dark' ? '#FAF6F0' : '#735740',
+                  borderColor: '#735740'
+                }}
+              >
+                Beige 🌾
+              </Button>
+              <Button
+                variant={palette === 'pink' ? 'contained' : 'outlined'}
+                onClick={() => setPalette('pink')}
+                sx={{
+                  borderRadius: '14px',
+                  fontWeight: 800,
+                  bgcolor: palette === 'pink' ? '#8A3859' : 'transparent',
+                  color: palette === 'pink' ? '#ffffff' : mode === 'dark' ? '#FAF2F5' : '#8A3859',
+                  borderColor: '#8A3859'
+                }}
+              >
+                Pink 🌸
+              </Button>
+            </Box>
+          </Grid>
+
+          <Grid item xs={12} sm={4}>
+            <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-teal)', textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', mb: 1 }}>
+              Display Mode
+            </Typography>
+            <Button
+              fullWidth
+              variant="outlined"
+              onClick={toggleMode}
+              sx={{
+                height: 42,
+                borderRadius: '14px',
+                fontWeight: 800,
+                borderColor: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-forest)',
+                color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)',
+                bgcolor: mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'transparent'
+              }}
+            >
+              {mode === 'dark' ? '🌙 Dark Mode (Active)' : '☀️ Light Mode (Active)'}
+            </Button>
+          </Grid>
+        </Grid>
+      </Paper>
+
+      <Paper elevation={0} className={mode === 'dark' ? 'apple-glass-card-dark' : 'apple-glass-card'} sx={{ p: 3, borderRadius: '24px !important', mb: 3 }}>
         <Box sx={{ mb: 3 }}>
-          <Typography variant="h6" gutterBottom>
-            Account Information
+          <Typography variant="h6" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }}>
+            Account Details
           </Typography>
-          <Typography variant="body1">
-            <strong>Email:</strong> {user.email}
-          </Typography>
-          <Typography variant="body1">
-            <strong>Role:</strong> {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-          </Typography>
-          <Typography variant="body2" color="textSecondary">
-            <strong>Member since:</strong> {new Date(user.createdAt).toLocaleDateString()}
+          <Typography variant="body2" sx={{ color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-teal)', fontWeight: 600 }}>
+            Member since: {new Date(user.createdAt).toLocaleDateString()}
           </Typography>
         </Box>
         
-        <Divider sx={{ my: 3 }} />
+        <Divider sx={{ my: 3, borderColor: 'var(--glass-border)' }} />
         
         {success && (
-          <Alert severity="success" sx={{ mb: 3 }}>
+          <Alert severity="success" sx={{ mb: 3, borderRadius: '14px' }}>
             Profile updated successfully!
           </Alert>
         )}
         
         {error && (
-          <Alert severity="error" sx={{ mb: 3 }}>
+          <Alert severity="error" sx={{ mb: 3, borderRadius: '14px' }}>
             {error}
           </Alert>
         )}
         
-        <Typography variant="h6" gutterBottom>
+        <Typography variant="h6" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)', mb: 2 }}>
           Edit Profile
         </Typography>
         
         <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
           {user.role === 'doctor' ? (
             <>
-              {/* Profile & Clinic Images Section */}
-              <Card variant="outlined" sx={{ mb: 3, p: 2 }}>
-                <CardContent>
-                  <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <PhotoCameraIcon /> Profile & Clinic Images
-                  </Typography>
-                  <Grid container spacing={4} sx={{ mt: 1 }}>
-                    {/* Profile Image */}
-                    <Grid item xs={12} sm={4}>
-                      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                        <Typography variant="body2" color="textSecondary" gutterBottom>
-                          Profile Image
-                        </Typography>
-                        <Avatar
-                          src={getImageUrl(doctorFormData.profileImage || '')}
-                          sx={{ width: 120, height: 120, mb: 2, border: '3px solid #1976d2' }}
-                        >
-                          <PersonIcon sx={{ fontSize: 60 }} />
+              {/* Modern Profile & Clinic Images Media Asset Section */}
+              <Paper 
+                className={mode === 'dark' ? 'apple-glass-card-dark' : 'apple-glass-card'}
+                sx={{ 
+                  mb: 3.5, 
+                  p: { xs: 2.5, sm: 3 }, 
+                  borderRadius: '24px !important',
+                  border: '1px solid var(--glass-border)'
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2.5 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
+                    <Box sx={{ p: 1, borderRadius: '12px', bgcolor: 'rgba(0,0,0,0.08)', color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }}>
+                      <PhotoCameraIcon sx={{ fontSize: 20 }} />
+                    </Box>
+                    <Box>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)', lineHeight: 1.2 }}>
+                        Profile & Clinic Branding
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-teal)', fontWeight: 700 }}>
+                        High-resolution avatar, logo, and digital signature for prescriptions
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Box>
+
+                <Grid container spacing={{ xs: 1.2, sm: 2.5 }}>
+                  {/* Profile Image */}
+                  <Grid item xs={4} sm={4}>
+                    <Box 
+                      sx={{ 
+                        p: { xs: 1.2, sm: 2.2 }, 
+                        borderRadius: { xs: '16px', sm: '20px' }, 
+                        bgcolor: mode === 'dark' ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)', 
+                        border: '1px dashed var(--glass-border)',
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        alignItems: 'center',
+                        justify: 'space-between',
+                        height: '100%',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-forest)', textTransform: 'uppercase', letterSpacing: 0.3, mb: 1, fontSize: { xs: '0.58rem', sm: '0.72rem' }, textAlign: 'center', lineHeight: 1.1 }}>
+                        Doctor Avatar
+                      </Typography>
+                      <Avatar
+                        src={getImageUrl(doctorFormData.profileImage || '')}
+                        sx={{ 
+                          width: { xs: 52, sm: 96 }, 
+                          height: { xs: 52, sm: 96 }, 
+                          mb: 1.2, 
+                          p: '2px',
+                          bgcolor: 'var(--color-forest)',
+                          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.15)'
+                        }}
+                      >
+                        <Avatar sx={{ width: '100%', height: '100%', bgcolor: 'var(--color-forest)', color: '#ffffff' }}>
+                          <PersonIcon sx={{ fontSize: { xs: 26, sm: 48 } }} />
                         </Avatar>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          ref={profileImageRef}
-                          onChange={handleProfileImageUpload}
-                          style={{ display: 'none' }}
-                        />
-                        <Box sx={{ display: 'flex', gap: 1 }}>
+                      </Avatar>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        ref={profileImageRef}
+                        onChange={handleProfileImageUpload}
+                        style={{ display: 'none' }}
+                      />
+                      <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', justifyContent: 'center', width: '100%' }}>
+                        <Button
+                          variant="contained"
+                          size="small"
+                          startIcon={uploadingProfile ? <CircularProgress size={12} color="inherit" /> : <PhotoCameraIcon sx={{ fontSize: { xs: 13, sm: 16 } }} />}
+                          onClick={() => profileImageRef.current?.click()}
+                          disabled={uploadingProfile}
+                          sx={{
+                            borderRadius: '14px',
+                            fontWeight: 800,
+                            fontSize: { xs: '0.62rem', sm: '0.75rem' },
+                            px: { xs: 1, sm: 2 },
+                            py: { xs: 0.3, sm: 0.7 },
+                            bgcolor: 'var(--color-forest)',
+                            color: '#ffffff',
+                            minWidth: 'auto'
+                          }}
+                        >
+                          {uploadingProfile ? '...' : 'Upload'}
+                        </Button>
+                        {doctorFormData.profileImage && (
                           <Button
                             variant="outlined"
+                            color="error"
                             size="small"
-                            startIcon={uploadingProfile ? <CircularProgress size={16} /> : <PhotoCameraIcon />}
-                            onClick={() => profileImageRef.current?.click()}
-                            disabled={uploadingProfile}
+                            onClick={() => handleRemoveImage('profileImage')}
+                            sx={{ borderRadius: '12px', fontWeight: 800, fontSize: { xs: '0.58rem', sm: '0.7rem' }, px: 0.8, minWidth: 'auto' }}
                           >
-                            {uploadingProfile ? 'Uploading...' : 'Upload Photo'}
+                            ×
                           </Button>
-                          {doctorFormData.profileImage && (
-                            <Button
-                              variant="outlined"
-                              color="error"
-                              size="small"
-                              startIcon={<DeleteIcon />}
-                              onClick={() => handleRemoveImage('profileImage')}
-                            >
-                              Remove
-                            </Button>
-                          )}
-                        </Box>
+                        )}
                       </Box>
-                    </Grid>
-                    
-                    {/* Clinic Logo */}
-                    <Grid item xs={12} sm={4}>
-                      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                        <Typography variant="body2" color="textSecondary" gutterBottom>
-                          Clinic Logo
-                        </Typography>
-                        <Avatar
-                          variant="rounded"
-                          src={getImageUrl(doctorFormData.clinicLogo || '')}
-                          sx={{ width: 120, height: 120, mb: 2, border: '3px solid #4caf50' }}
-                        >
-                          <BusinessIcon sx={{ fontSize: 60 }} />
-                        </Avatar>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          ref={clinicLogoRef}
-                          onChange={handleClinicLogoUpload}
-                          style={{ display: 'none' }}
-                        />
-                        <Box sx={{ display: 'flex', gap: 1 }}>
-                          <Button
-                            variant="outlined"
-                            color="success"
-                            size="small"
-                            startIcon={uploadingLogo ? <CircularProgress size={16} /> : <BusinessIcon />}
-                            onClick={() => clinicLogoRef.current?.click()}
-                            disabled={uploadingLogo}
-                          >
-                            {uploadingLogo ? 'Uploading...' : 'Upload Logo'}
-                          </Button>
-                          {doctorFormData.clinicLogo && (
-                            <Button
-                              variant="outlined"
-                              color="error"
-                              size="small"
-                              startIcon={<DeleteIcon />}
-                              onClick={() => handleRemoveImage('clinicLogo')}
-                            >
-                              Remove
-                            </Button>
-                          )}
-                        </Box>
-                      </Box>
-                    </Grid>
-                    
-                    {/* Signature */}
-                    <Grid item xs={12} sm={4}>
-                      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                        <Typography variant="body2" color="textSecondary" gutterBottom>
-                          Signature
-                        </Typography>
-                        <Avatar
-                          variant="rounded"
-                          src={getImageUrl(doctorFormData.signature || '')}
-                          sx={{ width: 150, height: 80, mb: 2, border: '3px solid #9c27b0', bgcolor: 'white' }}
-                        >
-                          <CreateIcon sx={{ fontSize: 40 }} />
-                        </Avatar>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          ref={signatureRef}
-                          onChange={handleSignatureUpload}
-                          style={{ display: 'none' }}
-                        />
-                        <Box sx={{ display: 'flex', gap: 1 }}>
-                          <Button
-                            variant="outlined"
-                            color="secondary"
-                            size="small"
-                            startIcon={uploadingSignature ? <CircularProgress size={16} /> : <CreateIcon />}
-                            onClick={() => signatureRef.current?.click()}
-                            disabled={uploadingSignature}
-                          >
-                            {uploadingSignature ? 'Uploading...' : 'Upload Signature'}
-                          </Button>
-                          {doctorFormData.signature && (
-                            <Button
-                              variant="outlined"
-                              color="error"
-                              size="small"
-                              startIcon={<DeleteIcon />}
-                              onClick={() => handleRemoveImage('signature')}
-                            >
-                              Remove
-                            </Button>
-                          )}
-                        </Box>
-                      </Box>
-                    </Grid>
+                    </Box>
                   </Grid>
-                </CardContent>
-              </Card>
+
+                  {/* Clinic Logo */}
+                  <Grid item xs={4} sm={4}>
+                    <Box 
+                      sx={{ 
+                        p: { xs: 1.2, sm: 2.2 }, 
+                        borderRadius: { xs: '16px', sm: '20px' }, 
+                        bgcolor: mode === 'dark' ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)', 
+                        border: '1px dashed var(--glass-border)',
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        alignItems: 'center',
+                        justify: 'space-between',
+                        height: '100%',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-forest)', textTransform: 'uppercase', letterSpacing: 0.3, mb: 1, fontSize: { xs: '0.58rem', sm: '0.72rem' }, textAlign: 'center', lineHeight: 1.1 }}>
+                        Clinic Emblem
+                      </Typography>
+                      <Avatar
+                        variant="rounded"
+                        src={getImageUrl(doctorFormData.clinicLogo || '')}
+                        sx={{ 
+                          width: { xs: 52, sm: 96 }, 
+                          height: { xs: 52, sm: 96 }, 
+                          mb: 1.2, 
+                          borderRadius: '16px',
+                          p: '2px',
+                          bgcolor: '#ffffff',
+                          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)'
+                        }}
+                      >
+                        <Avatar variant="rounded" sx={{ width: '100%', height: '100%', borderRadius: '14px', bgcolor: '#ffffff', color: 'var(--color-forest)' }}>
+                          <BusinessIcon sx={{ fontSize: { xs: 26, sm: 44 } }} />
+                        </Avatar>
+                      </Avatar>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        ref={clinicLogoRef}
+                        onChange={handleClinicLogoUpload}
+                        style={{ display: 'none' }}
+                      />
+                      <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', justifyContent: 'center', width: '100%' }}>
+                        <Button
+                          variant="contained"
+                          size="small"
+                          startIcon={uploadingLogo ? <CircularProgress size={12} color="inherit" /> : <BusinessIcon sx={{ fontSize: { xs: 13, sm: 16 } }} />}
+                          onClick={() => clinicLogoRef.current?.click()}
+                          disabled={uploadingLogo}
+                          sx={{
+                            borderRadius: '14px',
+                            fontWeight: 800,
+                            fontSize: { xs: '0.62rem', sm: '0.75rem' },
+                            px: { xs: 1, sm: 2 },
+                            py: { xs: 0.3, sm: 0.7 },
+                            bgcolor: 'var(--color-forest)',
+                            color: '#ffffff',
+                            minWidth: 'auto'
+                          }}
+                        >
+                          {uploadingLogo ? '...' : 'Upload'}
+                        </Button>
+                        {doctorFormData.clinicLogo && (
+                          <Button
+                            variant="outlined"
+                            color="error"
+                            size="small"
+                            onClick={() => handleRemoveImage('clinicLogo')}
+                            sx={{ borderRadius: '12px', fontWeight: 800, fontSize: { xs: '0.58rem', sm: '0.7rem' }, px: 0.8, minWidth: 'auto' }}
+                          >
+                            ×
+                          </Button>
+                        )}
+                      </Box>
+                    </Box>
+                  </Grid>
+
+                  {/* Signature */}
+                  <Grid item xs={4} sm={4}>
+                    <Box 
+                      sx={{ 
+                        p: { xs: 1.2, sm: 2.2 }, 
+                        borderRadius: { xs: '16px', sm: '20px' }, 
+                        bgcolor: mode === 'dark' ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)', 
+                        border: '1px dashed var(--glass-border)',
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        alignItems: 'center',
+                        justify: 'space-between',
+                        height: '100%',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-forest)', textTransform: 'uppercase', letterSpacing: 0.3, mb: 1, fontSize: { xs: '0.58rem', sm: '0.72rem' }, textAlign: 'center', lineHeight: 1.1 }}>
+                        Rx Signature
+                      </Typography>
+                      <Avatar
+                        variant="rounded"
+                        src={getImageUrl(doctorFormData.signature || '')}
+                        sx={{ 
+                          width: { xs: 72, sm: 120 }, 
+                          height: { xs: 44, sm: 65 }, 
+                          mb: 1.2, 
+                          borderRadius: '14px',
+                          p: '2px',
+                          bgcolor: '#ffffff',
+                          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)'
+                        }}
+                      >
+                        <Avatar variant="rounded" sx={{ width: '100%', height: '100%', borderRadius: '12px', bgcolor: '#ffffff', color: 'var(--color-forest)' }}>
+                          <CreateIcon sx={{ fontSize: { xs: 22, sm: 30 } }} />
+                        </Avatar>
+                      </Avatar>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        ref={signatureRef}
+                        onChange={handleSignatureUpload}
+                        style={{ display: 'none' }}
+                      />
+                      <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', justifyContent: 'center', width: '100%' }}>
+                        <Button
+                          variant="contained"
+                          size="small"
+                          startIcon={uploadingSignature ? <CircularProgress size={12} color="inherit" /> : <CreateIcon sx={{ fontSize: { xs: 13, sm: 16 } }} />}
+                          onClick={() => signatureRef.current?.click()}
+                          disabled={uploadingSignature}
+                          sx={{
+                            borderRadius: '14px',
+                            fontWeight: 800,
+                            fontSize: { xs: '0.62rem', sm: '0.75rem' },
+                            px: { xs: 1, sm: 2 },
+                            py: { xs: 0.3, sm: 0.7 },
+                            bgcolor: 'var(--color-forest)',
+                            color: '#ffffff',
+                            minWidth: 'auto'
+                          }}
+                        >
+                          {uploadingSignature ? '...' : 'Upload'}
+                        </Button>
+                        {doctorFormData.signature && (
+                          <Button
+                            variant="outlined"
+                            color="error"
+                            size="small"
+                            onClick={() => handleRemoveImage('signature')}
+                            sx={{ borderRadius: '12px', fontWeight: 800, fontSize: { xs: '0.58rem', sm: '0.7rem' }, px: 0.8, minWidth: 'auto' }}
+                          >
+                            ×
+                          </Button>
+                        )}
+                      </Box>
+                    </Box>
+                  </Grid>
+                </Grid>
+              </Paper>
 
               {/* Basic Information Accordion */}
               <Accordion defaultExpanded>

@@ -8,8 +8,7 @@ const getApiUrl = () => {
     const url = envUrl.replace(/\/$/, '');
     return url.endsWith('/api') ? url : `${url}/api`;
   }
-  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-    return 'https://medizoserver.vercel.app/api';
+  return 'https://medizoserver.vercel.app/api';
 };
 const API_URL = getApiUrl();
 

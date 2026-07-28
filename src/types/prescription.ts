@@ -41,6 +41,7 @@ export interface Prescription {
   
   // Basic Info
   medication: string;
+  patientName?: string;
   dosage: string;
   frequency: string;
   duration: string;

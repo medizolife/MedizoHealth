@@ -1,8 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
+import { CustomThemeProvider } from './contexts/ThemeContext';
 import Box from '@mui/material/Box';
 
 // Components
@@ -11,7 +10,6 @@ import MobileBottomNav from './components/MobileBottomNav';
 import ProtectedRoute from './components/ProtectedRoute';
 
 // Views
-import Home from './views/Home';
 import Login from './views/Login';
 import Register from './views/Register';
 import Dashboard from './views/Dashboard';
@@ -23,45 +21,30 @@ import PatientManagement from './views/PatientManagement';
 import NotFound from './views/NotFound';
 import Unauthorized from './views/Unauthorized';
 
-// Create mobile-optimized theme
-const mobileTheme = createTheme({
-  palette: {
-    primary: {
-      main: '#134F4D',
-      light: '#1d7370',
-      dark: '#0a2c2b',
-    },
-    secondary: {
-      main: '#ec4899',
-    },
-    background: {
-      default: '#f8fafc',
-      paper: '#ffffff',
-    },
-  },
-  typography: {
-    fontFamily: '"Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-    button: {
-      textTransform: 'none',
-      fontWeight: 600,
-    },
-  },
-  shape: {
-    borderRadius: 16,
-  },
-});
-
 const App = () => {
   return (
-    <ThemeProvider theme={mobileTheme}>
-      <CssBaseline />
+    <CustomThemeProvider>
       <AuthProvider>
         <Router>
-          <Box sx={{ minHeight: '100vh', pb: 9, bgcolor: '#f8fafc' }}>
+          <Box sx={{ minHeight: '100vh', pb: 9 }}>
             <Header />
             <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/home" element={<Home />} />
+              <Route 
+                path="/" 
+                element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/home" 
+                element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                } 
+              />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route 
@@ -119,7 +102,7 @@ const App = () => {
           </Box>
         </Router>
       </AuthProvider>
-    </ThemeProvider>
+    </CustomThemeProvider>
   );
 };
 

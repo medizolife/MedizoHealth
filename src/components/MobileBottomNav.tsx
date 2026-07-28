@@ -1,6 +1,6 @@
 'use client';
 import React from 'react';
-import { Paper, BottomNavigation, BottomNavigationAction } from '@mui/material';
+import { Paper, BottomNavigation, BottomNavigationAction, Box } from '@mui/material';
 import { 
   LocalHospital as DashboardIcon, 
   Medication as PrescriptionsIcon, 
@@ -12,12 +12,14 @@ import {
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useThemeContext } from '../contexts/ThemeContext';
 
 const MobileBottomNav = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { authState } = useAuth();
   const { isAuthenticated, user } = authState;
+  const { mode } = useThemeContext();
 
   const getActiveTab = () => {
     const path = location.pathname;
@@ -61,18 +63,24 @@ const MobileBottomNav = () => {
 
   return (
     <Paper 
-      elevation={12} 
+      elevation={0} 
+      className="specular-sheen"
       sx={{ 
         position: 'fixed', 
-        bottom: 0, 
-        left: 0, 
-        right: 0, 
+        bottom: { xs: 12, sm: 24 }, 
+        left: '50% !important', 
+        right: 'auto !important',
+        transform: 'translateX(-50%) !important',
+        width: { xs: 'calc(100% - 24px)', sm: '480px' },
+        maxWidth: '480px',
         zIndex: 1300,
-        borderRadius: '16px 16px 0 0',
+        borderRadius: '36px !important',
         overflow: 'hidden',
-        borderTop: '1px solid rgba(19, 79, 77, 0.15)',
-        bgcolor: 'rgba(255, 255, 255, 0.98)',
-        backdropFilter: 'blur(12px)'
+        border: '1px solid var(--glass-border)',
+        bgcolor: mode === 'dark' ? 'rgba(20, 20, 20, 0.94) !important' : 'rgba(255, 255, 255, 0.94) !important',
+        backdropFilter: 'blur(30px) saturate(220%)',
+        WebkitBackdropFilter: 'blur(30px) saturate(220%)',
+        boxShadow: '0 20px 50px rgba(0, 0, 0, 0.12)'
       }}
     >
       <BottomNavigation
@@ -82,13 +90,35 @@ const MobileBottomNav = () => {
         sx={{
           bgcolor: 'transparent',
           height: 64,
+          px: 0.5,
+          alignItems: 'center',
           '& .MuiBottomNavigationAction-root': {
-            color: '#64748b',
-            py: 0.5,
-            minWidth: 'auto',
+            color: mode === 'dark' ? 'rgba(255, 255, 255, 0.65)' : 'var(--color-teal)',
+            py: 0.25,
+            px: 0.25,
+            minWidth: 0,
+            flex: 1,
+            transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+            borderRadius: '24px',
+            '& .MuiBottomNavigationAction-label': {
+              fontSize: '0.65rem',
+              fontWeight: 700,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              mt: 0.2,
+              '&.Mui-selected': {
+                fontSize: '0.68rem',
+                fontWeight: 800
+              }
+            },
             '&.Mui-selected': {
-              color: '#134F4D',
-              fontWeight: 700
+              color: 'var(--color-forest)',
+              '& .MuiSvgIcon-root': {
+                transform: 'translateY(-1px) scale(1.1)',
+                color: 'var(--color-forest)',
+                filter: 'drop-shadow(0 0 8px var(--glass-glow))'
+              }
             }
           }
         }}
@@ -97,7 +127,16 @@ const MobileBottomNav = () => {
           user?.role === 'doctor' ? [
             <BottomNavigationAction key="dashboard" label="Feed" value="dashboard" icon={<DashboardIcon />} />,
             <BottomNavigationAction key="prescriptions" label="Rx List" value="prescriptions" icon={<PrescriptionsIcon />} />,
-            <BottomNavigationAction key="new-rx" label="New Rx" value="new-rx" icon={<CreateIcon sx={{ color: '#134F4D', fontSize: '1.8rem' }} />} />,
+            <BottomNavigationAction 
+              key="new-rx" 
+              label="New Rx" 
+              value="new-rx" 
+              icon={
+                <Box sx={{ p: 0.45, borderRadius: '50%', bgcolor: 'var(--color-forest)', color: '#ffffff', display: 'flex', boxShadow: '0 0 12px var(--glass-glow)' }}>
+                  <CreateIcon sx={{ fontSize: '1.4rem' }} />
+                </Box>
+              } 
+            />,
             <BottomNavigationAction key="patients" label="Patients" value="patients" icon={<PatientsIcon />} />,
             <BottomNavigationAction key="profile" label="Profile" value="profile" icon={<ProfileIcon />} />
           ] : [

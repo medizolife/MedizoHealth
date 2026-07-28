@@ -102,7 +102,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 const configuredApiUrl = process.env.NEXT_PUBLIC_API_URL || process.env.REACT_APP_API_URL;
 const API_BASE_URL = configuredApiUrl 
   ? configuredApiUrl.replace(/\/api\/?$/, '') 
-  : (process.env.NODE_ENV === 'production' ? 'https://medizoserver.vercel.app' : 'http://localhost:5000');
+  : 'https://medizoserver.vercel.app';
 
 // Beating heart animation for logo
 const beatAnimation = keyframes`

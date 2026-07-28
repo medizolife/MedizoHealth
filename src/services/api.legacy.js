@@ -51,11 +51,11 @@ const getActiveServer = async () => {
   serverCheckInProgress = true;
   
   try {
-    // In development, use localhost
+    // In development mode, use primary server
     if (process.env.NODE_ENV !== 'production') {
-      activeServerUrl = LOCAL_SERVER;
+      activeServerUrl = PRIMARY_SERVER;
       lastServerCheck = now;
-      console.log('Development mode: Using local server');
+      console.log('Development mode: Using primary server:', PRIMARY_SERVER);
       return activeServerUrl;
     }
     

@@ -103,7 +103,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       const storedUser = localStorage.getItem('user');
       
       if (!token || !storedUser) {
-        dispatch({ type: 'AUTH_ERROR', payload: 'No token' });
+        dispatch({ type: 'LOGOUT' });
         return;
       }
       
@@ -111,7 +111,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         const user = await api.getCurrentUser();
         dispatch({ type: 'USER_LOADED', payload: user });
       } catch (error) {
-        dispatch({ type: 'AUTH_ERROR', payload: 'Token is invalid' });
+        dispatch({ type: 'LOGOUT' });
       }
     };
     

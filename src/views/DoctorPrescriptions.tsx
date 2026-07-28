@@ -5,26 +5,18 @@ import {
   Typography,
   Box,
   Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Chip,
   Button,
   CircularProgress,
   Alert,
   Grid,
-  Card,
-  CardContent,
   TextField,
   InputAdornment,
   IconButton,
   Tooltip,
-  Stack,
   Tabs,
-  Tab
+  Tab,
+  Avatar
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -34,10 +26,14 @@ import {
   LocalPharmacy as PharmacyIcon,
   CheckCircle as CheckCircleIcon,
   HourglassEmpty as HourglassIcon,
-  Person as PersonIcon
+  Person as PersonIcon,
+  ChevronRight as ChevronRightIcon,
+  MedicalServices as MedicalIcon,
+  CalendarToday as CalendarIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import { useThemeContext } from '../contexts/ThemeContext';
 
 interface Prescription {
   id: string;
@@ -51,51 +47,46 @@ interface Prescription {
     frequency: string;
     duration: string;
   }>;
-  instructions: string;
-  followUpDate?: string;
-  status: 'active' | 'completed';
   createdAt: string;
+  status: 'active' | 'completed' | 'cancelled';
+  notes?: string;
 }
 
-interface PrescriptionStats {
+interface Stats {
   total: number;
   active: number;
   completed: number;
-  thisMonth: number;
   uniquePatients: number;
-  recentPrescriptions: Array<{
-    id: string;
-    diagnosis: string;
-    patientName: string;
-    createdAt: string;
-    status: string;
-  }>;
 }
 
-const DoctorPrescriptions: React.FC = () => {
+export default function DoctorPrescriptions() {
   const navigate = useNavigate();
+  const { mode } = useThemeContext();
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
-  const [stats, setStats] = useState<PrescriptionStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'completed'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [stats, setStats] = useState<Stats | null>(null);
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    fetchPrescriptions();
+  }, [statusFilter]);
 
-  const fetchData = async () => {
+  const fetchPrescriptions = async () => {
     try {
       setLoading(true);
-      const [prescriptionsRes, statsRes] = await Promise.all([
-        api.get('/prescriptions'),
-        api.get('/prescriptions/stats')
-      ]);
-      
-      setPrescriptions(prescriptionsRes.data);
-      setStats(statsRes.data);
       setError(null);
+      const params: any = {};
+      if (statusFilter !== 'all') {
+        params.status = statusFilter;
+      }
+      
+      const response = await api.get('/prescriptions', { params });
+      
+      const prescriptionList = Array.isArray(response.data) ? response.data : response.data?.data?.prescriptions || response.data?.prescriptions || [];
+      setPrescriptions(prescriptionList);
+      calculateStats(prescriptionList);
     } catch (err: any) {
       console.error('Error fetching prescriptions:', err);
       setError(err.response?.data?.message || 'Failed to load prescriptions');
@@ -104,36 +95,67 @@ const DoctorPrescriptions: React.FC = () => {
     }
   };
 
-  const handleDownloadPrescription = async (id: string) => {
+  const calculateStats = (data: Prescription[]) => {
+    const total = data.length;
+    const active = data.filter(p => p.status === 'active').length;
+    const completed = data.filter(p => p.status === 'completed').length;
+    const uniquePatients = new Set(data.map(p => p.patientId)).size;
+
+    setStats({ total, active, completed, uniquePatients });
+  };
+
+  const handleDownloadPDF = async (prescriptionId: string) => {
     try {
-      const response = await api.get(`/prescriptions/${id}/download`, {
+      const response = await api.get(`/prescriptions/${prescriptionId}/pdf`, {
         responseType: 'blob'
       });
-      
-      const url = globalThis.URL.createObjectURL(new Blob([response.data]));
+      const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `prescription_${id}.pdf`);
+      link.setAttribute('download', `prescription_${prescriptionId}.pdf`);
       document.body.appendChild(link);
       link.click();
       link.remove();
-      globalThis.URL.revokeObjectURL(url);
-    } catch (err: any) {
-      console.error('Error downloading prescription:', err);
-      alert('Failed to download prescription');
+    } catch (err) {
+      console.error('Error downloading PDF:', err);
+      alert('Failed to download PDF');
     }
   };
 
-  const filteredPrescriptions = prescriptions.filter(prescription => {
-    const matchesSearch = 
-      prescription.patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      prescription.diagnosis.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      prescription.patientEmail.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter === 'all' || prescription.status === statusFilter;
-    
-    return matchesSearch && matchesStatus;
+  const filteredPrescriptions = prescriptions.filter(p => {
+    const query = searchQuery.toLowerCase();
+    return (
+      p.patientName.toLowerCase().includes(query) ||
+      p.patientEmail.toLowerCase().includes(query) ||
+      p.diagnosis.toLowerCase().includes(query) ||
+      p.medications.some(m => m.name.toLowerCase().includes(query))
+    );
   });
+
+  const getStatusChip = (status: string) => {
+    switch (status) {
+      case 'active':
+        return (
+          <Chip
+            icon={<HourglassIcon sx={{ fontSize: 14 }} />}
+            label="Active Rx"
+            size="small"
+            sx={{ bgcolor: 'rgba(137, 215, 183, 0.2)', color: '#428475', fontWeight: 800, border: '1px solid #89D7B7' }}
+          />
+        );
+      case 'completed':
+        return (
+          <Chip
+            icon={<CheckCircleIcon sx={{ fontSize: 14 }} />}
+            label="Completed"
+            size="small"
+            sx={{ bgcolor: 'rgba(59, 130, 246, 0.15)', color: '#2563eb', fontWeight: 800, border: '1px solid #60a5fa' }}
+          />
+        );
+      default:
+        return <Chip label={status} size="small" sx={{ fontWeight: 800 }} />;
+    }
+  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -143,259 +165,264 @@ const DoctorPrescriptions: React.FC = () => {
     });
   };
 
-  if (loading) {
-    return (
-      <Container>
-        <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-          <CircularProgress />
-        </Box>
-      </Container>
-    );
-  }
-
   return (
-    <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" component="h1">
-          My Prescriptions
-        </Typography>
+    <Container maxWidth="md" sx={{ pt: { xs: 2, sm: 3 }, pb: 6, px: { xs: 2, sm: 3 } }} className="animate-slide-up">
+      
+      {/* Hero Title & Create New Action Header */}
+      <Paper 
+        className={mode === 'dark' ? 'apple-glass-card-dark' : 'apple-glass-card'}
+        sx={{ 
+          p: { xs: 2.5, sm: 3 }, 
+          mb: 3,
+          background: mode === 'dark' 
+            ? 'linear-gradient(135deg, rgba(23, 42, 38, 0.95) 0%, rgba(14, 28, 24, 0.98) 100%) !important' 
+            : 'linear-gradient(135deg, rgba(255, 255, 255, 0.92) 0%, rgba(242, 248, 246, 0.96) 100%) !important',
+          border: mode === 'dark' ? '1px solid rgba(102, 205, 170, 0.35)' : '1px solid rgba(102, 205, 170, 0.45)',
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          alignItems: { xs: 'flex-start', sm: 'center' },
+          justifyContent: 'space-between',
+          gap: 2
+        }}
+      >
+        <Box>
+          <Typography variant="h5" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#123029', letterSpacing: '-0.02em', mb: 0.5 }}>
+            Prescription Management 💊
+          </Typography>
+          <Typography variant="caption" sx={{ color: mode === 'dark' ? '#80E5C2' : '#2A6B5D', fontWeight: 700, letterSpacing: 0.5 }}>
+            Issued digital medical prescriptions & patient records
+          </Typography>
+        </Box>
+
         <Button
           variant="contained"
-          color="primary"
           onClick={() => navigate('/prescriptions/new')}
           startIcon={<PharmacyIcon />}
+          sx={{
+            borderRadius: '20px',
+            fontWeight: 800,
+            px: 3,
+            py: 1,
+            bgcolor: mode === 'dark' ? '#66CDAA' : '#2A6B5D',
+            color: mode === 'dark' ? '#123029' : '#FFFFFF',
+            boxShadow: '0 6px 20px rgba(42, 107, 93, 0.25)',
+            '&:hover': { bgcolor: mode === 'dark' ? '#80E5C2' : '#1E4D43', transform: 'translateY(-2px)' },
+            transition: 'all 0.2s ease'
+          }}
         >
-          New Prescription
+          Create New Prescription
         </Button>
-      </Box>
+      </Paper>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
+        <Alert severity="error" sx={{ mb: 3, borderRadius: '16px' }}>
           {error}
         </Alert>
       )}
 
-      {/* Statistics Cards */}
+      {/* Metrics & Statistics Cards */}
       {stats && (
-        <Grid container spacing={3} mb={4}>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Box display="flex" alignItems="center" justifyContent="space-between">
-                  <Box>
-                    <Typography color="textSecondary" gutterBottom variant="body2">
-                      Total Prescriptions
-                    </Typography>
-                    <Typography variant="h4">
-                      {stats.total}
-                    </Typography>
-                  </Box>
-                  <AssessmentIcon color="primary" sx={{ fontSize: 40 }} />
-                </Box>
-              </CardContent>
-            </Card>
+        <Grid container spacing={2} mb={3}>
+          <Grid item xs={6} sm={3}>
+            <Paper className="glass-card" sx={{ p: 2, borderRadius: '20px !important', textAlign: 'center' }}>
+              <Typography variant="caption" sx={{ color: '#428475', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', mb: 0.5 }}>
+                Total Prescriptions
+              </Typography>
+              <Typography variant="h4" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C' }}>
+                {stats.total}
+              </Typography>
+            </Paper>
           </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Box display="flex" alignItems="center" justifyContent="space-between">
-                  <Box>
-                    <Typography color="textSecondary" gutterBottom variant="body2">
-                      Active
-                    </Typography>
-                    <Typography variant="h4" color="success.main">
-                      {stats.active}
-                    </Typography>
-                  </Box>
-                  <HourglassIcon color="success" sx={{ fontSize: 40 }} />
-                </Box>
-              </CardContent>
-            </Card>
+          <Grid item xs={6} sm={3}>
+            <Paper className="glass-card" sx={{ p: 2, borderRadius: '20px !important', textAlign: 'center' }}>
+              <Typography variant="caption" sx={{ color: '#428475', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', mb: 0.5 }}>
+                Active Rx
+              </Typography>
+              <Typography variant="h4" sx={{ fontWeight: 800, color: '#428475' }}>
+                {stats.active}
+              </Typography>
+            </Paper>
           </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Box display="flex" alignItems="center" justifyContent="space-between">
-                  <Box>
-                    <Typography color="textSecondary" gutterBottom variant="body2">
-                      Completed
-                    </Typography>
-                    <Typography variant="h4">
-                      {stats.completed}
-                    </Typography>
-                  </Box>
-                  <CheckCircleIcon color="action" sx={{ fontSize: 40 }} />
-                </Box>
-              </CardContent>
-            </Card>
+          <Grid item xs={6} sm={3}>
+            <Paper className="glass-card" sx={{ p: 2, borderRadius: '20px !important', textAlign: 'center' }}>
+              <Typography variant="caption" sx={{ color: '#428475', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', mb: 0.5 }}>
+                Completed
+              </Typography>
+              <Typography variant="h4" sx={{ fontWeight: 800, color: '#2563eb' }}>
+                {stats.completed}
+              </Typography>
+            </Paper>
           </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Box display="flex" alignItems="center" justifyContent="space-between">
-                  <Box>
-                    <Typography color="textSecondary" gutterBottom variant="body2">
-                      Unique Patients
-                    </Typography>
-                    <Typography variant="h4" color="primary">
-                      {stats.uniquePatients}
-                    </Typography>
-                  </Box>
-                  <PersonIcon color="primary" sx={{ fontSize: 40 }} />
-                </Box>
-              </CardContent>
-            </Card>
+          <Grid item xs={6} sm={3}>
+            <Paper className="glass-card" sx={{ p: 2, borderRadius: '20px !important', textAlign: 'center' }}>
+              <Typography variant="caption" sx={{ color: '#428475', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', mb: 0.5 }}>
+                Unique Patients
+              </Typography>
+              <Typography variant="h4" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C' }}>
+                {stats.uniquePatients}
+              </Typography>
+            </Paper>
           </Grid>
         </Grid>
       )}
 
-      {/* Filters and Search */}
-      <Paper sx={{ p: 2, mb: 3 }}>
+      {/* Search & Filter Toolbar */}
+      <Paper className="glass-panel" sx={{ p: 2, mb: 3, borderRadius: '20px !important' }}>
         <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} md={6}>
+          <Grid item xs={12} sm={7}>
             <TextField
               fullWidth
-              placeholder="Search by patient name, email, or diagnosis..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              size="small"
+              placeholder="Search patient name, diagnosis, or medication..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <SearchIcon />
+                    <SearchIcon sx={{ color: '#428475' }} />
                   </InputAdornment>
-                )
+                ),
+                sx: { borderRadius: '16px', bgcolor: 'rgba(255,255,255,0.7)', fontWeight: 600 }
               }}
             />
           </Grid>
-          <Grid item xs={12} md={6}>
+
+          <Grid item xs={12} sm={5}>
             <Tabs
               value={statusFilter}
-              onChange={(_, value) => setStatusFilter(value)}
+              onChange={(_, newValue) => setStatusFilter(newValue)}
               variant="fullWidth"
+              sx={{
+                minHeight: 40,
+                bgcolor: 'rgba(26, 49, 44, 0.08)',
+                borderRadius: '16px',
+                p: 0.5,
+                '& .MuiTabs-indicator': { bgcolor: '#89D7B7', height: '100%', borderRadius: '12px', zIndex: 0 },
+                '& .MuiTab-root': { minHeight: 36, fontWeight: 800, fontSize: '0.75rem', zIndex: 1, textTransform: 'none', color: '#1A312C' },
+                '& .Mui-selected': { color: '#1A312C !important' }
+              }}
             >
-              <Tab label={`All (${prescriptions.length})`} value="all" />
-              <Tab 
-                label={`Active (${prescriptions.filter(p => p.status === 'active').length})`} 
-                value="active" 
-              />
-              <Tab 
-                label={`Completed (${prescriptions.filter(p => p.status === 'completed').length})`} 
-                value="completed" 
-              />
+              <Tab value="all" label="All" />
+              <Tab value="active" label="Active" />
+              <Tab value="completed" label="Completed" />
             </Tabs>
           </Grid>
         </Grid>
       </Paper>
 
-      {/* Prescriptions Table */}
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Date</TableCell>
-              <TableCell>Patient</TableCell>
-              <TableCell>Diagnosis</TableCell>
-              <TableCell>Medications</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell align="center">Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredPrescriptions.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} align="center">
-                  <Typography color="textSecondary" py={4}>
-                    {searchTerm || statusFilter !== 'all' 
-                      ? 'No prescriptions match your search criteria'
-                      : 'No prescriptions found. Create your first prescription!'}
-                  </Typography>
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredPrescriptions.map((prescription) => (
-                <TableRow key={prescription.id} hover>
-                  <TableCell>
-                    <Typography variant="body2">
-                      {formatDate(prescription.createdAt)}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" fontWeight="bold">
+      {/* Prescription Mobile Cards List */}
+      {loading ? (
+        <Box display="flex" justifyContent="center" py={6}>
+          <CircularProgress sx={{ color: '#89D7B7' }} />
+        </Box>
+      ) : filteredPrescriptions.length === 0 ? (
+        <Paper className="glass-panel" sx={{ p: 4, textAlign: 'center', borderRadius: '24px !important' }}>
+          <MedicalIcon sx={{ fontSize: 48, color: '#428475', mb: 1, opacity: 0.6 }} />
+          <Typography variant="h6" sx={{ fontWeight: 800, color: '#1A312C' }}>
+            No prescriptions found
+          </Typography>
+          <Typography variant="body2" sx={{ color: '#428475', mb: 2 }}>
+            Try searching for a different keyword or create a new prescription.
+          </Typography>
+          <Button
+            variant="contained"
+            onClick={() => navigate('/prescriptions/new')}
+            sx={{ borderRadius: '20px', fontWeight: 800, bgcolor: '#89D7B7', color: '#1A312C' }}
+          >
+            Create First Prescription
+          </Button>
+        </Paper>
+      ) : (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {filteredPrescriptions.map((prescription) => (
+            <Paper
+              key={prescription.id}
+              className="glass-card animate-slide-up"
+              onClick={() => navigate(`/prescriptions/${prescription.id}`)}
+              sx={{
+                p: 2.5,
+                borderRadius: '22px !important',
+                cursor: 'pointer',
+                transition: 'all 0.25 ease-in-out',
+                border: '1px solid rgba(137, 215, 183, 0.3)',
+                '&:hover': {
+                  transform: 'translateY(-3px)',
+                  boxShadow: '0 12px 32px rgba(26, 49, 44, 0.15)',
+                  borderColor: '#89D7B7'
+                }
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <Avatar sx={{ width: 44, height: 44, bgcolor: 'rgba(137, 215, 183, 0.25)', color: '#428475', fontWeight: 800 }}>
+                    {prescription.patientName?.[0] || 'P'}
+                  </Avatar>
+                  <Box>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', lineHeight: 1.2 }}>
                       {prescription.patientName}
                     </Typography>
-                    <Typography variant="caption" color="textSecondary">
-                      {prescription.patientEmail}
+                    <Typography variant="caption" sx={{ color: '#428475', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <CalendarIcon sx={{ fontSize: 13 }} /> {formatDate(prescription.createdAt)}
                     </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">
-                      {prescription.diagnosis}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Stack direction="column" spacing={0.5}>
-                      {prescription.medications.slice(0, 2).map((med, idx) => (
-                        <Typography key={`${prescription.id}-med-${med.name}-${idx}`} variant="caption">
-                          • {med.name} ({med.dosage})
-                        </Typography>
-                      ))}
-                      {prescription.medications.length > 2 && (
-                        <Typography variant="caption" color="primary">
-                          +{prescription.medications.length - 2} more
-                        </Typography>
-                      )}
-                    </Stack>
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      label={prescription.status}
-                      color={prescription.status === 'active' ? 'success' : 'default'}
-                      size="small"
-                    />
-                  </TableCell>
-                  <TableCell align="center">
-                    <Tooltip title="View Details">
-                      <IconButton
-                        size="small"
-                        onClick={() => navigate(`/prescriptions/${prescription.id}`)}
-                        color="primary"
-                      >
-                        <VisibilityIcon />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Download PDF">
-                      <IconButton
-                        size="small"
-                        onClick={() => handleDownloadPrescription(prescription.id)}
-                        color="secondary"
-                      >
-                        <DownloadIcon />
-                      </IconButton>
-                    </Tooltip>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+                  </Box>
+                </Box>
+                {getStatusChip(prescription.status)}
+              </Box>
 
-      <Box mt={2} display="flex" justifyContent="space-between" alignItems="center">
-        <Typography variant="body2" color="textSecondary">
-          Showing {filteredPrescriptions.length} of {prescriptions.length} prescriptions
-        </Typography>
-        <Button
-          variant="outlined"
-          onClick={() => navigate('/dashboard')}
-        >
-          Back to Dashboard
-        </Button>
-      </Box>
+              <Box sx={{ p: 1.5, borderRadius: '14px', bgcolor: mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(26, 49, 44, 0.04)', mb: 2 }}>
+                <Typography variant="caption" sx={{ fontWeight: 800, color: '#428475', textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', mb: 0.5 }}>
+                  Diagnosis / Condition
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 700, color: mode === 'dark' ? '#FAF2F5' : '#1A312C' }}>
+                  {prescription.diagnosis || 'General Medical Consultation'}
+                </Typography>
+                
+                {prescription.medications && prescription.medications.length > 0 && (
+                  <Box sx={{ mt: 1, display: 'flex', gap: 0.8, flexWrap: 'wrap' }}>
+                    {prescription.medications.slice(0, 3).map((med, idx) => (
+                      <Chip
+                        key={idx}
+                        label={`${med.name} (${med.dosage})`}
+                        size="small"
+                        sx={{ fontSize: '0.7rem', fontWeight: 700, bgcolor: 'rgba(137, 215, 183, 0.18)', color: '#1A312C' }}
+                      />
+                    ))}
+                    {prescription.medications.length > 3 && (
+                      <Chip
+                        label={`+${prescription.medications.length - 3} more`}
+                        size="small"
+                        sx={{ fontSize: '0.7rem', fontWeight: 800, bgcolor: 'rgba(0,0,0,0.06)' }}
+                      />
+                    )}
+                  </Box>
+                )}
+              </Box>
+
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pt: 0.5 }}>
+                <Button
+                  size="small"
+                  variant="text"
+                  startIcon={<DownloadIcon sx={{ fontSize: 16 }} />}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDownloadPDF(prescription.id);
+                  }}
+                  sx={{ color: '#428475', fontWeight: 800, fontSize: '0.75rem', '&:hover': { color: '#1A312C' } }}
+                >
+                  Download PDF
+                </Button>
+
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: '#428475', fontWeight: 800, fontSize: '0.75rem' }}>
+                  View Details <ChevronRightIcon fontSize="small" />
+                </Box>
+              </Box>
+            </Paper>
+          ))}
+        </Box>
+      )}
     </Container>
   );
-};
-
-export default DoctorPrescriptions;
+}
