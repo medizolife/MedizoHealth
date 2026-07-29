@@ -41,7 +41,7 @@ export default function Header() {
   
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [profileMenuAnchor, setProfileMenuAnchor] = useState(null as any);
-  const [digilockerVerified, setDigilockerVerified] = useState<boolean>(false);
+  const [digilockerVerified, setDigilockerVerified] = useState(false);
 
   // Fetch DigiLocker verification status for doctors
   useEffect(() => {

@@ -69,9 +69,9 @@ const Dashboard = () => {
   const [searchQuery, setSearchQuery] = useState('');
   
   // DigiLocker state
-  const [digilockerVerified, setDigilockerVerified] = useState<boolean | null>(null);
+  const [digilockerVerified, setDigilockerVerified] = useState(null as boolean | null);
   const [digilockerLoading, setDigilockerLoading] = useState(false);
-  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' }>({
+  const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
     severity: 'info'

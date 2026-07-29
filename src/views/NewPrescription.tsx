@@ -87,7 +87,7 @@ const NewPrescription = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [digilockerVerified, setDigilockerVerified] = useState<boolean | null>(null);
+  const [digilockerVerified, setDigilockerVerified] = useState(null as boolean | null);
   const [digilockerLoading, setDigilockerLoading] = useState(false);
 
   // New patient modal state
