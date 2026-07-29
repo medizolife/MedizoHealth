@@ -648,7 +648,7 @@ const Dashboard = () => {
       >
         <Alert
           onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
-          severity={snackbar.severity}
+          severity={snackbar.severity as 'success' | 'error' | 'info' | 'warning'}
           variant="filled"
           sx={{ width: '100%', borderRadius: '12px' }}
         >
