@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../contexts/AuthContext';
 import { 
   Box, 
@@ -27,12 +28,14 @@ import {
 
 const Login = () => {
   const navigate = useNavigate();
-  const { authState, login } = useAuth();
+  const { authState, login, googleLogin } = useAuth();
   const { loading, error, isAuthenticated } = authState;
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [googleError, setGoogleError] = useState<string | null>(null);
+  const [googleProcessing, setGoogleProcessing] = useState(false);
   
   useEffect(() => {
     if (isAuthenticated) {
@@ -44,6 +47,40 @@ const Login = () => {
     e.preventDefault();
     if (!email || !password) return;
     await login({ email, password });
+  };
+
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    setGoogleError(null);
+    setGoogleProcessing(true);
+    
+    try {
+      const result = await googleLogin(credentialResponse.credential);
+      
+      if (result && result.isNewUser) {
+        // New user - redirect to register page with Google data pre-filled
+        navigate('/register', { 
+          state: { 
+            googleData: {
+              firstName: result.user.firstName,
+              lastName: result.user.lastName,
+              email: result.user.email,
+              token: result.token,
+              user: result.user
+            }
+          }
+        });
+      }
+      // If result is void, existing user was auto-logged in via AuthContext
+    } catch (err: any) {
+      console.error('Google login error:', err);
+      setGoogleError(err.response?.data?.message || 'Failed to sign in with Google');
+    } finally {
+      setGoogleProcessing(false);
+    }
+  };
+
+  const handleGoogleError = () => {
+    setGoogleError('Google sign-in was cancelled or failed. Please try again.');
   };
 
   const handleForgotPassword = () => {
@@ -103,6 +140,12 @@ const Login = () => {
         {error && (
           <Alert severity="error" sx={{ mb: 1.25, py: 0.25, borderRadius: '12px', bgcolor: 'rgba(239, 68, 68, 0.1)', color: '#b91c1c', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
             {error}
+          </Alert>
+        )}
+
+        {googleError && (
+          <Alert severity="error" sx={{ mb: 1.25, py: 0.25, borderRadius: '12px', bgcolor: 'rgba(239, 68, 68, 0.1)', color: '#b91c1c', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+            {googleError}
           </Alert>
         )}
         
@@ -231,6 +274,36 @@ const Login = () => {
           >
             {loading ? <CircularProgress size={20} sx={{ color: '#89D7B7' }} /> : 'Sign In'}
           </Button>
+
+          {/* Google Sign-In Divider */}
+          <Divider sx={{ my: 1, borderColor: 'rgba(137, 215, 183, 0.3)' }}>
+            <Typography variant="caption" sx={{ color: '#428475', fontWeight: 700, px: 1, fontSize: '0.675rem' }}>
+              OR
+            </Typography>
+          </Divider>
+
+          {/* Google Sign-In Button */}
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', my: 1.25 }}>
+            {googleProcessing ? (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <CircularProgress size={20} sx={{ color: '#428475' }} />
+                <Typography variant="caption" sx={{ color: '#428475', fontWeight: 600 }}>
+                  Signing in with Google...
+                </Typography>
+              </Box>
+            ) : (
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={handleGoogleError}
+                useOneTap={false}
+                theme="outline"
+                size="large"
+                text="continue_with"
+                shape="rectangular"
+                width="320"
+              />
+            )}
+          </Box>
 
           <Divider sx={{ my: 1.25, borderColor: 'rgba(137, 215, 183, 0.3)' }}>
             <Typography variant="caption" sx={{ color: '#428475', fontWeight: 700, px: 1, fontSize: '0.675rem' }}>

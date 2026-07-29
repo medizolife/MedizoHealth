@@ -82,6 +82,7 @@ const AuthContext = createContext<AuthContextType>({
   login: async () => {},
   register: async () => {},
   googleLogin: async () => {},
+  googleCompleteRegistration: () => {},
   logout: () => {},
   loading: false,
   error: null,
@@ -141,15 +142,29 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   // Google login function
+  // Returns { isNewUser, user, token } if it's a new user so the caller can redirect to registration
+  // For existing users, dispatches LOGIN_SUCCESS and returns void
   const googleLogin = async (credential: string, role: string = 'patient') => {
     try {
       const data = await api.googleLogin(credential, role);
-      dispatch({ type: 'LOGIN_SUCCESS', payload: data });
+      
+      if (data.isNewUser) {
+        // New user - don't auto-login, return data so caller can redirect to registration
+        return { isNewUser: true, user: data.user, token: data.token };
+      }
+      
+      // Existing user - log in directly
+      dispatch({ type: 'LOGIN_SUCCESS', payload: { user: data.user, token: data.token } });
     } catch (error: any) {
       const message = error.response?.data?.message || 'Google login failed';
       dispatch({ type: 'AUTH_ERROR', payload: message });
       throw error;
     }
+  };
+
+  // Complete Google registration - called from Register page after new user selects role
+  const googleCompleteRegistration = (token: string, user: User) => {
+    dispatch({ type: 'LOGIN_SUCCESS', payload: { user, token } });
   };
 
   // Logout function
@@ -168,6 +183,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       login, 
       register, 
       googleLogin, 
+      googleCompleteRegistration,
       logout,
       loading: state.loading,
       error: state.error,

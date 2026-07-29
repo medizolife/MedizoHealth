@@ -143,7 +143,7 @@ export const register = async (data: RegisterData): Promise<{ user: User }> => {
   return response.data;
 };
 
-export const googleLogin = async (credential: string, role: string = 'patient'): Promise<{ user: User; token: string }> => {
+export const googleLogin = async (credential: string, role: string = 'patient'): Promise<{ user: User; token: string; isNewUser: boolean }> => {
   const response = await api.post<{ user: User; token: string; isNewUser: boolean }>('/auth/google', { credential, role });
   return response.data;
 };

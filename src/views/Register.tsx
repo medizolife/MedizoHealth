@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import { useNavigate, useLocation, Link as RouterLink } from 'react-router-dom';
+import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../contexts/AuthContext';
 import { 
   Box, 
@@ -21,18 +22,32 @@ import {
   Person as PersonIcon, 
   MedicalServices as DoctorIcon,
   Visibility,
-  VisibilityOff
+  VisibilityOff,
+  Google as GoogleIcon
 } from '@mui/icons-material';
+
+interface GoogleData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  token: string;
+  user: any;
+}
 
 const Register = () => {
   const navigate = useNavigate();
-  const { authState, register } = useAuth();
+  const location = useLocation();
+  const { authState, register, googleLogin, googleCompleteRegistration } = useAuth();
   const { loading, error, isAuthenticated } = authState;
   
+  // Check if we arrived from Google sign-in with pre-filled data
+  const googleData: GoogleData | null = (location.state as any)?.googleData || null;
+  const isGoogleSignUp = !!googleData;
+  
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
+    firstName: googleData?.firstName || '',
+    lastName: googleData?.lastName || '',
+    email: googleData?.email || '',
     password: '',
     confirmPassword: '',
     role: 'patient' as 'doctor' | 'patient'
@@ -41,6 +56,8 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordError, setPasswordError] = useState('');
+  const [googleError, setGoogleError] = useState<string | null>(null);
+  const [googleProcessing, setGoogleProcessing] = useState(false);
   
   useEffect(() => {
     if (isAuthenticated) {
@@ -60,6 +77,14 @@ const Register = () => {
   
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    
+    if (isGoogleSignUp && googleData) {
+      // Google sign-up: complete registration by logging in with the token obtained earlier
+      googleCompleteRegistration(googleData.token, googleData.user);
+      return;
+    }
+    
+    // Normal registration
     const { firstName, lastName, email, password, confirmPassword, role } = formData;
     if (password !== confirmPassword) {
       setPasswordError('Passwords do not match');
@@ -71,6 +96,48 @@ const Register = () => {
     } catch (err) {
       console.error('Registration failed:', err);
     }
+  };
+
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    setGoogleError(null);
+    setGoogleProcessing(true);
+    
+    try {
+      const result = await googleLogin(credentialResponse.credential, formData.role);
+      
+      if (result && result.isNewUser) {
+        // Pre-fill the form with Google data and stay on this page
+        setFormData(prev => ({
+          ...prev,
+          firstName: result.user.firstName || prev.firstName,
+          lastName: result.user.lastName || prev.lastName,
+          email: result.user.email || prev.email,
+        }));
+        // Store Google data in location state so we can complete registration
+        navigate('/register', { 
+          state: { 
+            googleData: {
+              firstName: result.user.firstName,
+              lastName: result.user.lastName,
+              email: result.user.email,
+              token: result.token,
+              user: result.user
+            }
+          },
+          replace: true 
+        });
+      }
+      // If result is void, existing user was auto-logged in
+    } catch (err: any) {
+      console.error('Google sign-up error:', err);
+      setGoogleError(err.response?.data?.message || 'Failed to sign up with Google');
+    } finally {
+      setGoogleProcessing(false);
+    }
+  };
+
+  const handleGoogleError = () => {
+    setGoogleError('Google sign-in was cancelled or failed. Please try again.');
   };
   
   return (
@@ -101,12 +168,37 @@ const Register = () => {
             }}
           />
           <Typography variant="h5" sx={{ fontWeight: 800, color: '#1A312C', letterSpacing: '-0.02em' }}>
-            Create Account
+            {isGoogleSignUp ? 'Complete Registration' : 'Create Account'}
           </Typography>
           <Typography variant="body2" sx={{ color: '#428475', fontWeight: 600, mt: 0.5 }}>
-            Join Medizo Healthcare Platform
+            {isGoogleSignUp 
+              ? 'Choose your role to get started' 
+              : 'Join Medizo Healthcare Platform'}
           </Typography>
         </Box>
+
+        {/* Google info banner when signing up with Google */}
+        {isGoogleSignUp && (
+          <Alert 
+            severity="info" 
+            icon={<GoogleIcon sx={{ color: '#428475' }} />}
+            sx={{ 
+              mb: 2, 
+              borderRadius: '14px', 
+              bgcolor: 'rgba(137, 215, 183, 0.12)', 
+              color: '#1A312C', 
+              border: '1px solid rgba(137, 215, 183, 0.3)',
+              '& .MuiAlert-icon': { color: '#428475' }
+            }}
+          >
+            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+              Signed in as {googleData?.email}
+            </Typography>
+            <Typography variant="caption" sx={{ color: '#428475' }}>
+              Please select your role below to complete registration
+            </Typography>
+          </Alert>
+        )}
 
         {/* Role Selector Chips */}
         <Box sx={{ display: 'flex', gap: 1, mb: 2.5, justifyContent: 'center', p: 0.5, bgcolor: 'rgba(26, 49, 44, 0.05)', borderRadius: '16px' }}>
@@ -150,6 +242,45 @@ const Register = () => {
             {error}
           </Alert>
         )}
+
+        {googleError && (
+          <Alert severity="error" sx={{ mb: 2, borderRadius: '14px', bgcolor: 'rgba(239, 68, 68, 0.1)', color: '#b91c1c', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+            {googleError}
+          </Alert>
+        )}
+
+        {/* Google Sign-Up Button (only show if NOT already in Google flow) */}
+        {!isGoogleSignUp && (
+          <>
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mb: 2 }}>
+              {googleProcessing ? (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <CircularProgress size={20} sx={{ color: '#428475' }} />
+                  <Typography variant="caption" sx={{ color: '#428475', fontWeight: 600 }}>
+                    Signing up with Google...
+                  </Typography>
+                </Box>
+              ) : (
+                <GoogleLogin
+                  onSuccess={handleGoogleSuccess}
+                  onError={handleGoogleError}
+                  useOneTap={false}
+                  theme="outline"
+                  size="large"
+                  text="signup_with"
+                  shape="rectangular"
+                  width="320"
+                />
+              )}
+            </Box>
+
+            <Divider sx={{ mb: 2, borderColor: 'rgba(137, 215, 183, 0.3)' }}>
+              <Typography variant="caption" sx={{ color: '#428475', fontWeight: 700, px: 1 }}>
+                OR REGISTER WITH EMAIL
+              </Typography>
+            </Divider>
+          </>
+        )}
         
         <Box component="form" onSubmit={handleSubmit}>
           <Grid container spacing={1.5}>
@@ -163,11 +294,12 @@ const Register = () => {
                 placeholder="e.g. John"
                 value={formData.firstName}
                 onChange={handleChange}
+                disabled={isGoogleSignUp}
                 InputLabelProps={{ sx: { color: '#2A6B5D', fontWeight: 600 } }}
                 InputProps={{ 
                   sx: { 
                     borderRadius: '14px',
-                    bgcolor: 'rgba(255, 255, 255, 0.95)',
+                    bgcolor: isGoogleSignUp ? 'rgba(137, 215, 183, 0.08)' : 'rgba(255, 255, 255, 0.95)',
                     color: '#123029',
                     '& input::placeholder': { color: '#4D9B8C', opacity: 0.85, fontWeight: 500 },
                     '& fieldset': { borderColor: 'rgba(137, 215, 183, 0.5)' },
@@ -186,11 +318,12 @@ const Register = () => {
                 placeholder="e.g. Doe"
                 value={formData.lastName}
                 onChange={handleChange}
+                disabled={isGoogleSignUp}
                 InputLabelProps={{ sx: { color: '#2A6B5D', fontWeight: 600 } }}
                 InputProps={{ 
                   sx: { 
                     borderRadius: '14px',
-                    bgcolor: 'rgba(255, 255, 255, 0.95)',
+                    bgcolor: isGoogleSignUp ? 'rgba(137, 215, 183, 0.08)' : 'rgba(255, 255, 255, 0.95)',
                     color: '#123029',
                     '& input::placeholder': { color: '#4D9B8C', opacity: 0.85, fontWeight: 500 },
                     '& fieldset': { borderColor: 'rgba(137, 215, 183, 0.5)' },
@@ -210,11 +343,12 @@ const Register = () => {
                 placeholder="Enter your email"
                 value={formData.email}
                 onChange={handleChange}
+                disabled={isGoogleSignUp}
                 InputLabelProps={{ sx: { color: '#2A6B5D', fontWeight: 600 } }}
                 InputProps={{ 
                   sx: { 
                     borderRadius: '14px',
-                    bgcolor: 'rgba(255, 255, 255, 0.95)',
+                    bgcolor: isGoogleSignUp ? 'rgba(137, 215, 183, 0.08)' : 'rgba(255, 255, 255, 0.95)',
                     color: '#123029',
                     '& input::placeholder': { color: '#4D9B8C', opacity: 0.85, fontWeight: 500 },
                     '& fieldset': { borderColor: 'rgba(137, 215, 183, 0.5)' },
@@ -223,80 +357,86 @@ const Register = () => {
                 }}
               />
             </Grid>
-            <Grid item xs={12}>
-              <TextField
-                required
-                fullWidth
-                name="password"
-                label="Password"
-                placeholder="Minimum 6 characters"
-                type={showPassword ? 'text' : 'password'}
-                id="password"
-                value={formData.password}
-                onChange={handleChange}
-                InputLabelProps={{ sx: { color: '#2A6B5D', fontWeight: 600 } }}
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        aria-label="toggle password visibility"
-                        onClick={() => setShowPassword(!showPassword)}
-                        edge="end"
-                        sx={{ color: '#428475' }}
-                      >
-                        {showPassword ? <VisibilityOff /> : <Visibility />}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                  sx: { 
-                    borderRadius: '14px',
-                    bgcolor: 'rgba(255, 255, 255, 0.95)',
-                    color: '#123029',
-                    '& input::placeholder': { color: '#4D9B8C', opacity: 0.85, fontWeight: 500 },
-                    '& fieldset': { borderColor: 'rgba(137, 215, 183, 0.5)' },
-                    '&:hover fieldset': { borderColor: '#428475 !important' }
-                  }
-                }}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                required
-                fullWidth
-                name="confirmPassword"
-                label="Confirm Password"
-                placeholder="Re-enter your password"
-                type={showConfirmPassword ? 'text' : 'password'}
-                id="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                error={!!passwordError}
-                helperText={passwordError}
-                InputLabelProps={{ sx: { color: '#2A6B5D', fontWeight: 600 } }}
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        aria-label="toggle confirm password visibility"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        edge="end"
-                        sx={{ color: '#428475' }}
-                      >
-                        {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                  sx: { 
-                    borderRadius: '14px',
-                    bgcolor: 'rgba(255, 255, 255, 0.95)',
-                    color: '#123029',
-                    '& input::placeholder': { color: '#4D9B8C', opacity: 0.85, fontWeight: 500 },
-                    '& fieldset': { borderColor: 'rgba(137, 215, 183, 0.5)' },
-                    '&:hover fieldset': { borderColor: '#428475 !important' }
-                  }
-                }}
-              />
-            </Grid>
+
+            {/* Only show password fields for non-Google registration */}
+            {!isGoogleSignUp && (
+              <>
+                <Grid item xs={12}>
+                  <TextField
+                    required
+                    fullWidth
+                    name="password"
+                    label="Password"
+                    placeholder="Minimum 6 characters"
+                    type={showPassword ? 'text' : 'password'}
+                    id="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    InputLabelProps={{ sx: { color: '#2A6B5D', fontWeight: 600 } }}
+                    InputProps={{
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            aria-label="toggle password visibility"
+                            onClick={() => setShowPassword(!showPassword)}
+                            edge="end"
+                            sx={{ color: '#428475' }}
+                          >
+                            {showPassword ? <VisibilityOff /> : <Visibility />}
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                      sx: { 
+                        borderRadius: '14px',
+                        bgcolor: 'rgba(255, 255, 255, 0.95)',
+                        color: '#123029',
+                        '& input::placeholder': { color: '#4D9B8C', opacity: 0.85, fontWeight: 500 },
+                        '& fieldset': { borderColor: 'rgba(137, 215, 183, 0.5)' },
+                        '&:hover fieldset': { borderColor: '#428475 !important' }
+                      }
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    required
+                    fullWidth
+                    name="confirmPassword"
+                    label="Confirm Password"
+                    placeholder="Re-enter your password"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    id="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    error={!!passwordError}
+                    helperText={passwordError}
+                    InputLabelProps={{ sx: { color: '#2A6B5D', fontWeight: 600 } }}
+                    InputProps={{
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            aria-label="toggle confirm password visibility"
+                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            edge="end"
+                            sx={{ color: '#428475' }}
+                          >
+                            {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                      sx: { 
+                        borderRadius: '14px',
+                        bgcolor: 'rgba(255, 255, 255, 0.95)',
+                        color: '#123029',
+                        '& input::placeholder': { color: '#4D9B8C', opacity: 0.85, fontWeight: 500 },
+                        '& fieldset': { borderColor: 'rgba(137, 215, 183, 0.5)' },
+                        '&:hover fieldset': { borderColor: '#428475 !important' }
+                      }
+                    }}
+                  />
+                </Grid>
+              </>
+            )}
           </Grid>
 
           <Button
@@ -319,7 +459,12 @@ const Register = () => {
               '&:hover': { bgcolor: '#0F1D1A' } 
             }}
           >
-            {loading ? <CircularProgress size={24} sx={{ color: '#89D7B7' }} /> : `Register as ${formData.role === 'doctor' ? 'Doctor' : 'Patient'}`}
+            {loading 
+              ? <CircularProgress size={24} sx={{ color: '#89D7B7' }} /> 
+              : isGoogleSignUp 
+                ? `Continue as ${formData.role === 'doctor' ? 'Doctor' : 'Patient'}`
+                : `Register as ${formData.role === 'doctor' ? 'Doctor' : 'Patient'}`
+            }
           </Button>
 
           <Divider sx={{ my: 2, borderColor: 'rgba(137, 215, 183, 0.3)' }}>
