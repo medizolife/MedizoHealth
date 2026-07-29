@@ -8,6 +8,7 @@ export interface User {
   specialization?: string;
   createdAt: string;
   updatedAt?: string;
+  digilockerVerified?: boolean;
 }
 
 export interface Doctor extends User {

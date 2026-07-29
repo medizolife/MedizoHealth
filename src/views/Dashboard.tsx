@@ -22,7 +22,11 @@ import {
   InputAdornment,
   Tooltip,
   Badge,
-  Grid
+  Grid,
+  Alert,
+  AlertTitle,
+  Snackbar,
+  Button
 } from '@mui/material';
 import { 
   Add as AddIcon, 
@@ -39,18 +43,21 @@ import {
   MedicalServices as StethoscopeIcon,
   PersonAdd as PersonAddIcon,
   QrCodeScanner as QrIcon,
-  FilterList as FilterIcon
+  FilterList as FilterIcon,
+  Security as SecurityIcon
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { getPrescriptions } from '../services/prescriptions';
+import { digilockerAPI } from '../services/api';
 import { Prescription } from '../types/prescription';
 import EnhancedPatientManagement from '../components/EnhancedPatientManagement';
 import WallpaperCarouselHero from '../components/WallpaperCarouselHero';
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { authState } = useAuth();
   const { user } = authState;
   const { mode } = useThemeContext();
@@ -60,6 +67,43 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // DigiLocker state
+  const [digilockerVerified, setDigilockerVerified] = useState<boolean | null>(null);
+  const [digilockerLoading, setDigilockerLoading] = useState(false);
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' }>({
+    open: false,
+    message: '',
+    severity: 'info'
+  });
+
+  // Handle DigiLocker callback query params
+  useEffect(() => {
+    const digilockerResult = searchParams.get('digilocker');
+    const message = searchParams.get('message');
+    
+    if (digilockerResult === 'success') {
+      setSnackbar({ open: true, message: 'DigiLocker verification successful! You can now create prescriptions.', severity: 'success' });
+      setDigilockerVerified(true);
+      searchParams.delete('digilocker');
+      searchParams.delete('message');
+      setSearchParams(searchParams, { replace: true });
+    } else if (digilockerResult === 'error') {
+      setSnackbar({ open: true, message: `DigiLocker verification failed: ${message || 'Unknown error'}`, severity: 'error' });
+      searchParams.delete('digilocker');
+      searchParams.delete('message');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
+  // Fetch DigiLocker status for doctors
+  useEffect(() => {
+    if (user?.role === 'doctor') {
+      digilockerAPI.getStatus()
+        .then(data => setDigilockerVerified(data.verified || false))
+        .catch(() => setDigilockerVerified(false));
+    }
+  }, [user]);
 
   useEffect(() => {
     if (!authState.isAuthenticated) {
@@ -105,10 +149,72 @@ const Dashboard = () => {
   });
 
   return (
+    <>
     <Container maxWidth="md" sx={{ pt: 2, pb: 6, px: { xs: 2, sm: 3 } }}>
       
       {/* ─── Wallpaper Carousel Hero Greeting Header ─── */}
       <WallpaperCarouselHero searchQuery={searchQuery} onSearchChange={setSearchQuery} />
+
+      {/* ─── DigiLocker Verification Banner for Unverified Doctors ─── */}
+      {user?.role === 'doctor' && digilockerVerified === false && (
+        <Card 
+          className="glass-card-cream"
+          sx={{ 
+            mb: 3, 
+            p: 2.5,
+            border: '1.5px solid rgba(255, 152, 0, 0.4)',
+            background: mode === 'dark' 
+              ? 'linear-gradient(135deg, rgba(255, 152, 0, 0.12) 0%, rgba(230, 81, 0, 0.08) 100%) !important'
+              : 'linear-gradient(135deg, rgba(255, 243, 224, 0.95) 0%, rgba(255, 224, 178, 0.8) 100%) !important',
+            boxShadow: '0 4px 20px rgba(255, 152, 0, 0.15)'
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
+            <Box sx={{ 
+              p: 1.2, 
+              borderRadius: '14px', 
+              bgcolor: 'rgba(230, 81, 0, 0.15)', 
+              color: '#e65100',
+              display: 'flex',
+              flexShrink: 0
+            }}>
+              <SecurityIcon sx={{ fontSize: 26 }} />
+            </Box>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FFB74D' : '#e65100', mb: 0.5, fontSize: '0.85rem' }}>
+                Identity Verification Required
+              </Typography>
+              <Typography variant="body2" sx={{ color: mode === 'dark' ? 'rgba(255, 183, 77, 0.85)' : '#bf360c', fontSize: '0.78rem', lineHeight: 1.4, mb: 1.5 }}>
+                Verify your identity with <strong>DigiLocker</strong> to create & update prescriptions. One-time process for patient safety.
+              </Typography>
+              <Button
+                variant="contained"
+                size="small"
+                onClick={() => {
+                  setDigilockerLoading(true);
+                  window.location.href = digilockerAPI.getAuthorizeUrl();
+                }}
+                disabled={digilockerLoading}
+                startIcon={digilockerLoading ? <CircularProgress size={16} color="inherit" /> : <VerifiedIcon sx={{ fontSize: 18 }} />}
+                sx={{
+                  bgcolor: '#e65100',
+                  color: '#ffffff',
+                  fontWeight: 700,
+                  fontSize: '0.78rem',
+                  textTransform: 'none',
+                  borderRadius: '12px',
+                  px: 2.5,
+                  py: 0.8,
+                  boxShadow: '0 4px 12px rgba(230, 81, 0, 0.3)',
+                  '&:hover': { bgcolor: '#bf360c' },
+                }}
+              >
+                {digilockerLoading ? 'Redirecting...' : 'Verify with DigiLocker'}
+              </Button>
+            </Box>
+          </Box>
+        </Card>
+      )}
 
       {/* ─── Glass Metric Stat Cards ─── */}
       <Grid container spacing={2} sx={{ mb: 3 }} className="animate-slide-up">
@@ -532,6 +638,24 @@ const Dashboard = () => {
       )}
 
     </Container>
+
+      {/* Snackbar for DigiLocker callback notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+          severity={snackbar.severity}
+          variant="filled"
+          sx={{ width: '100%', borderRadius: '12px' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </>
   );
 };
 

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getPatients } from '../services/patients';
 import { createPrescription } from '../services/prescriptions';
+import { digilockerAPI } from '../services/api';
 import { Patient } from '../types/auth';
 import { 
   Container,
@@ -86,6 +87,8 @@ const NewPrescription = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [digilockerVerified, setDigilockerVerified] = useState<boolean | null>(null);
+  const [digilockerLoading, setDigilockerLoading] = useState(false);
 
   // New patient modal state
   const [newPatientDialogOpen, setNewPatientDialogOpen] = useState(false);
@@ -209,6 +212,13 @@ const NewPrescription = () => {
     };
     
     fetchPatients();
+  }, []);
+
+  // Check DigiLocker verification status
+  useEffect(() => {
+    digilockerAPI.getStatus()
+      .then(data => setDigilockerVerified(data.verified || false))
+      .catch(() => setDigilockerVerified(false));
   }, []);
 
   // Update selected patient when patientId changes
@@ -360,9 +370,14 @@ const NewPrescription = () => {
         navigate(`/prescriptions/${prescription.id}`);
       }, 1500);
       
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error creating prescription:', err);
-      setError('Failed to create digital prescription. Please try again.');
+      if (err?.response?.data?.requiresVerification) {
+        setError('You must verify your identity via DigiLocker before creating prescriptions.');
+        setDigilockerVerified(false);
+      } else {
+        setError(err?.response?.data?.message || 'Failed to create digital prescription. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -416,6 +431,67 @@ const NewPrescription = () => {
         </Box>
       </Paper>
       
+      {/* ─── DigiLocker Verification Guard ─── */}
+      {digilockerVerified === false && (
+        <Paper
+          className="glass-card-cream"
+          sx={{
+            p: 2.5,
+            mb: 3,
+            border: '1.5px solid rgba(239, 68, 68, 0.3)',
+            background: mode === 'dark'
+              ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(185, 28, 28, 0.08) 100%) !important'
+              : 'linear-gradient(135deg, rgba(254, 226, 226, 0.95) 0%, rgba(254, 202, 202, 0.8) 100%) !important',
+            boxShadow: '0 4px 16px rgba(239, 68, 68, 0.12)'
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
+            <Box sx={{
+              p: 1,
+              borderRadius: '12px',
+              bgcolor: 'rgba(239, 68, 68, 0.15)',
+              color: '#dc2626',
+              display: 'flex',
+              flexShrink: 0
+            }}>
+              <WarningIcon sx={{ fontSize: 24 }} />
+            </Box>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#fca5a5' : '#b91c1c', mb: 0.5, fontSize: '0.85rem' }}>
+                Identity Verification Required
+              </Typography>
+              <Typography variant="body2" sx={{ color: mode === 'dark' ? 'rgba(252, 165, 165, 0.85)' : '#991b1b', fontSize: '0.78rem', lineHeight: 1.4, mb: 1.5 }}>
+                You must verify your identity via <strong>DigiLocker</strong> before creating prescriptions.
+              </Typography>
+              <Button
+                variant="contained"
+                size="small"
+                onClick={() => {
+                  setDigilockerLoading(true);
+                  window.location.href = digilockerAPI.getAuthorizeUrl();
+                }}
+                disabled={digilockerLoading}
+                startIcon={digilockerLoading ? <CircularProgress size={16} color="inherit" /> : <SuccessIcon sx={{ fontSize: 18 }} />}
+                sx={{
+                  bgcolor: '#dc2626',
+                  color: '#ffffff',
+                  fontWeight: 700,
+                  fontSize: '0.78rem',
+                  textTransform: 'none',
+                  borderRadius: '12px',
+                  px: 2.5,
+                  py: 0.8,
+                  boxShadow: '0 4px 12px rgba(220, 38, 38, 0.3)',
+                  '&:hover': { bgcolor: '#b91c1c' },
+                }}
+              >
+                {digilockerLoading ? 'Redirecting...' : 'Verify with DigiLocker'}
+              </Button>
+            </Box>
+          </Box>
+        </Paper>
+      )}
+
       {success && (
         <Alert 
           icon={<SuccessIcon sx={{ color: '#89D7B7' }} />}

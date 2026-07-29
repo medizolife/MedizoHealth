@@ -132,6 +132,17 @@ export const usersAPI = {
   },
 };
 
+// DigiLocker API
+export const digilockerAPI = {
+  getStatus: async () => {
+    const response = await api.get('/digilocker/status');
+    return response.data;
+  },
+  getAuthorizeUrl: () => {
+    return `${API_URL}/digilocker/authorize`;
+  },
+};
+
 // Legacy Auth service functions
 export const login = async (credentials: LoginCredentials): Promise<{ user: User; token: string }> => {
   const response = await api.post<{ user: User; token: string }>('/auth/login', credentials);

@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
@@ -31,6 +31,7 @@ import PaletteIcon from '@mui/icons-material/Palette';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useThemeContext } from '../contexts/ThemeContext';
+import { digilockerAPI } from '../services/api';
 
 export default function Header() {
   const { authState, logout } = useAuth();
@@ -40,6 +41,16 @@ export default function Header() {
   
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [profileMenuAnchor, setProfileMenuAnchor] = useState(null as any);
+  const [digilockerVerified, setDigilockerVerified] = useState<boolean>(false);
+
+  // Fetch DigiLocker verification status for doctors
+  useEffect(() => {
+    if (isAuthenticated && user?.role === 'doctor') {
+      digilockerAPI.getStatus()
+        .then(data => setDigilockerVerified(data.verified || false))
+        .catch(() => setDigilockerVerified(false));
+    }
+  }, [isAuthenticated, user]);
 
   const toggleDrawer = (open: boolean) => {
     setDrawerOpen(open);
@@ -144,6 +155,50 @@ export default function Header() {
                   '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.1)' }
                 }}
               />
+              {/* DigiLocker Verified Badge next to profile chip */}
+              {user.role === 'doctor' && (
+                digilockerVerified ? (
+                  <Chip
+                    icon={<VerifiedUserIcon sx={{ fontSize: 14, color: '#ffffff !important' }} />}
+                    label="✓"
+                    size="small"
+                    sx={{
+                      ml: -0.5,
+                      height: 24,
+                      minWidth: 24,
+                      bgcolor: '#2e7d32',
+                      color: '#ffffff',
+                      fontWeight: 800,
+                      fontSize: '0.65rem',
+                      border: '1.5px solid #66bb6a',
+                      '& .MuiChip-icon': { ml: 0.3 },
+                      '& .MuiChip-label': { px: 0.3 },
+                    }}
+                  />
+                ) : (
+                  <Chip
+                    icon={<SecurityIcon sx={{ fontSize: 14, color: '#ffffff !important' }} />}
+                    label="!"
+                    size="small"
+                    component={RouterLink}
+                    to="/dashboard"
+                    clickable
+                    sx={{
+                      ml: -0.5,
+                      height: 24,
+                      minWidth: 24,
+                      bgcolor: '#e65100',
+                      color: '#ffffff',
+                      fontWeight: 800,
+                      fontSize: '0.65rem',
+                      border: '1.5px solid #ff9800',
+                      textDecoration: 'none',
+                      '& .MuiChip-icon': { ml: 0.3 },
+                      '& .MuiChip-label': { px: 0.3 },
+                    }}
+                  />
+                )
+              )}
             ) : (
               <IconButton 
                 onClick={handleProfileClick} 
@@ -224,13 +279,15 @@ export default function Header() {
                 {user.email}
               </Typography>
               <Chip 
-                label={user.role === 'doctor' ? 'VERIFIED DOCTOR' : 'PATIENT ACCOUNT'} 
+                label={user.role === 'doctor' ? (digilockerVerified ? 'DIGILOCKER VERIFIED ✓' : 'UNVERIFIED DOCTOR') : 'PATIENT ACCOUNT'} 
                 size="small"
                 sx={{ 
                   height: 18, 
                   fontSize: '0.6rem', 
                   fontWeight: 800, 
-                  bgcolor: 'rgba(255, 255, 255, 0.2)', 
+                  bgcolor: user.role === 'doctor' 
+                    ? (digilockerVerified ? 'rgba(76, 175, 80, 0.35)' : 'rgba(255, 152, 0, 0.35)') 
+                    : 'rgba(255, 255, 255, 0.2)', 
                   color: '#ffffff', 
                   mt: 0.5,
                   letterSpacing: 0.5
