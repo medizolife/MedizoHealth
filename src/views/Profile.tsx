@@ -283,46 +283,54 @@ const Profile = () => {
             <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-teal)', textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', mb: 1 }}>
               Color Palettes
             </Typography>
-            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-              <Button
-                variant={palette === 'seafoam' ? 'contained' : 'outlined'}
+            <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+              <IconButton
                 onClick={() => setPalette('seafoam')}
+                title="Seafoam"
                 sx={{
-                  borderRadius: '14px',
-                  fontWeight: 800,
-                  bgcolor: palette === 'seafoam' ? '#2A6B5D' : 'transparent',
-                  color: palette === 'seafoam' ? '#ffffff' : mode === 'dark' ? '#FAF2F5' : '#2A6B5D',
-                  borderColor: '#2A6B5D'
+                  width: 42,
+                  height: 42,
+                  bgcolor: '#2A6B5D',
+                  border: palette === 'seafoam' ? '3px solid var(--color-mint)' : '2px solid transparent',
+                  boxShadow: palette === 'seafoam' ? '0 0 10px rgba(42, 107, 93, 0.7)' : 'none',
+                  '&:hover': { bgcolor: '#23584d', transform: 'scale(1.08)' },
+                  transition: 'all 0.2s ease'
                 }}
               >
-                Seafoam 🌿
-              </Button>
-              <Button
-                variant={palette === 'beige' ? 'contained' : 'outlined'}
+                {palette === 'seafoam' ? <CheckCircleIcon sx={{ fontSize: 22, color: '#ffffff' }} /> : <span style={{ fontSize: 16 }}>🌿</span>}
+              </IconButton>
+
+              <IconButton
                 onClick={() => setPalette('beige')}
+                title="Beige"
                 sx={{
-                  borderRadius: '14px',
-                  fontWeight: 800,
-                  bgcolor: palette === 'beige' ? '#735740' : 'transparent',
-                  color: palette === 'beige' ? '#ffffff' : mode === 'dark' ? '#FAF6F0' : '#735740',
-                  borderColor: '#735740'
+                  width: 42,
+                  height: 42,
+                  bgcolor: '#735740',
+                  border: palette === 'beige' ? '3px solid #D4B89B' : '2px solid transparent',
+                  boxShadow: palette === 'beige' ? '0 0 10px rgba(115, 87, 64, 0.7)' : 'none',
+                  '&:hover': { bgcolor: '#5f4734', transform: 'scale(1.08)' },
+                  transition: 'all 0.2s ease'
                 }}
               >
-                Beige 🌾
-              </Button>
-              <Button
-                variant={palette === 'pink' ? 'contained' : 'outlined'}
+                {palette === 'beige' ? <CheckCircleIcon sx={{ fontSize: 22, color: '#ffffff' }} /> : <span style={{ fontSize: 16 }}>🌾</span>}
+              </IconButton>
+
+              <IconButton
                 onClick={() => setPalette('pink')}
+                title="Pink"
                 sx={{
-                  borderRadius: '14px',
-                  fontWeight: 800,
-                  bgcolor: palette === 'pink' ? '#8A3859' : 'transparent',
-                  color: palette === 'pink' ? '#ffffff' : mode === 'dark' ? '#FAF2F5' : '#8A3859',
-                  borderColor: '#8A3859'
+                  width: 42,
+                  height: 42,
+                  bgcolor: '#8A3859',
+                  border: palette === 'pink' ? '3px solid #F4C2D7' : '2px solid transparent',
+                  boxShadow: palette === 'pink' ? '0 0 10px rgba(138, 56, 89, 0.7)' : 'none',
+                  '&:hover': { bgcolor: '#732e49', transform: 'scale(1.08)' },
+                  transition: 'all 0.2s ease'
                 }}
               >
-                Pink 🌸
-              </Button>
+                {palette === 'pink' ? <CheckCircleIcon sx={{ fontSize: 22, color: '#ffffff' }} /> : <span style={{ fontSize: 16 }}>🌸</span>}
+              </IconButton>
             </Box>
           </Grid>
 

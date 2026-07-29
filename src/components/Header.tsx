@@ -326,70 +326,73 @@ export default function Header() {
           </Box>
         )}
 
-        {/* Color Palette Swatches */}
+            {/* Color Palette Swatches */}
         <Box sx={{ px: 1, py: 1 }}>
           <Typography variant="caption" sx={{ fontWeight: 800, color: 'var(--color-teal)', textTransform: 'uppercase', letterSpacing: 0.8, display: 'flex', alignItems: 'center', gap: 0.8, mb: 1.2, fontSize: '0.68rem' }}>
             <PaletteIcon sx={{ fontSize: 14 }} /> Color Palette Selection
           </Typography>
-          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1 }}>
-            {/* Seafoam Chip */}
+          <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'center', py: 0.5 }}>
             <Box
               onClick={() => setPalette('seafoam')}
+              title="Seafoam"
               sx={{
-                p: 0.8,
-                borderRadius: '12px',
-                bgcolor: palette === 'seafoam' ? 'rgba(102, 205, 170, 0.25)' : 'rgba(0, 0, 0, 0.03)',
-                border: palette === 'seafoam' ? '2px solid #2A6B5D' : '1px solid rgba(0,0,0,0.08)',
+                width: 36,
+                height: 36,
+                borderRadius: '50%',
+                bgcolor: '#2A6B5D',
                 cursor: 'pointer',
-                textAlign: 'center',
+                border: palette === 'seafoam' ? '3px solid var(--color-mint)' : '2px solid transparent',
+                boxShadow: palette === 'seafoam' ? '0 0 10px rgba(42, 107, 93, 0.7)' : 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                 transition: 'all 0.2s ease',
-                '&:hover': { transform: 'scale(1.03)', bgcolor: 'rgba(102, 205, 170, 0.15)' }
+                '&:hover': { transform: 'scale(1.1)' }
               }}
             >
-              <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: '#2A6B5D', mx: 'auto', mb: 0.5, boxShadow: '0 0 6px #2A6B5D' }} />
-              <Typography variant="caption" sx={{ fontWeight: 800, fontSize: '0.68rem', color: mode === 'dark' ? '#FAF2F5' : '#123029', display: 'block' }}>
-                Seafoam 🌿
-              </Typography>
+              {palette === 'seafoam' ? <CheckCircleIcon sx={{ fontSize: 18, color: '#ffffff' }} /> : <span style={{ fontSize: 14 }}>🌿</span>}
             </Box>
 
-            {/* Beige Chip */}
             <Box
               onClick={() => setPalette('beige')}
+              title="Beige"
               sx={{
-                p: 0.8,
-                borderRadius: '12px',
-                bgcolor: palette === 'beige' ? 'rgba(235, 210, 181, 0.35)' : 'rgba(0, 0, 0, 0.03)',
-                border: palette === 'beige' ? '2px solid #735740' : '1px solid rgba(0,0,0,0.08)',
+                width: 36,
+                height: 36,
+                borderRadius: '50%',
+                bgcolor: '#735740',
                 cursor: 'pointer',
-                textAlign: 'center',
+                border: palette === 'beige' ? '3px solid #D4B89B' : '2px solid transparent',
+                boxShadow: palette === 'beige' ? '0 0 10px rgba(115, 87, 64, 0.7)' : 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                 transition: 'all 0.2s ease',
-                '&:hover': { transform: 'scale(1.03)', bgcolor: 'rgba(235, 210, 181, 0.2)' }
+                '&:hover': { transform: 'scale(1.1)' }
               }}
             >
-              <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: '#735740', mx: 'auto', mb: 0.5, boxShadow: '0 0 6px #735740' }} />
-              <Typography variant="caption" sx={{ fontWeight: 800, fontSize: '0.68rem', color: mode === 'dark' ? '#FAF6F0' : '#2B1E14', display: 'block' }}>
-                Beige 🌾
-              </Typography>
+              {palette === 'beige' ? <CheckCircleIcon sx={{ fontSize: 18, color: '#ffffff' }} /> : <span style={{ fontSize: 14 }}>🌾</span>}
             </Box>
 
-            {/* Pink Chip */}
             <Box
               onClick={() => setPalette('pink')}
+              title="Pink"
               sx={{
-                p: 0.8,
-                borderRadius: '12px',
-                bgcolor: palette === 'pink' ? 'rgba(247, 198, 220, 0.35)' : 'rgba(0, 0, 0, 0.03)',
-                border: palette === 'pink' ? '2px solid #8A3859' : '1px solid rgba(0,0,0,0.08)',
+                width: 36,
+                height: 36,
+                borderRadius: '50%',
+                bgcolor: '#8A3859',
                 cursor: 'pointer',
-                textAlign: 'center',
+                border: palette === 'pink' ? '3px solid #F4C2D7' : '2px solid transparent',
+                boxShadow: palette === 'pink' ? '0 0 10px rgba(138, 56, 89, 0.7)' : 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                 transition: 'all 0.2s ease',
-                '&:hover': { transform: 'scale(1.03)', bgcolor: 'rgba(247, 198, 220, 0.2)' }
+                '&:hover': { transform: 'scale(1.1)' }
               }}
             >
-              <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: '#8A3859', mx: 'auto', mb: 0.5, boxShadow: '0 0 6px #8A3859' }} />
-              <Typography variant="caption" sx={{ fontWeight: 800, fontSize: '0.68rem', color: mode === 'dark' ? '#FAF2F5' : '#33101E', display: 'block' }}>
-                Pink 🌸
-              </Typography>
+              {palette === 'pink' ? <CheckCircleIcon sx={{ fontSize: 18, color: '#ffffff' }} /> : <span style={{ fontSize: 14 }}>🌸</span>}
             </Box>
           </Box>
         </Box>
@@ -545,10 +548,69 @@ export default function Header() {
                 <Typography variant="caption" sx={{ fontWeight: 800, color: 'var(--color-teal)', textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', mb: 1.2 }}>
                   Theme Accent
                 </Typography>
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                  <Chip label="Seafoam" size="small" onClick={() => setPalette('seafoam')} sx={{ flex: 1, fontWeight: 800, bgcolor: palette === 'seafoam' ? '#2A6B5D' : 'transparent', color: palette === 'seafoam' ? '#ffffff' : 'var(--color-forest)', border: '1px solid var(--color-forest)' }} />
-                  <Chip label="Beige" size="small" onClick={() => setPalette('beige')} sx={{ flex: 1, fontWeight: 800, bgcolor: palette === 'beige' ? '#735740' : 'transparent', color: palette === 'beige' ? '#ffffff' : 'var(--color-forest)', border: '1px solid var(--color-forest)' }} />
-                  <Chip label="Pink" size="small" onClick={() => setPalette('pink')} sx={{ flex: 1, fontWeight: 800, bgcolor: palette === 'pink' ? '#8A3859' : 'transparent', color: palette === 'pink' ? '#ffffff' : 'var(--color-forest)', border: '1px solid var(--color-forest)' }} />
+                <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+                  <Box
+                    onClick={() => setPalette('seafoam')}
+                    title="Seafoam"
+                    sx={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: '50%',
+                      bgcolor: '#2A6B5D',
+                      cursor: 'pointer',
+                      border: palette === 'seafoam' ? '3px solid var(--color-mint)' : '2px solid transparent',
+                      boxShadow: palette === 'seafoam' ? '0 0 10px rgba(42, 107, 93, 0.7)' : 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'all 0.2s ease',
+                      '&:hover': { transform: 'scale(1.1)' }
+                    }}
+                  >
+                    {palette === 'seafoam' ? <CheckCircleIcon sx={{ fontSize: 18, color: '#ffffff' }} /> : <span style={{ fontSize: 14 }}>🌿</span>}
+                  </Box>
+
+                  <Box
+                    onClick={() => setPalette('beige')}
+                    title="Beige"
+                    sx={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: '50%',
+                      bgcolor: '#735740',
+                      cursor: 'pointer',
+                      border: palette === 'beige' ? '3px solid #D4B89B' : '2px solid transparent',
+                      boxShadow: palette === 'beige' ? '0 0 10px rgba(115, 87, 64, 0.7)' : 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'all 0.2s ease',
+                      '&:hover': { transform: 'scale(1.1)' }
+                    }}
+                  >
+                    {palette === 'beige' ? <CheckCircleIcon sx={{ fontSize: 18, color: '#ffffff' }} /> : <span style={{ fontSize: 14 }}>🌾</span>}
+                  </Box>
+
+                  <Box
+                    onClick={() => setPalette('pink')}
+                    title="Pink"
+                    sx={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: '50%',
+                      bgcolor: '#8A3859',
+                      cursor: 'pointer',
+                      border: palette === 'pink' ? '3px solid #F4C2D7' : '2px solid transparent',
+                      boxShadow: palette === 'pink' ? '0 0 10px rgba(138, 56, 89, 0.7)' : 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'all 0.2s ease',
+                      '&:hover': { transform: 'scale(1.1)' }
+                    }}
+                  >
+                    {palette === 'pink' ? <CheckCircleIcon sx={{ fontSize: 18, color: '#ffffff' }} /> : <span style={{ fontSize: 14 }}>🌸</span>}
+                  </Box>
                 </Box>
               </Box>
 
@@ -571,72 +633,56 @@ export default function Header() {
                 <ListItemText primary="Login" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }} />
               </ListItemButton>
               <ListItemButton onClick={() => handleNavigation('/register')} sx={{ borderRadius: '14px', mb: 0.8, py: 1.2 }}>
-                <ListItemIcon><SecurityIcon sx={{ color: 'var(--color-teal)' }} /></ListItemIcon>
-                <ListItemText primary="Register Account" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }} />
+                <ListItemIcon><LocalHospitalIcon sx={{ color: 'var(--color-teal)' }} /></ListItemIcon>
+                <ListItemText primary="Register" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }} />
               </ListItemButton>
             </Box>
           )}
         </List>
       </Drawer>
 
-      {/* DigiLocker Verification Details Modal */}
-      <Dialog
-        open={verificationModalOpen}
+      {/* DigiLocker Verification Profile Modal */}
+      <Dialog 
+        open={verificationModalOpen} 
         onClose={() => setVerificationModalOpen(false)}
         maxWidth="xs"
         fullWidth
         PaperProps={{
           sx: {
             borderRadius: '24px',
-            bgcolor: mode === 'dark' ? 'rgba(20, 20, 20, 0.98)' : '#ffffff',
-            backgroundImage: 'none',
-            border: '1px solid var(--glass-border)',
-            boxShadow: '0 24px 48px rgba(0,0,0,0.3)',
-            overflow: 'hidden',
+            bgcolor: mode === 'dark' ? '#1A2C28' : '#FAF6F0',
+            color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)',
             p: 1
           }
         }}
       >
-        <DialogTitle sx={{ m: 0, p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <VerifiedUserIcon sx={{ color: '#2e7d32', fontSize: 24 }} />
-            <Typography variant="h6" sx={{ fontWeight: 800, fontSize: '1.05rem', color: mode === 'dark' ? '#ffffff' : 'var(--color-forest)' }}>
+            <VerifiedUserIcon sx={{ color: '#2e7d32' }} />
+            <Typography variant="h6" sx={{ fontWeight: 800, fontSize: '1.1rem' }}>
               DigiLocker Verification
             </Typography>
           </Box>
           <IconButton onClick={() => setVerificationModalOpen(false)} size="small">
-            <CloseIcon fontSize="small" />
+            <CloseIcon sx={{ color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }} />
           </IconButton>
         </DialogTitle>
-
-        <DialogContent dividers sx={{ p: 2.5 }}>
-          {/* Doctor Info Card */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2.5, p: 2, borderRadius: '16px', bgcolor: mode === 'dark' ? 'rgba(46, 125, 50, 0.15)' : 'rgba(46, 125, 50, 0.06)', border: '1px solid rgba(46, 125, 50, 0.2)' }}>
-            <Avatar
-              src={user?.profileImage}
-              sx={{
-                width: 56,
-                height: 56,
-                bgcolor: 'var(--color-forest)',
-                color: '#ffffff',
-                fontWeight: 800,
-                fontSize: '1.4rem',
-                border: '2px solid #66bb6a'
-              }}
-            >
-              {user?.firstName?.[0] || 'D'}
+        <DialogContent>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2.5, p: 2, borderRadius: '16px', bgcolor: mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }}>
+            <Avatar sx={{ width: 48, height: 48, bgcolor: 'var(--color-forest)', color: '#ffffff', fontWeight: 800, fontSize: '1.2rem' }}>
+              {user?.firstName ? user.firstName[0].toUpperCase() : 'D'}
             </Avatar>
             <Box>
-              <Typography variant="subtitle1" sx={{ fontWeight: 800, lineHeight: 1.2, color: mode === 'dark' ? '#ffffff' : 'var(--color-forest)' }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
                 Dr. {user?.firstName} {user?.lastName}
               </Typography>
-              <Typography variant="caption" sx={{ color: 'var(--color-teal)', fontWeight: 600, display: 'block', mt: 0.3 }}>
-                {user?.email}
+              <Typography variant="caption" sx={{ color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-teal)', display: 'block' }}>
+                {user?.specialization || 'Medical Specialist'}
               </Typography>
-              <Chip
-                icon={<CheckCircleIcon sx={{ fontSize: 14, color: '#ffffff !important' }} />}
-                label="Identity Verified"
-                size="small"
+              <Chip 
+                icon={<CheckCircleIcon sx={{ fontSize: '14px !important', color: '#ffffff !important' }} />}
+                label="Identity Verified" 
+                size="small" 
                 sx={{ height: 20, fontSize: '0.65rem', fontWeight: 800, bgcolor: '#2e7d32', color: '#ffffff', mt: 0.8 }}
               />
             </Box>
@@ -655,7 +701,7 @@ export default function Header() {
               )}
               {digilockerProfile.dob && (
                 <Typography variant="body2" sx={{ fontSize: '0.8rem', mb: 0.5 }}>
-                  <strong>Date of Birth:</strong> {digilockerProfile.dob}
+                  <strong>Year of Birth:</strong> {digilockerProfile.dob.match(/(19|20)\d{2}/)?.[0] || (digilockerProfile.dob.length === 8 && /^\d+$/.test(digilockerProfile.dob) ? digilockerProfile.dob.substring(4) : digilockerProfile.dob)}
                 </Typography>
               )}
               {digilockerProfile.gender && (
