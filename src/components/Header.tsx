@@ -16,6 +16,13 @@ import Divider from '@mui/material/Divider';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import Switch from '@mui/material/Switch';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import Button from '@mui/material/Button';
+import Alert from '@mui/material/Alert';
+import AlertTitle from '@mui/material/AlertTitle';
 
 import MenuIcon from '@mui/icons-material/Menu';
 import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
@@ -27,6 +34,9 @@ import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
 import LightModeIcon from '@mui/icons-material/LightMode';
 import PaletteIcon from '@mui/icons-material/Palette';
+import LockIcon from '@mui/icons-material/Lock';
+import CloseIcon from '@mui/icons-material/Close';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -42,12 +52,17 @@ export default function Header() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [profileMenuAnchor, setProfileMenuAnchor] = useState(null as any);
   const [digilockerVerified, setDigilockerVerified] = useState(false);
+  const [digilockerProfile, setDigilockerProfile] = useState(null as any);
+  const [verificationModalOpen, setVerificationModalOpen] = useState(false);
 
   // Fetch DigiLocker verification status for doctors
   useEffect(() => {
     if (isAuthenticated && user?.role === 'doctor') {
       digilockerAPI.getStatus()
-        .then(data => setDigilockerVerified(data.verified || false))
+        .then(data => {
+          setDigilockerVerified(data.verified || false);
+          setDigilockerProfile(data.profile || null);
+        })
         .catch(() => setDigilockerVerified(false));
     }
   }, [isAuthenticated, user]);
@@ -160,42 +175,45 @@ export default function Header() {
                 {user.role === 'doctor' && (
                   digilockerVerified ? (
                     <Chip
-                      icon={<VerifiedUserIcon sx={{ fontSize: 14, color: '#ffffff !important' }} />}
-                      label="✓"
+                      icon={<VerifiedUserIcon sx={{ fontSize: 15, color: '#ffffff !important' }} />}
+                      label="DigiLocker Verified"
                       size="small"
+                      onClick={() => setVerificationModalOpen(true)}
+                      clickable
                       sx={{
-                        ml: -0.5,
-                        height: 24,
-                        minWidth: 24,
+                        ml: 0.5,
+                        height: 26,
                         bgcolor: '#2e7d32',
                         color: '#ffffff',
                         fontWeight: 800,
-                        fontSize: '0.65rem',
+                        fontSize: '0.7rem',
                         border: '1.5px solid #66bb6a',
-                        '& .MuiChip-icon': { ml: 0.3 },
-                        '& .MuiChip-label': { px: 0.3 },
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 8px rgba(46, 125, 50, 0.25)',
+                        '&:hover': { bgcolor: '#1b5e20' },
+                        '& .MuiChip-icon': { ml: 0.5 },
+                        '& .MuiChip-label': { px: 0.8 },
                       }}
                     />
                   ) : (
                     <Chip
                       icon={<SecurityIcon sx={{ fontSize: 14, color: '#ffffff !important' }} />}
-                      label="!"
+                      label="Unverified"
                       size="small"
                       component={RouterLink}
                       to="/dashboard"
                       clickable
                       sx={{
-                        ml: -0.5,
-                        height: 24,
-                        minWidth: 24,
+                        ml: 0.5,
+                        height: 26,
                         bgcolor: '#e65100',
                         color: '#ffffff',
                         fontWeight: 800,
-                        fontSize: '0.65rem',
+                        fontSize: '0.7rem',
                         border: '1.5px solid #ff9800',
                         textDecoration: 'none',
-                        '& .MuiChip-icon': { ml: 0.3 },
-                        '& .MuiChip-label': { px: 0.3 },
+                        '& .MuiChip-icon': { ml: 0.5 },
+                        '& .MuiChip-label': { px: 0.8 },
                       }}
                     />
                   )
@@ -560,6 +578,144 @@ export default function Header() {
           )}
         </List>
       </Drawer>
+
+      {/* DigiLocker Verification Details Modal */}
+      <Dialog
+        open={verificationModalOpen}
+        onClose={() => setVerificationModalOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '24px',
+            bgcolor: mode === 'dark' ? 'rgba(20, 20, 20, 0.98)' : '#ffffff',
+            backgroundImage: 'none',
+            border: '1px solid var(--glass-border)',
+            boxShadow: '0 24px 48px rgba(0,0,0,0.3)',
+            overflow: 'hidden',
+            p: 1
+          }
+        }}
+      >
+        <DialogTitle sx={{ m: 0, p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <VerifiedUserIcon sx={{ color: '#2e7d32', fontSize: 24 }} />
+            <Typography variant="h6" sx={{ fontWeight: 800, fontSize: '1.05rem', color: mode === 'dark' ? '#ffffff' : 'var(--color-forest)' }}>
+              DigiLocker Verification
+            </Typography>
+          </Box>
+          <IconButton onClick={() => setVerificationModalOpen(false)} size="small">
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </DialogTitle>
+
+        <DialogContent dividers sx={{ p: 2.5 }}>
+          {/* Doctor Info Card */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2.5, p: 2, borderRadius: '16px', bgcolor: mode === 'dark' ? 'rgba(46, 125, 50, 0.15)' : 'rgba(46, 125, 50, 0.06)', border: '1px solid rgba(46, 125, 50, 0.2)' }}>
+            <Avatar
+              src={user?.profileImage}
+              sx={{
+                width: 56,
+                height: 56,
+                bgcolor: 'var(--color-forest)',
+                color: '#ffffff',
+                fontWeight: 800,
+                fontSize: '1.4rem',
+                border: '2px solid #66bb6a'
+              }}
+            >
+              {user?.firstName?.[0] || 'D'}
+            </Avatar>
+            <Box>
+              <Typography variant="subtitle1" sx={{ fontWeight: 800, lineHeight: 1.2, color: mode === 'dark' ? '#ffffff' : 'var(--color-forest)' }}>
+                Dr. {user?.firstName} {user?.lastName}
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'var(--color-teal)', fontWeight: 600, display: 'block', mt: 0.3 }}>
+                {user?.email}
+              </Typography>
+              <Chip
+                icon={<CheckCircleIcon sx={{ fontSize: 14, color: '#ffffff !important' }} />}
+                label="Identity Verified"
+                size="small"
+                sx={{ height: 20, fontSize: '0.65rem', fontWeight: 800, bgcolor: '#2e7d32', color: '#ffffff', mt: 0.8 }}
+              />
+            </Box>
+          </Box>
+
+          {/* DigiLocker Profile Info (if available) */}
+          {digilockerProfile && (
+            <Box sx={{ mb: 2.5, p: 1.5, borderRadius: '14px', bgcolor: mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)', border: '1px solid var(--glass-border)' }}>
+              <Typography variant="caption" sx={{ fontWeight: 800, color: 'var(--color-teal)', textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', mb: 1 }}>
+                DigiLocker Records
+              </Typography>
+              {digilockerProfile.name && (
+                <Typography variant="body2" sx={{ fontSize: '0.8rem', mb: 0.5 }}>
+                  <strong>Verified Name:</strong> {digilockerProfile.name}
+                </Typography>
+              )}
+              {digilockerProfile.dob && (
+                <Typography variant="body2" sx={{ fontSize: '0.8rem', mb: 0.5 }}>
+                  <strong>Date of Birth:</strong> {digilockerProfile.dob}
+                </Typography>
+              )}
+              {digilockerProfile.gender && (
+                <Typography variant="body2" sx={{ fontSize: '0.8rem', mb: 0.5 }}>
+                  <strong>Gender:</strong> {digilockerProfile.gender}
+                </Typography>
+              )}
+              {digilockerProfile.maskedAadhaar && (
+                <Typography variant="body2" sx={{ fontSize: '0.8rem', mb: 0.5 }}>
+                  <strong>Aadhaar (Masked):</strong> {digilockerProfile.maskedAadhaar}
+                </Typography>
+              )}
+              {digilockerProfile.linkedAt && (
+                <Typography variant="body2" sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>
+                  Verified on: {new Date(digilockerProfile.linkedAt).toLocaleDateString()}
+                </Typography>
+              )}
+            </Box>
+          )}
+
+          {/* Confidentiality Notice Alert */}
+          <Alert
+            severity="info"
+            icon={<LockIcon sx={{ color: '#0288d1' }} />}
+            sx={{
+              borderRadius: '16px',
+              bgcolor: mode === 'dark' ? 'rgba(2, 136, 209, 0.15)' : 'rgba(2, 136, 209, 0.08)',
+              border: '1px solid rgba(2, 136, 209, 0.3)',
+              color: mode === 'dark' ? '#81d4fa' : '#01579b',
+              fontSize: '0.8rem',
+              lineHeight: 1.45
+            }}
+          >
+            <AlertTitle sx={{ fontWeight: 800, fontSize: '0.85rem', mb: 0.5 }}>
+              Strictly Confidential Notice
+            </AlertTitle>
+            These identity details are only used for <strong>medical & practitioner verification</strong>.
+            <br /><br />
+            <strong>These details are not visible to patients.</strong> Patients will only see your public doctor profile.
+          </Alert>
+        </DialogContent>
+
+        <DialogActions sx={{ p: 2 }}>
+          <Button
+            onClick={() => setVerificationModalOpen(false)}
+            variant="contained"
+            fullWidth
+            sx={{
+              borderRadius: '12px',
+              bgcolor: 'var(--color-forest)',
+              color: '#ffffff',
+              fontWeight: 700,
+              textTransform: 'none',
+              '&:hover': { bgcolor: 'var(--color-teal)' }
+            }}
+          >
+            Got it
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
