@@ -29,7 +29,8 @@ import {
   ContactPhone as ContactPhoneIcon,
   Language as LanguageIcon,
   Create as CreateIcon,
-  Delete as DeleteIcon
+  Delete as DeleteIcon,
+  CheckCircle as CheckCircleIcon
 } from '@mui/icons-material';
 import { updateDoctorProfile, uploadProfileImage, uploadClinicLogo, uploadSignature } from '../services/doctors';
 import { updatePatientProfile } from '../services/patients';
