@@ -136,69 +136,71 @@ export default function Header() {
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
             {isAuthenticated && user ? (
-              <Chip
-                avatar={
-                  <Avatar sx={{ bgcolor: 'var(--color-forest)', color: '#ffffff', width: 26, height: 26, fontWeight: 700, border: '1px solid var(--color-mint)' }}>
-                    {user.firstName?.[0] || 'U'}
-                  </Avatar>
-                }
-                label={user.role === 'doctor' ? `Dr. ${user.lastName || user.firstName}` : user.firstName}
-                size="small"
-                onClick={handleProfileClick}
-                sx={{ 
-                  bgcolor: 'rgba(0, 0, 0, 0.05)', 
-                  color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)', 
-                  fontWeight: 700,
-                  fontSize: '0.75rem',
-                  border: '1px solid var(--glass-border)',
-                  cursor: 'pointer',
-                  '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.1)' }
-                }}
-              />
-              {/* DigiLocker Verified Badge next to profile chip */}
-              {user.role === 'doctor' && (
-                digilockerVerified ? (
-                  <Chip
-                    icon={<VerifiedUserIcon sx={{ fontSize: 14, color: '#ffffff !important' }} />}
-                    label="✓"
-                    size="small"
-                    sx={{
-                      ml: -0.5,
-                      height: 24,
-                      minWidth: 24,
-                      bgcolor: '#2e7d32',
-                      color: '#ffffff',
-                      fontWeight: 800,
-                      fontSize: '0.65rem',
-                      border: '1.5px solid #66bb6a',
-                      '& .MuiChip-icon': { ml: 0.3 },
-                      '& .MuiChip-label': { px: 0.3 },
-                    }}
-                  />
-                ) : (
-                  <Chip
-                    icon={<SecurityIcon sx={{ fontSize: 14, color: '#ffffff !important' }} />}
-                    label="!"
-                    size="small"
-                    component={RouterLink}
-                    to="/dashboard"
-                    clickable
-                    sx={{
-                      ml: -0.5,
-                      height: 24,
-                      minWidth: 24,
-                      bgcolor: '#e65100',
-                      color: '#ffffff',
-                      fontWeight: 800,
-                      fontSize: '0.65rem',
-                      border: '1.5px solid #ff9800',
-                      textDecoration: 'none',
-                      '& .MuiChip-icon': { ml: 0.3 },
-                      '& .MuiChip-label': { px: 0.3 },
-                    }}
-                  />
-                )
-              )}
+              <>
+                <Chip
+                  avatar={
+                    <Avatar sx={{ bgcolor: 'var(--color-forest)', color: '#ffffff', width: 26, height: 26, fontWeight: 700, border: '1px solid var(--color-mint)' }}>
+                      {user.firstName?.[0] || 'U'}
+                    </Avatar>
+                  }
+                  label={user.role === 'doctor' ? `Dr. ${user.lastName || user.firstName}` : user.firstName}
+                  size="small"
+                  onClick={handleProfileClick}
+                  sx={{ 
+                    bgcolor: 'rgba(0, 0, 0, 0.05)', 
+                    color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)', 
+                    fontWeight: 700,
+                    fontSize: '0.75rem',
+                    border: '1px solid var(--glass-border)',
+                    cursor: 'pointer',
+                    '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.1)' }
+                  }}
+                />
+                {/* DigiLocker Verified Badge next to profile chip */}
+                {user.role === 'doctor' && (
+                  digilockerVerified ? (
+                    <Chip
+                      icon={<VerifiedUserIcon sx={{ fontSize: 14, color: '#ffffff !important' }} />}
+                      label="✓"
+                      size="small"
+                      sx={{
+                        ml: -0.5,
+                        height: 24,
+                        minWidth: 24,
+                        bgcolor: '#2e7d32',
+                        color: '#ffffff',
+                        fontWeight: 800,
+                        fontSize: '0.65rem',
+                        border: '1.5px solid #66bb6a',
+                        '& .MuiChip-icon': { ml: 0.3 },
+                        '& .MuiChip-label': { px: 0.3 },
+                      }}
+                    />
+                  ) : (
+                    <Chip
+                      icon={<SecurityIcon sx={{ fontSize: 14, color: '#ffffff !important' }} />}
+                      label="!"
+                      size="small"
+                      component={RouterLink}
+                      to="/dashboard"
+                      clickable
+                      sx={{
+                        ml: -0.5,
+                        height: 24,
+                        minWidth: 24,
+                        bgcolor: '#e65100',
+                        color: '#ffffff',
+                        fontWeight: 800,
+                        fontSize: '0.65rem',
+                        border: '1.5px solid #ff9800',
+                        textDecoration: 'none',
+                        '& .MuiChip-icon': { ml: 0.3 },
+                        '& .MuiChip-label': { px: 0.3 },
+                      }}
+                    />
+                  )
+                )}
+              </>
             ) : (
               <IconButton 
                 onClick={handleProfileClick} 
