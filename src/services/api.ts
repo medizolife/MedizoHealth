@@ -139,7 +139,8 @@ export const digilockerAPI = {
     return response.data;
   },
   getAuthorizeUrl: () => {
-    return `${API_URL}/digilocker/authorize`;
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') || '' : '';
+    return `${API_URL}/digilocker/authorize?token=${encodeURIComponent(token)}`;
   },
 };
 
