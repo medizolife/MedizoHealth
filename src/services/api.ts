@@ -140,7 +140,8 @@ export const digilockerAPI = {
   },
   getAuthorizeUrl: () => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') || '' : '';
-    return `${API_URL}/digilocker/authorize?token=${encodeURIComponent(token)}`;
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://m.medizo.life';
+    return `${API_URL}/digilocker/authorize?token=${encodeURIComponent(token)}&client_url=${encodeURIComponent(origin)}`;
   },
 };
 
