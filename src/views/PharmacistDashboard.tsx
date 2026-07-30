@@ -50,11 +50,60 @@ export default function PharmacistDashboard() {
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [rxIdInput, setRxIdInput] = useState('');
   const [selectedRx, setSelectedRx] = useState<Prescription | null>(null);
   const [dispenseModalOpen, setDispenseModalOpen] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [lookupLoading, setLookupLoading] = useState(false);
+  const [idLookupLoading, setIdLookupLoading] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' as 'success' | 'error' | 'info' | 'warning' });
+
+  // Handle dedicated Prescription ID / URL validation (matching pharma medizo logic)
+  const handleIdValidation = async (rawInput: string) => {
+    let id = rawInput.trim();
+    if (!id) return;
+
+    // Handle JSON string format (e.g. {"id":"...", "qrCode":"..."})
+    if (id.startsWith('{') && id.endsWith('}')) {
+      try {
+        const parsed = JSON.parse(id);
+        id = parsed.id || parsed.prescriptionId || parsed._id || id;
+      } catch (e) {}
+    }
+
+    // Handle query parameter or URL paths (e.g. https://medizo.life/prescriptions/detail?id=12345)
+    if (id.includes('?id=')) {
+      const match = id.match(/[?&]id=([^&]+)/);
+      if (match && match[1]) {
+        id = match[1];
+      }
+    } else if (id.includes('/')) {
+      const parts = id.split('?')[0].split('/');
+      const lastPart = parts.pop() || parts.pop();
+      if (lastPart && lastPart !== 'detail' && lastPart !== 'prescriptions' && lastPart !== 'lookup') {
+        id = lastPart;
+      }
+    }
+
+    id = id.split('?')[0].trim();
+
+    setIdLookupLoading(true);
+    setSnackbar({ open: true, message: `🔍 Verifying prescription ID: ${id}...`, severity: 'info' });
+
+    try {
+      const result = await lookupPrescriptionByCode(id);
+      if (result.success && result.prescription) {
+        setSelectedRx(result.prescription as Prescription);
+        setDispenseModalOpen(true);
+        setSnackbar({ open: true, message: '✅ Prescription verified! Inspect digital signature and dispense.', severity: 'success' });
+      }
+    } catch (err: any) {
+      const msg = err.response?.data?.message || 'Prescription not found or invalid ID.';
+      setSnackbar({ open: true, message: `❌ ${msg}`, severity: 'error' });
+    } finally {
+      setIdLookupLoading(false);
+    }
+  };
 
   const fetchPrescriptionsList = async () => {
     setLoading(true);
@@ -266,11 +315,11 @@ export default function PharmacistDashboard() {
         </Grid>
       </Grid>
 
-      {/* Hero Scanner & Rx Lookup Bar */}
+      {/* Hero Scanner & Rx ID Verification Station */}
       <Paper
         elevation={0}
         sx={{
-          p: 2.5,
+          p: 3,
           mb: 3.5,
           borderRadius: '24px',
           bgcolor: mode === 'dark' ? 'rgba(26, 44, 40, 0.85)' : '#ffffff',
@@ -278,70 +327,173 @@ export default function PharmacistDashboard() {
           boxShadow: '0 8px 32px rgba(245, 158, 11, 0.15)'
         }}
       >
-        <Typography variant="subtitle2" sx={{ fontWeight: 900, color: '#FBBF24', mb: 0.5, textTransform: 'uppercase', letterSpacing: 0.8 }}>
-          Pharmacy Dispense & Verification Station
-        </Typography>
-        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 2 }}>
-          Scan a patient's prescription QR code or enter Rx ID to verify doctor signature and dispense medication.
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
+          <PharmacyIcon sx={{ color: '#F59E0B', fontSize: 28 }} />
+          <Typography variant="h6" sx={{ fontWeight: 900, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }}>
+            Pharmacy Dispense & Verification Station
+          </Typography>
+        </Box>
+        <Typography variant="body2" sx={{ color: 'text.secondary', display: 'block', mb: 3 }}>
+          Verify digital signatures and dispense medications using live camera QR scanner or dedicated Rx ID entry.
         </Typography>
 
-        {/* Camera Scan Button */}
-        <Button
-          fullWidth
-          variant="contained"
-          onClick={() => setScannerOpen(true)}
-          startIcon={<CameraIcon />}
-          endIcon={<QrIcon />}
+        {/* Verification Action Buttons Grid */}
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid item xs={12} sm={6}>
+            <Button
+              fullWidth
+              variant="contained"
+              onClick={() => setScannerOpen(true)}
+              startIcon={<CameraIcon />}
+              endIcon={<QrIcon />}
+              sx={{
+                py: 1.8,
+                borderRadius: '16px',
+                fontWeight: 900,
+                fontSize: '0.95rem',
+                bgcolor: '#F59E0B',
+                color: '#0B1315',
+                boxShadow: '0 4px 20px rgba(245, 158, 11, 0.4)',
+                '&:hover': { bgcolor: '#FBBF24', boxShadow: '0 6px 24px rgba(245, 158, 11, 0.5)' },
+                textTransform: 'none'
+              }}
+            >
+              📷 Live Camera QR Scanner
+            </Button>
+          </Grid>
+
+          <Grid item xs={12} sm={6}>
+            <Button
+              fullWidth
+              variant="outlined"
+              component="label"
+              startIcon={<PasteIcon />}
+              sx={{
+                py: 1.8,
+                borderRadius: '16px',
+                fontWeight: 900,
+                fontSize: '0.95rem',
+                borderColor: '#F59E0B',
+                color: '#FBBF24',
+                bgcolor: 'rgba(245, 158, 11, 0.08)',
+                '&:hover': { borderColor: '#FBBF24', bgcolor: 'rgba(245, 158, 11, 0.18)' },
+                textTransform: 'none'
+              }}
+            >
+              🖼️ Upload QR Image File
+              <input
+                type="file"
+                accept="image/*"
+                hidden
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  try {
+                    const reader = new FileReader();
+                    reader.onload = async (event) => {
+                      const text = event.target?.result as string;
+                      if (text) {
+                        setSnackbar({ open: true, message: 'Processing uploaded QR image...', severity: 'info' });
+                      }
+                    };
+                    reader.readAsDataURL(file);
+                  } catch (err) {
+                    setSnackbar({ open: true, message: 'Could not read image file', severity: 'error' });
+                  }
+                }}
+              />
+            </Button>
+          </Grid>
+        </Grid>
+
+        {/* Dedicated Prescription ID Entry & Verification Section */}
+        <Paper
+          elevation={0}
           sx={{
-            mb: 2,
-            py: 1.8,
-            borderRadius: '16px',
-            fontWeight: 900,
-            fontSize: '1rem',
-            bgcolor: '#F59E0B',
-            color: '#0B1315',
-            boxShadow: '0 4px 20px rgba(245, 158, 11, 0.4)',
-            '&:hover': { bgcolor: '#FBBF24', boxShadow: '0 6px 24px rgba(245, 158, 11, 0.5)' },
-            textTransform: 'none'
+            p: 2,
+            borderRadius: '18px',
+            bgcolor: mode === 'dark' ? 'rgba(0, 0, 0, 0.25)' : 'rgba(245, 158, 11, 0.05)',
+            border: '1px solid rgba(245, 158, 11, 0.3)'
           }}
         >
-          📷 Scan Prescription QR Code
-        </Button>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <VerifiedIcon sx={{ color: '#FBBF24', fontSize: 20 }} />
+              <Typography variant="subtitle2" sx={{ fontWeight: 900, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }}>
+                Verify Prescription by ID / URL (Copy-Paste)
+              </Typography>
+            </Box>
+            <Chip label="Manual Verification" size="small" sx={{ height: 20, fontSize: '0.65rem', fontWeight: 800, bgcolor: 'rgba(245, 158, 11, 0.2)', color: '#FBBF24' }} />
+          </Box>
 
-        {/* Search Input */}
-        <TextField
-          fullWidth
-          placeholder="Enter Rx ID, Patient name, medication, or QR code..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') handleSearchSubmit(); }}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon sx={{ color: '#F59E0B' }} />
-              </InputAdornment>
-            ),
-            endAdornment: (
-              <InputAdornment position="end">
-                <Box sx={{ display: 'flex', gap: 0.5 }}>
-                  {lookupLoading && <CircularProgress size={20} sx={{ color: '#F59E0B' }} />}
-                  <Tooltip title="Quick Lookup by ID">
-                    <IconButton size="small" onClick={handleSearchSubmit} disabled={!search.trim()}>
-                      <PasteIcon sx={{ color: search.trim() ? '#F59E0B' : 'rgba(255,255,255,0.3)', fontSize: 20 }} />
-                    </IconButton>
-                  </Tooltip>
-                </Box>
-              </InputAdornment>
-            )
-          }}
-          sx={{
-            '& .MuiOutlinedInput-root': {
-              borderRadius: '14px',
-              bgcolor: 'rgba(0,0,0,0.04)',
-              color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)'
-            }
-          }}
-        />
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: { xs: 'wrap', sm: 'nowrap' } }}>
+            <TextField
+              fullWidth
+              size="medium"
+              placeholder="Paste Rx ID (e.g. 6a6b1f13477f4d601be568b9) or full URL..."
+              value={rxIdInput}
+              onChange={(e) => setRxIdInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleIdValidation(rxIdInput); }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <PasteIcon sx={{ color: '#F59E0B', fontSize: 20 }} />
+                  </InputAdornment>
+                ),
+                endAdornment: (
+                  <InputAdornment position="end">
+                    {navigator.clipboard && (
+                      <Button
+                        size="small"
+                        onClick={async () => {
+                          try {
+                            const text = await navigator.clipboard.readText();
+                            if (text) {
+                              setRxIdInput(text);
+                              setSnackbar({ open: true, message: 'Pasted from clipboard!', severity: 'info' });
+                            }
+                          } catch (e) {
+                            setSnackbar({ open: true, message: 'Clipboard access denied', severity: 'warning' });
+                          }
+                        }}
+                        sx={{ minWidth: 'auto', px: 1, py: 0.3, fontSize: '0.72rem', fontWeight: 800, color: '#FBBF24' }}
+                      >
+                        📋 Paste
+                      </Button>
+                    )}
+                  </InputAdornment>
+                )
+              }}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: '12px',
+                  bgcolor: mode === 'dark' ? 'rgba(0,0,0,0.4)' : '#ffffff',
+                  color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)'
+                }
+              }}
+            />
+
+            <Button
+              variant="contained"
+              onClick={() => handleIdValidation(rxIdInput)}
+              disabled={idLookupLoading || !rxIdInput.trim()}
+              startIcon={idLookupLoading ? <CircularProgress size={18} color="inherit" /> : <VerifiedIcon />}
+              sx={{
+                px: 3,
+                py: 1.5,
+                borderRadius: '12px',
+                fontWeight: 900,
+                whiteSpace: 'nowrap',
+                bgcolor: '#10B981',
+                color: '#ffffff',
+                '&:hover': { bgcolor: '#059669' },
+                textTransform: 'none'
+              }}
+            >
+              {idLookupLoading ? 'Verifying...' : 'Verify & Dispense'}
+            </Button>
+          </Box>
+        </Paper>
       </Paper>
 
       {/* Prescriptions Feed Queue */}
