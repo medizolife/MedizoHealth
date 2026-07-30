@@ -25,3 +25,8 @@ export const updatePrescription = async (id: string, data: UpdatePrescriptionDat
 export const deletePrescription = async (id: string): Promise<void> => {
   await api.delete(`/prescriptions/${id}`);
 };
+
+export const dispensePrescription = async (id: string, dispenseNotes?: string): Promise<{ success: boolean; message: string; prescription: Prescription }> => {
+  const response = await api.put(`/prescriptions/${id}/dispense`, { dispenseNotes });
+  return response.data;
+};

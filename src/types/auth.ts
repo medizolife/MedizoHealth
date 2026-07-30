@@ -3,9 +3,13 @@ export interface User {
   firstName: string;
   lastName: string;
   email: string;
-  role: 'doctor' | 'patient';
+  role: 'doctor' | 'patient' | 'pharmacist';
   profileImage?: string;
   specialization?: string;
+  pharmacyName?: string;
+  licenseNumber?: string;
+  pharmacyAddress?: string;
+  phone?: string;
   createdAt: string;
   updatedAt?: string;
   digilockerVerified?: boolean;
@@ -43,6 +47,14 @@ export interface Patient extends User {
   address?: string;
   emergencyContact?: string;
   medicalHistory?: string;
+}
+
+export interface PharmacistUser extends User {
+  role: 'pharmacist';
+  pharmacyName?: string;
+  licenseNumber?: string;
+  pharmacyAddress?: string;
+  phone?: string;
 }
 
 export interface AuthState {

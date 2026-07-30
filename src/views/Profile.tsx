@@ -875,6 +875,67 @@ const Profile = () => {
                 </AccordionDetails>
               </Accordion>
             </>
+          ) : user.role === 'pharmacist' ? (
+            <Grid container spacing={3}>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  disabled
+                  label="First Name"
+                  value={user.firstName}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  disabled
+                  label="Last Name"
+                  value={user.lastName}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  disabled
+                  label="Pharmacy Name"
+                  value={user.pharmacyName || 'Medizo Care Pharmacy'}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  disabled
+                  label="License Number"
+                  value={user.licenseNumber || 'PHARM-88219'}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  disabled
+                  label="Contact Phone"
+                  value={user.phone || '+1 555-987-6543'}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  disabled
+                  label="Account Status"
+                  value="Active (Admin Verified)"
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  disabled
+                  label="Pharmacy Address"
+                  multiline
+                  rows={2}
+                  value={user.pharmacyAddress || '456 Healthcare Blvd, Suite 100'}
+                />
+              </Grid>
+            </Grid>
           ) : (
             <Grid container spacing={3}>
               <Grid item xs={12} sm={6}>

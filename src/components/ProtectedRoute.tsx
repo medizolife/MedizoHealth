@@ -7,7 +7,7 @@ import Box from '@mui/material/Box';
 
 interface ProtectedRouteProps {
   children: ReactNode;
-  requiredRole?: 'doctor' | 'patient';
+  requiredRole?: 'doctor' | 'patient' | 'pharmacist';
 }
 
 const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {

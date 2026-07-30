@@ -54,12 +54,17 @@ import { digilockerAPI } from '../services/api';
 import { Prescription } from '../types/prescription';
 import EnhancedPatientManagement from '../components/EnhancedPatientManagement';
 import WallpaperCarouselHero from '../components/WallpaperCarouselHero';
+import PharmacistDashboard from './PharmacistDashboard';
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { authState } = useAuth();
   const { user } = authState;
+
+  if (user?.role === 'pharmacist') {
+    return <PharmacistDashboard />;
+  }
   const { mode } = useThemeContext();
   
   const [tabValue, setTabValue] = useState(0);

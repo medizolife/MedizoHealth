@@ -78,9 +78,18 @@ export interface Prescription {
   followUpInfo?: FollowUpInfo;
   emergencyHelpline?: string;
   
-  // System fields
+  // System & Dispense fields
   qrCode: string;
   status: 'active' | 'completed' | 'cancelled';
+  dispensedStatus?: 'pending' | 'dispensed' | 'partially_dispensed';
+  dispensedAt?: string;
+  dispensedBy?: {
+    pharmacistId?: string;
+    pharmacistName?: string;
+    pharmacyName?: string;
+    licenseNumber?: string;
+  };
+  dispenseNotes?: string;
   createdAt: string;
   updatedAt?: string;
 }

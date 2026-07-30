@@ -139,6 +139,20 @@ const MobileBottomNav = () => {
             />,
             <BottomNavigationAction key="patients" label="Patients" value="patients" icon={<PatientsIcon />} />,
             <BottomNavigationAction key="profile" label="Profile" value="profile" icon={<ProfileIcon />} />
+          ] : user?.role === 'pharmacist' ? [
+            <BottomNavigationAction key="dashboard" label="Rx Feed" value="dashboard" icon={<DashboardIcon />} />,
+            <BottomNavigationAction 
+              key="dispense" 
+              label="Dispense" 
+              value="dispense" 
+              icon={
+                <Box sx={{ p: 0.45, borderRadius: '50%', bgcolor: '#F59E0B', color: '#0B1315', display: 'flex', boxShadow: '0 0 12px rgba(245, 158, 11, 0.5)' }}>
+                  <CreateIcon sx={{ fontSize: '1.4rem' }} />
+                </Box>
+              } 
+            />,
+            <BottomNavigationAction key="history" label="Log" value="prescriptions" icon={<PrescriptionsIcon />} />,
+            <BottomNavigationAction key="profile" label="Pharmacy" value="profile" icon={<ProfileIcon />} />
           ] : [
             <BottomNavigationAction key="dashboard" label="Feed" value="dashboard" icon={<DashboardIcon />} />,
             <BottomNavigationAction key="prescriptions" label="My Rx" value="prescriptions" icon={<PrescriptionsIcon />} />,
