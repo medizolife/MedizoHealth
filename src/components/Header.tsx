@@ -37,6 +37,9 @@ import PaletteIcon from '@mui/icons-material/Palette';
 import LockIcon from '@mui/icons-material/Lock';
 import CloseIcon from '@mui/icons-material/Close';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import LocalPharmacyIcon from '@mui/icons-material/LocalPharmacy';
+import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
+import HistoryIcon from '@mui/icons-material/History';
 
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -519,27 +522,53 @@ export default function Header() {
         <List sx={{ pt: 2, px: 1.5 }}>
           {isAuthenticated ? (
             <Box>
-              <ListItemButton onClick={() => handleNavigation('/dashboard')} sx={{ borderRadius: '14px', mb: 0.8, py: 1.2 }}>
-                <ListItemIcon><LocalHospitalIcon sx={{ color: 'var(--color-teal)' }} /></ListItemIcon>
-                <ListItemText primary="Dashboard Feed" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }} />
-              </ListItemButton>
-              
-              <ListItemButton onClick={() => handleNavigation('/prescriptions/all')} sx={{ borderRadius: '14px', mb: 0.8, py: 1.2 }}>
-                <ListItemIcon><MedicationIcon sx={{ color: 'var(--color-teal)' }} /></ListItemIcon>
-                <ListItemText primary={user?.role === 'doctor' ? 'All Prescriptions' : 'My Prescriptions'} primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }} />
-              </ListItemButton>
-              
-              {user?.role === 'doctor' && (
-                <ListItemButton onClick={() => handleNavigation('/patients')} sx={{ borderRadius: '14px', mb: 0.8, py: 1.2 }}>
-                  <ListItemIcon><VerifiedUserIcon sx={{ color: 'var(--color-teal)' }} /></ListItemIcon>
-                  <ListItemText primary="Patient Management" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }} />
-                </ListItemButton>
+              {user?.role === 'pharmacist' ? (
+                <>
+                  <ListItemButton onClick={() => handleNavigation('/dashboard')} sx={{ borderRadius: '14px', mb: 0.8, py: 1.2 }}>
+                    <ListItemIcon><LocalPharmacyIcon sx={{ color: '#F59E0B' }} /></ListItemIcon>
+                    <ListItemText primary="Pharmacy Portal" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }} />
+                  </ListItemButton>
+                  
+                  <ListItemButton onClick={() => { handleNavigation('/dashboard'); setTimeout(() => window.dispatchEvent(new CustomEvent('open-qr-scanner')), 300); }} sx={{ borderRadius: '14px', mb: 0.8, py: 1.2 }}>
+                    <ListItemIcon><QrCodeScannerIcon sx={{ color: '#F59E0B' }} /></ListItemIcon>
+                    <ListItemText primary="Scan & Dispense Rx" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }} />
+                  </ListItemButton>
+
+                  <ListItemButton onClick={() => handleNavigation('/prescriptions/all')} sx={{ borderRadius: '14px', mb: 0.8, py: 1.2 }}>
+                    <ListItemIcon><HistoryIcon sx={{ color: '#F59E0B' }} /></ListItemIcon>
+                    <ListItemText primary="Dispense History Log" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }} />
+                  </ListItemButton>
+
+                  <ListItemButton onClick={() => handleNavigation('/profile')} sx={{ borderRadius: '14px', mb: 0.8, py: 1.2 }}>
+                    <ListItemIcon><PersonIcon sx={{ color: '#F59E0B' }} /></ListItemIcon>
+                    <ListItemText primary="Pharmacy Profile" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }} />
+                  </ListItemButton>
+                </>
+              ) : (
+                <>
+                  <ListItemButton onClick={() => handleNavigation('/dashboard')} sx={{ borderRadius: '14px', mb: 0.8, py: 1.2 }}>
+                    <ListItemIcon><LocalHospitalIcon sx={{ color: 'var(--color-teal)' }} /></ListItemIcon>
+                    <ListItemText primary="Dashboard Feed" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }} />
+                  </ListItemButton>
+                  
+                  <ListItemButton onClick={() => handleNavigation('/prescriptions/all')} sx={{ borderRadius: '14px', mb: 0.8, py: 1.2 }}>
+                    <ListItemIcon><MedicationIcon sx={{ color: 'var(--color-teal)' }} /></ListItemIcon>
+                    <ListItemText primary={user?.role === 'doctor' ? 'All Prescriptions' : 'My Prescriptions'} primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }} />
+                  </ListItemButton>
+                  
+                  {user?.role === 'doctor' && (
+                    <ListItemButton onClick={() => handleNavigation('/patients')} sx={{ borderRadius: '14px', mb: 0.8, py: 1.2 }}>
+                      <ListItemIcon><VerifiedUserIcon sx={{ color: 'var(--color-teal)' }} /></ListItemIcon>
+                      <ListItemText primary="Patient Management" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }} />
+                    </ListItemButton>
+                  )}
+                  
+                  <ListItemButton onClick={() => handleNavigation('/profile')} sx={{ borderRadius: '14px', mb: 0.8, py: 1.2 }}>
+                    <ListItemIcon><PersonIcon sx={{ color: 'var(--color-teal)' }} /></ListItemIcon>
+                    <ListItemText primary="My Profile" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }} />
+                  </ListItemButton>
+                </>
               )}
-              
-              <ListItemButton onClick={() => handleNavigation('/profile')} sx={{ borderRadius: '14px', mb: 0.8, py: 1.2 }}>
-                <ListItemIcon><PersonIcon sx={{ color: 'var(--color-teal)' }} /></ListItemIcon>
-                <ListItemText primary="My Profile" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }} />
-              </ListItemButton>
               
               <Divider sx={{ my: 2, borderColor: 'var(--glass-border)' }} />
 

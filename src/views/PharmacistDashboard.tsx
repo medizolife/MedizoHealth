@@ -53,7 +53,6 @@ export default function PharmacistDashboard() {
   const [selectedRx, setSelectedRx] = useState<Prescription | null>(null);
   const [dispenseModalOpen, setDispenseModalOpen] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'pending' | 'dispensed' | 'all'>('pending');
   const [lookupLoading, setLookupLoading] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' as 'success' | 'error' | 'info' | 'warning' });
 
@@ -80,14 +79,19 @@ export default function PharmacistDashboard() {
     return () => window.removeEventListener('open-qr-scanner', handleOpenScanner);
   }, []);
 
-  const pendingCount = prescriptions.filter(p => p.dispensedStatus !== 'dispensed').length;
-  const dispensedCount = prescriptions.filter(p => p.dispensedStatus === 'dispensed').length;
+  const fulfilledToday = prescriptions.filter(p => {
+    if (!p.dispensedAt) return false;
+    const d = new Date(p.dispensedAt);
+    const today = new Date();
+    return d.getDate() === today.getDate() &&
+           d.getMonth() === today.getMonth() &&
+           d.getFullYear() === today.getFullYear();
+  }).length;
+
+  const totalDispensed = prescriptions.length;
   const uniquePatients = Array.from(new Set(prescriptions.map(p => p.patientId))).length;
 
   const filteredPrescriptions = prescriptions.filter(p => {
-    if (activeTab === 'pending' && p.dispensedStatus === 'dispensed') return false;
-    if (activeTab === 'dispensed' && p.dispensedStatus !== 'dispensed') return false;
-
     if (!search) return true;
     const q = search.toLowerCase();
     return (
@@ -122,7 +126,6 @@ export default function PharmacistDashboard() {
     } catch (err: any) {
       const msg = err.response?.data?.message || 'Prescription not found for this QR code.';
       setSnackbar({ open: true, message: `❌ ${msg}`, severity: 'error' });
-      // Fall back to local search
       setSearch(decodedText);
     } finally {
       setLookupLoading(false);
@@ -141,7 +144,7 @@ export default function PharmacistDashboard() {
         setSnackbar({ open: true, message: '✅ Prescription found!', severity: 'success' });
       }
     } catch (err: any) {
-      setSnackbar({ open: true, message: 'No exact match found. Showing filtered results.', severity: 'warning' });
+      setSnackbar({ open: true, message: 'No exact match found. Filtered local logs.', severity: 'warning' });
     } finally {
       setLookupLoading(false);
     }
@@ -185,7 +188,7 @@ export default function PharmacistDashboard() {
               </Typography>
               <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, flexWrap: 'wrap' }}>
                 <Chip
-                  label="Pharmacist Verified"
+                  label="Pharmacist Account"
                   size="small"
                   sx={{ height: 18, fontSize: '0.62rem', fontWeight: 800, bgcolor: '#F59E0B', color: '#0B1315' }}
                 />
@@ -205,104 +208,84 @@ export default function PharmacistDashboard() {
 
       {/* Metrics Cards Grid */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={3}>
+        <Grid item xs={4}>
           <Paper
-            onClick={() => setActiveTab('pending')}
             sx={{
-              p: 1.5,
+              p: 2,
               textAlign: 'center',
               borderRadius: '20px',
-              bgcolor: activeTab === 'pending' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.03)',
-              border: activeTab === 'pending' ? '2px solid #F59E0B' : '1px solid var(--glass-border)',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease'
+              bgcolor: 'rgba(16, 185, 129, 0.1)',
+              border: '1px solid rgba(16, 185, 129, 0.3)'
             }}
           >
-            <Typography variant="h4" sx={{ fontWeight: 900, color: '#FBBF24', fontSize: { xs: '1.5rem', sm: '2rem' } }}>
-              {pendingCount}
+            <Typography variant="h4" sx={{ fontWeight: 900, color: '#34D399' }}>
+              {fulfilledToday}
             </Typography>
-            <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', display: 'block', fontSize: '0.6rem' }}>
-              Pending
+            <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', display: 'block' }}>
+              Fulfilled Today
             </Typography>
           </Paper>
         </Grid>
 
-        <Grid item xs={3}>
+        <Grid item xs={4}>
           <Paper
-            onClick={() => setActiveTab('dispensed')}
             sx={{
-              p: 1.5,
+              p: 2,
               textAlign: 'center',
               borderRadius: '20px',
-              bgcolor: activeTab === 'dispensed' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.03)',
-              border: activeTab === 'dispensed' ? '2px solid #10B981' : '1px solid var(--glass-border)',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease'
+              bgcolor: 'rgba(245, 158, 11, 0.1)',
+              border: '1px solid rgba(245, 158, 11, 0.3)'
             }}
           >
-            <Typography variant="h4" sx={{ fontWeight: 900, color: '#34D399', fontSize: { xs: '1.5rem', sm: '2rem' } }}>
-              {dispensedCount}
+            <Typography variant="h4" sx={{ fontWeight: 900, color: '#FBBF24' }}>
+              {totalDispensed}
             </Typography>
-            <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', display: 'block', fontSize: '0.6rem' }}>
-              Fulfilled
+            <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', display: 'block' }}>
+              Total Dispensed
             </Typography>
           </Paper>
         </Grid>
 
-        <Grid item xs={3}>
-          <Paper
-            onClick={() => setActiveTab('all')}
-            sx={{
-              p: 1.5,
-              textAlign: 'center',
-              borderRadius: '20px',
-              bgcolor: activeTab === 'all' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255,255,255,0.03)',
-              border: activeTab === 'all' ? '2px solid #3B82F6' : '1px solid var(--glass-border)',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            <Typography variant="h4" sx={{ fontWeight: 900, color: '#60A5FA', fontSize: { xs: '1.5rem', sm: '2rem' } }}>
-              {prescriptions.length}
-            </Typography>
-            <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', display: 'block', fontSize: '0.6rem' }}>
-              Total Rx
-            </Typography>
-          </Paper>
-        </Grid>
-
-        <Grid item xs={3}>
+        <Grid item xs={4}>
           <Paper
             sx={{
-              p: 1.5,
+              p: 2,
               textAlign: 'center',
               borderRadius: '20px',
-              bgcolor: 'rgba(255,255,255,0.03)',
-              border: '1px solid var(--glass-border)'
+              bgcolor: 'rgba(59, 130, 246, 0.1)',
+              border: '1px solid rgba(59, 130, 246, 0.3)'
             }}
           >
-            <Typography variant="h4" sx={{ fontWeight: 900, color: '#A78BFA', fontSize: { xs: '1.5rem', sm: '2rem' } }}>
+            <Typography variant="h4" sx={{ fontWeight: 900, color: '#60A5FA' }}>
               {uniquePatients}
             </Typography>
-            <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', display: 'block', fontSize: '0.6rem' }}>
-              Patients
+            <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', display: 'block' }}>
+              Patients Served
             </Typography>
           </Paper>
         </Grid>
       </Grid>
 
-      {/* QR Scan + Search Bar */}
+      {/* Hero Scanner & Rx Lookup Bar */}
       <Paper
         elevation={0}
         sx={{
-          p: 2,
-          mb: 3,
-          borderRadius: '20px',
+          p: 2.5,
+          mb: 3.5,
+          borderRadius: '24px',
           bgcolor: mode === 'dark' ? 'rgba(26, 44, 40, 0.85)' : '#ffffff',
-          border: '1px solid var(--glass-border)'
+          border: '2px solid rgba(245, 158, 11, 0.4)',
+          boxShadow: '0 8px 32px rgba(245, 158, 11, 0.15)'
         }}
       >
-        {/* Camera Scan Button - Full Width */}
+        <Typography variant="subtitle2" sx={{ fontWeight: 900, color: '#FBBF24', mb: 0.5, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+          Pharmacy Dispense & Verification Station
+        </Typography>
+        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 2 }}>
+          Scan a patient's prescription QR code or enter Rx ID to verify doctor signature and dispense medication.
+        </Typography>
+
+        {/* Camera Scan Button */}
         <Button
           fullWidth
           variant="contained"
@@ -328,14 +311,14 @@ export default function PharmacistDashboard() {
         {/* Search Input */}
         <TextField
           fullWidth
-          placeholder="Search by Rx ID, Patient name, medication, or QR code..."
+          placeholder="Enter Rx ID, Patient name, medication, or QR code..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') handleSearchSubmit(); }}
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
-                <SearchIcon sx={{ color: 'var(--color-teal)' }} />
+                <SearchIcon sx={{ color: '#F59E0B' }} />
               </InputAdornment>
             ),
             endAdornment: (
@@ -345,11 +328,6 @@ export default function PharmacistDashboard() {
                   <Tooltip title="Quick Lookup by ID">
                     <IconButton size="small" onClick={handleSearchSubmit} disabled={!search.trim()}>
                       <PasteIcon sx={{ color: search.trim() ? '#F59E0B' : 'rgba(255,255,255,0.3)', fontSize: 20 }} />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Open QR Scanner">
-                    <IconButton size="small" onClick={() => setScannerOpen(true)}>
-                      <QrIcon sx={{ color: '#F59E0B', fontSize: 20 }} />
                     </IconButton>
                   </Tooltip>
                 </Box>
@@ -369,12 +347,12 @@ export default function PharmacistDashboard() {
       {/* Prescriptions Feed Queue */}
       <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Typography variant="subtitle1" sx={{ fontWeight: 900, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }}>
-          {activeTab === 'pending' ? '📋 Pending Dispense Queue' : activeTab === 'dispensed' ? '✅ Fulfilled Prescriptions' : '📜 All Prescriptions'}
+          📜 Dispensed Prescriptions History
         </Typography>
         <Chip
-          label={`${filteredPrescriptions.length} items`}
+          label={`${filteredPrescriptions.length} dispensed`}
           size="small"
-          sx={{ bgcolor: 'rgba(245, 158, 11, 0.15)', color: '#FBBF24', fontWeight: 800 }}
+          sx={{ bgcolor: 'rgba(16, 185, 129, 0.15)', color: '#34D399', fontWeight: 800 }}
         />
       </Box>
 
@@ -386,10 +364,10 @@ export default function PharmacistDashboard() {
         <Paper sx={{ p: 4, textAlign: 'center', borderRadius: '20px', bgcolor: 'rgba(255,255,255,0.03)' }}>
           <PharmacyIcon sx={{ fontSize: 48, color: '#F59E0B', opacity: 0.5, mb: 1 }} />
           <Typography variant="body1" sx={{ fontWeight: 800 }}>
-            No prescriptions found
+            No dispensed prescriptions yet
           </Typography>
           <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 2 }}>
-            Try scanning a QR code or adjusting your search
+            Click 'Scan Prescription QR Code' above to verify and dispense a prescription.
           </Typography>
           <Button
             variant="outlined"
@@ -402,86 +380,76 @@ export default function PharmacistDashboard() {
         </Paper>
       ) : (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-          {filteredPrescriptions.map((rx) => {
-            const isDispensed = rx.dispensedStatus === 'dispensed';
-            return (
-              <Card
-                key={rx.id}
-                onClick={() => handleOpenDispense(rx)}
-                sx={{
-                  borderRadius: '20px',
-                  bgcolor: mode === 'dark' ? 'rgba(26, 44, 40, 0.85)' : '#ffffff',
-                  border: isDispensed ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(245, 158, 11, 0.3)',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  '&:hover': { transform: 'scale(1.01)', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }
-                }}
-              >
-                <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                      <Chip
-                        label={`#${String(rx.id).slice(-6).toUpperCase()}`}
-                        size="small"
-                        sx={{ fontFamily: 'monospace', fontWeight: 900, bgcolor: 'rgba(0, 200, 150, 0.15)', color: '#00C896', fontSize: '0.72rem' }}
-                      />
-                      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                        {rx.createdAt ? new Date(rx.createdAt).toLocaleDateString() : ''}
-                      </Typography>
-                    </Box>
+          {filteredPrescriptions.map((rx) => (
+            <Card
+              key={rx.id}
+              onClick={() => handleOpenDispense(rx)}
+              sx={{
+                borderRadius: '20px',
+                bgcolor: mode === 'dark' ? 'rgba(26, 44, 40, 0.85)' : '#ffffff',
+                border: '1px solid rgba(16, 185, 129, 0.3)',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                '&:hover': { transform: 'scale(1.01)', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }
+              }}
+            >
+              <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                     <Chip
-                      label={isDispensed ? '✅ DISPENSED' : '⚡ VERIFY & DISPENSE'}
+                      label={`#${String(rx.id).slice(-6).toUpperCase()}`}
                       size="small"
-                      sx={{
-                        bgcolor: isDispensed ? 'rgba(16, 185, 129, 0.2)' : '#F59E0B',
-                        color: isDispensed ? '#34D399' : '#0B1315',
-                        fontWeight: 900,
-                        fontSize: '0.65rem'
-                      }}
+                      sx={{ fontFamily: 'monospace', fontWeight: 900, bgcolor: 'rgba(0, 200, 150, 0.15)', color: '#00C896', fontSize: '0.72rem' }}
                     />
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                      {rx.createdAt ? new Date(rx.createdAt).toLocaleDateString() : ''}
+                    </Typography>
                   </Box>
+                  <Chip
+                    label="✅ DISPENSED"
+                    size="small"
+                    sx={{
+                      bgcolor: 'rgba(16, 185, 129, 0.2)',
+                      color: '#34D399',
+                      fontWeight: 900,
+                      fontSize: '0.65rem'
+                    }}
+                  />
+                </Box>
 
-                  {/* Patient & Doctor Names */}
-                  <Typography variant="subtitle1" sx={{ fontWeight: 900, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)', lineHeight: 1.3 }}>
-                    👤 {(rx as any).patientName || 'Patient'}
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: '#60A5FA', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <HospitalIcon sx={{ fontSize: 12 }} /> {(rx as any).doctorName || 'Prescribing Doctor'}
-                  </Typography>
+                {/* Patient & Doctor Names */}
+                <Typography variant="subtitle1" sx={{ fontWeight: 900, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)', lineHeight: 1.3 }}>
+                  👤 {(rx as any).patientName || 'Patient'}
+                </Typography>
+                <Typography variant="caption" sx={{ color: '#60A5FA', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <HospitalIcon sx={{ fontSize: 12 }} /> {(rx as any).doctorName || 'Prescribing Doctor'}
+                </Typography>
 
-                  {/* Medications Summary */}
-                  <Typography variant="body2" sx={{ color: '#FBBF24', fontWeight: 700, mt: 0.5 }}>
-                    💊 {rx.medications && rx.medications.length > 0
-                      ? rx.medications.map(m => m.name).join(', ')
-                      : rx.medication || 'No medication details'}
-                  </Typography>
+                {/* Medications Summary */}
+                <Typography variant="body2" sx={{ color: '#FBBF24', fontWeight: 700, mt: 0.5 }}>
+                  💊 {rx.medications && rx.medications.length > 0
+                    ? rx.medications.map(m => m.name).join(', ')
+                    : rx.medication || 'No medication details'}
+                </Typography>
 
-                  {/* Diagnosis if available */}
-                  {rx.provisionalDiagnosis && rx.provisionalDiagnosis.length > 0 && (
-                    <Typography variant="caption" sx={{ color: 'text.secondary', mt: 0.3, display: 'block' }}>
-                      Diagnosis: {rx.provisionalDiagnosis.join(', ')}
+                {/* Footer */}
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1.5, pt: 1, borderTop: '1px solid var(--glass-border)' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <VerifiedIcon sx={{ fontSize: 13, color: '#2e7d32' }} />
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                      Verified Prescriber
+                    </Typography>
+                  </Box>
+                  {rx.dispensedAt && (
+                    <Typography variant="caption" sx={{ color: '#34D399', fontWeight: 700 }}>
+                      Fulfilled: {new Date(rx.dispensedAt).toLocaleDateString()}
                     </Typography>
                   )}
-
-                  {/* Footer */}
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1.5, pt: 1, borderTop: '1px solid var(--glass-border)' }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                      <VerifiedIcon sx={{ fontSize: 13, color: '#2e7d32' }} />
-                      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                        Verified Prescriber
-                      </Typography>
-                    </Box>
-                    {isDispensed && rx.dispensedAt && (
-                      <Typography variant="caption" sx={{ color: '#34D399', fontWeight: 700 }}>
-                        {new Date(rx.dispensedAt).toLocaleDateString()}
-                      </Typography>
-                    )}
-                    <ChevronRightIcon sx={{ color: isDispensed ? '#34D399' : '#F59E0B' }} />
-                  </Box>
-                </CardContent>
-              </Card>
-            );
-          })}
+                  <ChevronRightIcon sx={{ color: '#34D399' }} />
+                </Box>
+              </CardContent>
+            </Card>
+          ))}
         </Box>
       )}
 
