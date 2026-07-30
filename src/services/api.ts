@@ -5,8 +5,10 @@ import { LoginCredentials, RegisterData, User } from '../types/auth';
 const getApiUrl = () => {
   const envUrl = process.env.NEXT_PUBLIC_API_URL || process.env.REACT_APP_API_URL;
   if (envUrl) {
-    const url = envUrl.replace(/\/$/, '');
-    return url.endsWith('/api') ? url : `${url}/api`;
+    let cleanUrl = envUrl.trim().replace(/\/+$/, '');
+    cleanUrl = cleanUrl.replace(/\/health(\/api)?$/, '');
+    cleanUrl = cleanUrl.replace(/\/api$/, '');
+    return `${cleanUrl}/api`;
   }
   return 'https://medizoserver.vercel.app/api';
 };
@@ -26,6 +28,7 @@ api.interceptors.request.use(config => {
     const token = localStorage.getItem('token');
     if (token) {
       config.headers['x-auth-token'] = token;
+      config.headers['Authorization'] = `Bearer ${token}`;
     }
   }
   return config;

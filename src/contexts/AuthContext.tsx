@@ -79,6 +79,8 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
 // Create auth context
 const AuthContext = createContext<AuthContextType>({
   authState: initialState,
+  isAuthenticated: false,
+  user: null,
   login: async () => {},
   register: async () => {},
   googleLogin: async () => {},
@@ -109,8 +111,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
       
       try {
-        const user = await api.getCurrentUser();
-        dispatch({ type: 'USER_LOADED', payload: user });
+        const response = await api.authAPI.getMe();
+        dispatch({ type: 'USER_LOADED', payload: response.user });
       } catch (error) {
         dispatch({ type: 'LOGOUT' });
       }
@@ -120,13 +122,28 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   }, []);
 
   // Login function
-  const login = async (credentials: LoginCredentials) => {
+  const login = async (credentialsOrEmail: LoginCredentials | string, password?: string) => {
     try {
-      const data = await api.login(credentials);
+      let email: string;
+      let pwd: string;
+
+      if (typeof credentialsOrEmail === 'string') {
+        email = credentialsOrEmail;
+        pwd = password || '';
+      } else {
+        email = credentialsOrEmail.email;
+        pwd = credentialsOrEmail.password;
+      }
+
+      const data = await api.authAPI.login(email, pwd);
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
       dispatch({ type: 'LOGIN_SUCCESS', payload: data });
+      return data;
     } catch (error: any) {
-      const message = error.response?.data?.message || 'Login failed';
+      const message = error.response?.data?.message || error.message || 'Login failed';
       dispatch({ type: 'AUTH_ERROR', payload: message });
+      throw error;
     }
   };
 
@@ -142,18 +159,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   // Google login function
-  // Returns { isNewUser, user, token } if it's a new user so the caller can redirect to registration
-  // For existing users, dispatches LOGIN_SUCCESS and returns void
   const googleLogin = async (credential: string, role: string = 'patient') => {
     try {
       const data = await api.googleLogin(credential, role);
       
       if (data.isNewUser) {
-        // New user - don't auto-login, return data so caller can redirect to registration
         return { isNewUser: true, user: data.user, token: data.token };
       }
       
-      // Existing user - log in directly
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
       dispatch({ type: 'LOGIN_SUCCESS', payload: { user: data.user, token: data.token } });
     } catch (error: any) {
       const message = error.response?.data?.message || 'Google login failed';
@@ -164,6 +179,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   // Complete Google registration - called from Register page after new user selects role
   const googleCompleteRegistration = (token: string, user: User) => {
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(user));
     dispatch({ type: 'LOGIN_SUCCESS', payload: { user, token } });
   };
 
@@ -180,6 +197,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   return (
     <AuthContext.Provider value={{ 
       authState: state, 
+      isAuthenticated: state.isAuthenticated,
+      user: state.user,
       login, 
       register, 
       googleLogin, 

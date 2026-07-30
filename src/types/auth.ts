@@ -5,6 +5,7 @@ export interface User {
   email: string;
   role: 'doctor' | 'patient' | 'pharmacist';
   profileImage?: string;
+  picture?: string;
   specialization?: string;
   pharmacyName?: string;
   licenseNumber?: string;
@@ -79,7 +80,9 @@ export interface RegisterData {
 
 export interface AuthContextType {
   authState: AuthState;
-  login: (credentials: LoginCredentials) => Promise<void>;
+  isAuthenticated: boolean;
+  user: User | null;
+  login: (credentialsOrEmail: LoginCredentials | string, password?: string) => Promise<any>;
   register: (data: RegisterData) => Promise<void>;
   googleLogin: (credential: string, role?: string) => Promise<{ isNewUser: boolean; user: User; token: string } | void>;
   googleCompleteRegistration: (token: string, user: User) => void;
