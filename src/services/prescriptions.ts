@@ -30,3 +30,8 @@ export const dispensePrescription = async (id: string, dispenseNotes?: string): 
   const response = await api.put(`/prescriptions/${id}/dispense`, { dispenseNotes });
   return response.data;
 };
+
+export const lookupPrescriptionByCode = async (code: string): Promise<{ success: boolean; prescription: Prescription & { doctorName?: string; doctorSpecialization?: string; doctorVerified?: boolean; patientEmail?: string } }> => {
+  const response = await api.get(`/prescriptions/lookup/${encodeURIComponent(code)}`);
+  return response.data;
+};

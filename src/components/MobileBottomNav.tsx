@@ -56,6 +56,14 @@ const MobileBottomNav = () => {
       case 'register':
         navigate('/register');
         break;
+      case 'dispense':
+        // Navigate to dashboard (pharmacist dashboard) and trigger QR scanner
+        navigate('/dashboard');
+        // Dispatch custom event to open QR scanner from PharmacistDashboard
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('open-qr-scanner'));
+        }, 300);
+        break;
       default:
         navigate('/dashboard');
     }
