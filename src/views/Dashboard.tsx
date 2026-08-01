@@ -535,65 +535,74 @@ const Dashboard = () => {
                   )}
                 </Box>
               ) : (
-                <List disablePadding>
-                  {activePrescriptions.map((prescription, idx) => (
-                    <React.Fragment key={prescription.id || idx}>
-                      <ListItem 
-                        button 
-                        onClick={() => navigate(`/prescriptions/${prescription.id}`)}
-                        className="touch-active"
-                        sx={{ 
-                          borderRadius: '16px', 
-                          my: 1, 
-                          p: 2,
-                          bgcolor: 'rgba(255, 255, 255, 0.75)',
-                          border: '1px solid rgba(137, 215, 183, 0.4)',
-                          boxShadow: '0 4px 16px rgba(26, 49, 44, 0.04)',
-                          transition: 'all 0.2s ease',
-                          '&:hover': {
-                            bgcolor: 'rgba(255, 244, 225, 0.9)',
-                            transform: 'translateY(-2px)',
-                            boxShadow: '0 8px 24px rgba(26, 49, 44, 0.08)'
-                          }
-                        }}
-                      >
-                        <Box sx={{ p: 1.5, borderRadius: '14px', bgcolor: 'rgba(66, 132, 117, 0.12)', mr: 2, display: 'flex', alignItems: 'center' }}>
-                          <MedicationIcon sx={{ color: '#428475', fontSize: 26 }} />
-                        </Box>
-                        
-                        <ListItemText
-                          primary={
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 0.5 }}>
-                              <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#1A312C' }}>
-                                {prescription.medication || (prescription.provisionalDiagnosis && prescription.provisionalDiagnosis[0]) || 'Prescription Document'}
+                <>
+                  <List disablePadding>
+                    {activePrescriptions.slice(0, 3).map((prescription, idx) => (
+                      <React.Fragment key={prescription.id || idx}>
+                        <ListItem 
+                          button 
+                          onClick={() => navigate(`/prescriptions/${prescription.id}`)}
+                          className="touch-active"
+                          sx={{ 
+                            borderRadius: '16px', 
+                            my: 1, 
+                            p: 2,
+                            bgcolor: 'rgba(255, 255, 255, 0.75)',
+                            border: '1px solid rgba(137, 215, 183, 0.4)',
+                            boxShadow: '0 4px 16px rgba(26, 49, 44, 0.04)',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                              bgcolor: 'rgba(255, 244, 225, 0.9)',
+                              transform: 'translateY(-2px)',
+                              boxShadow: '0 8px 24px rgba(26, 49, 44, 0.08)'
+                            }
+                          }}
+                        >
+                          <Box sx={{ p: 1.5, borderRadius: '14px', bgcolor: 'rgba(66, 132, 117, 0.12)', mr: 2, display: 'flex', alignItems: 'center' }}>
+                            <MedicationIcon sx={{ color: '#428475', fontSize: 26 }} />
+                          </Box>
+                          
+                          <ListItemText
+                            primary={
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 0.5 }}>
+                                <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#1A312C' }}>
+                                  {prescription.medication || (prescription.provisionalDiagnosis && prescription.provisionalDiagnosis[0]) || 'Prescription Document'}
+                                </Typography>
+                                <Chip 
+                                  label="Active" 
+                                  size="small" 
+                                  sx={{ 
+                                    height: 20, 
+                                    fontSize: '0.65rem', 
+                                    fontWeight: 800, 
+                                    bgcolor: '#89D7B7', 
+                                    color: '#1A312C'
+                                  }} 
+                                />
+                              </Box>
+                            }
+                            secondary={
+                              <Typography variant="caption" sx={{ color: '#428475', fontWeight: 600, display: 'block' }}>
+                                Patient: {(prescription as any).patientName || 'Linked Patient'} • Dosage: {prescription.dosage || 'As directed'}
+                                <span style={{ display: 'block', color: '#64748b', fontSize: '0.72rem', marginTop: '2px' }}>
+                                  Issued: {new Date(prescription.createdAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                </span>
                               </Typography>
-                              <Chip 
-                                label="Active" 
-                                size="small" 
-                                sx={{ 
-                                  height: 20, 
-                                  fontSize: '0.65rem', 
-                                  fontWeight: 800, 
-                                  bgcolor: '#89D7B7', 
-                                  color: '#1A312C'
-                                }} 
-                              />
-                            </Box>
-                          }
-                          secondary={
-                            <Typography variant="caption" sx={{ color: '#428475', fontWeight: 600, display: 'block' }}>
-                              Patient: {(prescription as any).patientName || 'Linked Patient'} • Dosage: {prescription.dosage || 'As directed'}
-                              <span style={{ display: 'block', color: '#64748b', fontSize: '0.72rem', marginTop: '2px' }}>
-                                Issued: {new Date(prescription.createdAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                              </span>
-                            </Typography>
-                          }
-                        />
-                        <ChevronRightIcon sx={{ color: '#428475' }} />
-                      </ListItem>
-                    </React.Fragment>
-                  ))}
-                </List>
+                            }
+                          />
+                          <ChevronRightIcon sx={{ color: '#428475' }} />
+                        </ListItem>
+                      </React.Fragment>
+                    ))}
+                  </List>
+                  {activePrescriptions.length > 3 && (
+                    <Box sx={{ mt: 1, p: 1.5, textAlign: 'center', bgcolor: 'rgba(137, 215, 183, 0.12)', borderRadius: '12px' }}>
+                      <Typography variant="caption" sx={{ fontWeight: 800, color: '#1A312C' }}>
+                        Showing latest 3 of {activePrescriptions.length} active prescriptions
+                      </Typography>
+                    </Box>
+                  )}
+                </>
               )
             )}
 
@@ -612,48 +621,57 @@ const Dashboard = () => {
                   </Typography>
                 </Box>
               ) : (
-                <List disablePadding>
-                  {completedPrescriptions.map((prescription, idx) => (
-                    <React.Fragment key={prescription.id || idx}>
-                      <ListItem 
-                        button 
-                        onClick={() => navigate(`/prescriptions/${prescription.id}`)}
-                        className="touch-active"
-                        sx={{ 
-                          borderRadius: '16px', 
-                          my: 1, 
-                          p: 2,
-                          bgcolor: 'rgba(244, 248, 246, 0.8)',
-                          border: '1px solid rgba(0,0,0,0.06)'
-                        }}
-                      >
-                        <Box sx={{ p: 1.5, borderRadius: '14px', bgcolor: 'rgba(0,0,0,0.04)', mr: 2 }}>
-                          <HistoryIcon sx={{ color: '#64748b', fontSize: 26 }} />
-                        </Box>
-                        <ListItemText
-                          primary={
-                            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#334155' }}>
-                              {prescription.medication || (prescription.provisionalDiagnosis && prescription.provisionalDiagnosis[0]) || 'Prescription Record'}
-                            </Typography>
-                          }
-                          secondary={
-                            <Typography variant="caption" color="text.secondary">
-                              Completed: {new Date(prescription.createdAt || Date.now()).toLocaleDateString()}
-                            </Typography>
-                          }
-                        />
-                        <ChevronRightIcon sx={{ color: '#94a3b8' }} />
-                      </ListItem>
-                    </React.Fragment>
-                  ))}
-                </List>
+                <>
+                  <List disablePadding>
+                    {completedPrescriptions.slice(0, 3).map((prescription, idx) => (
+                      <React.Fragment key={prescription.id || idx}>
+                        <ListItem 
+                          button 
+                          onClick={() => navigate(`/prescriptions/${prescription.id}`)}
+                          className="touch-active"
+                          sx={{ 
+                            borderRadius: '16px', 
+                            my: 1, 
+                            p: 2,
+                            bgcolor: 'rgba(244, 248, 246, 0.8)',
+                            border: '1px solid rgba(0,0,0,0.06)'
+                          }}
+                        >
+                          <Box sx={{ p: 1.5, borderRadius: '14px', bgcolor: 'rgba(0,0,0,0.04)', mr: 2 }}>
+                            <HistoryIcon sx={{ color: '#64748b', fontSize: 26 }} />
+                          </Box>
+                          <ListItemText
+                            primary={
+                              <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#334155' }}>
+                                {prescription.medication || (prescription.provisionalDiagnosis && prescription.provisionalDiagnosis[0]) || 'Prescription Record'}
+                              </Typography>
+                            }
+                            secondary={
+                              <Typography variant="caption" color="text.secondary">
+                                Completed: {new Date(prescription.createdAt || Date.now()).toLocaleDateString()}
+                              </Typography>
+                            }
+                          />
+                          <ChevronRightIcon sx={{ color: '#94a3b8' }} />
+                        </ListItem>
+                      </React.Fragment>
+                    ))}
+                  </List>
+                  {completedPrescriptions.length > 3 && (
+                    <Box sx={{ mt: 1, p: 1.5, textAlign: 'center', bgcolor: 'rgba(0, 0, 0, 0.04)', borderRadius: '12px' }}>
+                      <Typography variant="caption" sx={{ fontWeight: 800, color: '#64748b' }}>
+                        Showing latest 3 of {completedPrescriptions.length} completed records
+                      </Typography>
+                    </Box>
+                  )}
+                </>
               )
             )}
 
             {/* Patients Tab */}
             {tabValue === 2 && user?.role === 'doctor' && (
               <Box sx={{ p: 0.5 }}>
-                <EnhancedPatientManagement />
+                <EnhancedPatientManagement maxPatients={4} />
               </Box>
             )}
 

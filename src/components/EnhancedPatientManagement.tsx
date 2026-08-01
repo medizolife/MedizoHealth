@@ -97,7 +97,11 @@ interface FollowUpAppointment {
   isUpcoming: boolean;
 }
 
-const EnhancedPatientManagement: React.FC = () => {
+interface EnhancedPatientManagementProps {
+  maxPatients?: number;
+}
+
+const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ maxPatients }) => {
   const navigate = useNavigate();
   const [patients, setPatients] = useState<EnhancedPatient[]>([]);
   const [loading, setLoading] = useState(true);
@@ -419,7 +423,7 @@ const EnhancedPatientManagement: React.FC = () => {
         </Paper>
       ) : (
         <Grid container spacing={3}>
-          {patients.map((patient) => (
+          {(maxPatients ? patients.slice(0, maxPatients) : patients).map((patient) => (
             <Grid item xs={12} sm={6} md={4} key={patient.id}>
               <Card 
                 elevation={3} 
@@ -596,6 +600,23 @@ const EnhancedPatientManagement: React.FC = () => {
             </Grid>
           ))}
         </Grid>
+      )}
+
+      {maxPatients && patients.length > maxPatients && (
+        <Box sx={{ mt: 3, textAlign: 'center', p: 2, bgcolor: 'rgba(66, 132, 117, 0.08)', borderRadius: '16px', border: '1.5px solid rgba(66, 132, 117, 0.3)' }}>
+          <Typography variant="body2" sx={{ fontWeight: 800, color: '#1A312C', mb: 1 }}>
+            Showing latest {maxPatients} of {patients.length} patients under your care.
+          </Typography>
+          <Button
+            variant="contained"
+            size="small"
+            onClick={() => navigate('/patients')}
+            startIcon={<PersonIcon />}
+            sx={{ borderRadius: '12px', bgcolor: '#1A312C', color: '#89D7B7', fontWeight: 800, px: 2, py: 1 }}
+          >
+            View All {patients.length} Patients in Bottom Navigation
+          </Button>
+        </Box>
       )}
 
       {/* Medical Details Dialog */}
