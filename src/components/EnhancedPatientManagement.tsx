@@ -27,7 +27,9 @@ import {
   Tab,
   Accordion,
   AccordionSummary,
-  AccordionDetails
+  AccordionDetails,
+  useMediaQuery,
+  useTheme
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -45,7 +47,8 @@ import {
   Schedule as ScheduleIcon,
   Notifications as NotificationsIcon,
   History as HistoryIcon,
-  ExpandMore as ExpandMoreIcon
+  ExpandMore as ExpandMoreIcon,
+  ChevronRight as ChevronRightIcon
 } from '@mui/icons-material';
 import { prescriptionsAPI } from '../services/api';
 import { useNavigate } from 'react-router-dom';
@@ -80,6 +83,8 @@ interface EnhancedPatient extends Omit<Patient, 'medicalHistory'> {
   diagnoses?: string[];
   allergies?: string[];
   medicalHistory?: string[];
+  lastVisit?: string;
+  lastActivity?: string;
   emergencyContact?: any;
   bloodType?: string;
   insurance?: any;
@@ -103,6 +108,8 @@ interface EnhancedPatientManagementProps {
 
 const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ maxPatients }) => {
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
   const [patients, setPatients] = useState<EnhancedPatient[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -394,16 +401,18 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
         </Paper>
       )}
 
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
-        <Box>
-          <Typography variant="h4" component="h1" gutterBottom>
-            My Patients Dashboard
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            {patients.length} {patients.length === 1 ? 'patient' : 'patients'} under your care
-          </Typography>
+      {!maxPatients && (
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+          <Box>
+            <Typography variant="h4" component="h1" gutterBottom>
+              My Patients Dashboard
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              {patients.length} {patients.length === 1 ? 'patient' : 'patients'} under your care
+            </Typography>
+          </Box>
         </Box>
-      </Box>
+      )}
 
       {error && (
         <Alert severity="error" sx={{ mb: 3 }}>
@@ -421,185 +430,132 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
             Patients will appear here after you create prescriptions for them.
           </Typography>
         </Paper>
-      ) : (
-        <Grid container spacing={3}>
-          {(maxPatients ? patients.slice(0, maxPatients) : patients).map((patient) => (
-            <Grid item xs={12} sm={6} md={4} key={patient.id}>
-              <Card 
-                elevation={3} 
-                sx={{ 
-                  height: '100%', 
-                  display: 'flex', 
-                  flexDirection: 'column',
-                  transition: 'transform 0.2s, box-shadow 0.2s',
-                  '&:hover': {
-                    transform: 'translateY(-4px)',
-                    boxShadow: 6
-                  }
-                }}
-              >
-                <CardContent sx={{ flexGrow: 1 }}>
-                  {/* Patient Header */}
-                  <Box display="flex" alignItems="center" mb={2}>
-                    <Avatar 
-                      sx={{ 
-                        bgcolor: 'primary.main', 
-                        width: 56, 
-                        height: 56, 
-                        mr: 2 
-                      }}
-                    >
-                      <PersonIcon fontSize="large" />
-                    </Avatar>
-                    <Box>
-                      <Typography variant="h6" component="div">
-                        {patient.firstName} {patient.lastName}
-                      </Typography>
-                      <Chip 
-                        label="Patient" 
-                        size="small" 
-                        color="secondary" 
-                        sx={{ mt: 0.5 }}
-                      />
-                    </Box>
-                  </Box>
-
-                  <Divider sx={{ my: 2 }} />
-
-                  {/* Contact Information */}
-                  <Stack spacing={1.5} mb={2}>
-                    <Box display="flex" alignItems="center">
-                      <EmailIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
-                      <Typography variant="body2" noWrap>
-                        {patient.email}
-                      </Typography>
-                    </Box>
-                    
-                    {patient.contactNumber && (
-                      <Box display="flex" alignItems="center">
-                        <PhoneIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
-                        <Typography variant="body2">
-                          {patient.contactNumber}
+      ) : isDesktop ? (
+        /* 💻 Desktop Widescreen Modern List Layout */
+        <Paper elevation={0} sx={{ borderRadius: '20px', overflow: 'hidden', border: '1px solid rgba(137, 215, 183, 0.4)', bgcolor: 'rgba(255, 255, 255, 0.95)' }}>
+          <List disablePadding>
+            {(maxPatients ? patients.slice(0, maxPatients) : patients).map((patient, idx) => (
+              <React.Fragment key={patient.id}>
+                {idx > 0 && <Divider sx={{ borderColor: 'rgba(137, 215, 183, 0.2)' }} />}
+                <ListItem
+                  button
+                  onClick={() => handleViewMedicalDetails(patient)}
+                  sx={{
+                    py: 2,
+                    px: 3,
+                    transition: 'all 0.2s ease',
+                    '&:hover': { bgcolor: 'rgba(255, 244, 225, 0.7)' }
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 3 }}>
+                    {/* Patient Name & Email */}
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '32%' }}>
+                      <Avatar sx={{ bgcolor: '#1A312C', color: '#89D7B7', width: 44, height: 44, fontWeight: 800 }}>
+                        {patient.firstName ? patient.firstName[0].toUpperCase() : 'P'}
+                      </Avatar>
+                      <Box>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#1A312C' }}>
+                          {patient.firstName} {patient.lastName}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600 }}>
+                          {patient.email}
                         </Typography>
                       </Box>
-                    )}
+                    </Box>
 
-                    <Box display="flex" alignItems="center">
-                      <CakeIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
-                      <Typography variant="body2">
-                        {formatDate(patient.dateOfBirth)}
+                    {/* Latest Treatment */}
+                    <Box sx={{ width: '38%' }}>
+                      <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 700, display: 'block', textTransform: 'uppercase', fontSize: '0.65rem', mb: 0.3 }}>
+                        Latest Treatment / Diagnosis
+                      </Typography>
+                      <Chip
+                        label={patient.latestPrescription?.medication || (patient.diagnoses && patient.diagnoses[0]) || 'General Checkup'}
+                        size="small"
+                        sx={{ bgcolor: 'rgba(66, 132, 117, 0.12)', color: '#428475', fontWeight: 800 }}
+                      />
+                    </Box>
+
+                    {/* Last Visit */}
+                    <Box sx={{ width: '18%' }}>
+                      <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 700, display: 'block', textTransform: 'uppercase', fontSize: '0.65rem', mb: 0.3 }}>
+                        Last Visit
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 700, color: '#1A312C' }}>
+                        {patient.lastVisit ? new Date(patient.lastVisit).toLocaleDateString() : 'Recent'}
                       </Typography>
                     </Box>
-                  </Stack>
 
-                  <Divider sx={{ my: 2 }} />
-
-                  {/* Prescription Stats */}
-                  <Box mb={2}>
-                    <Typography variant="subtitle2" color="primary" gutterBottom>
-                      Prescription Summary
-                    </Typography>
-                    <Stack direction="row" spacing={2} flexWrap="wrap">
-                      <Chip
-                        icon={<PharmacyIcon />}
-                        label={`${patient.totalPrescriptions || 0} Total`}
-                        color="primary"
+                    {/* Action */}
+                    <Box sx={{ width: '12%', textAlign: 'right' }}>
+                      <Button
                         variant="outlined"
                         size="small"
-                      />
-                      <Chip
-                        icon={<AssignmentIcon />}
-                        label={`${patient.activePrescriptions || 0} Active`}
-                        color="success"
-                        variant="outlined"
-                        size="small"
-                      />
-                    </Stack>
+                        startIcon={<VisibilityIcon />}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleViewMedicalDetails(patient);
+                        }}
+                        sx={{ borderRadius: '12px', fontWeight: 800, borderColor: '#1A312C', color: '#1A312C' }}
+                      >
+                        Details
+                      </Button>
+                    </Box>
                   </Box>
-
-                  {/* Latest Prescription */}
-                  {patient.latestPrescription && (
-                    <Box>
-                      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                        Latest Treatment
-                      </Typography>
-                      <Paper variant="outlined" sx={{ p: 1.5, bgcolor: 'grey.50' }}>
-                        <Typography variant="body2" fontWeight="bold" gutterBottom>
-                          {patient.latestPrescription.diagnosis}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {formatDate(patient.latestPrescription.createdAt)}
-                        </Typography>
-                      </Paper>
-                    </Box>
-                  )}
-
-                  {/* Medical Alerts */}
-                  {patient.allergies && patient.allergies.length > 0 && (
-                    <Box mt={2}>
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        <WarningIcon fontSize="small" color="warning" />
-                        <Typography variant="caption" color="warning.main">
-                          {patient.allergies.length} {patient.allergies.length === 1 ? 'Allergy' : 'Allergies'}
-                        </Typography>
-                      </Stack>
-                    </Box>
-                  )}
-
-                  {patient.bloodType && (
-                    <Box mt={1}>
-                      <Chip
-                        icon={<BloodIcon />}
-                        label={`Blood: ${patient.bloodType}`}
-                        size="small"
-                        color="info"
-                        variant="outlined"
-                      />
-                    </Box>
-                  )}
-                </CardContent>
-
-                <Divider />
-
-                {/* Action Buttons */}
-                <CardActions sx={{ p: 2, gap: 1, flexWrap: 'wrap' }}>
-                  <Button
-                    size="small"
-                    variant="contained"
-                    startIcon={<VisibilityIcon />}
-                    onClick={() => handleViewMedicalDetails(patient)}
-                    fullWidth
-                  >
-                    View Details
-                  </Button>
-                  
-                  {Boolean(patient.totalPrescriptions && patient.totalPrescriptions > 0) && (
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      startIcon={<PharmacyIcon />}
-                      onClick={() => navigate('/prescriptions/all')}
-                      fullWidth
-                    >
-                      View Prescriptions
-                    </Button>
-                  )}
-                  
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    color="secondary"
-                    startIcon={<EditIcon />}
-                    onClick={() => handleEditMedicalInfo(patient)}
-                    fullWidth
-                  >
-                    Edit Medical Info
-                  </Button>
-                </CardActions>
-              </Card>
-            </Grid>
+                </ListItem>
+              </React.Fragment>
+            ))}
+          </List>
+        </Paper>
+      ) : (
+        /* 📱 Mobile Compact Cards Mode */
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+          {(maxPatients ? patients.slice(0, maxPatients) : patients).map((patient) => (
+            <Card
+              key={patient.id}
+              onClick={() => handleViewMedicalDetails(patient)}
+              className="touch-active"
+              sx={{
+                p: 1.8,
+                borderRadius: '16px',
+                bgcolor: 'rgba(255, 255, 255, 0.85)',
+                border: '1px solid rgba(137, 215, 183, 0.4)',
+                boxShadow: '0 4px 16px rgba(26, 49, 44, 0.04)',
+                display: 'flex',
+                alignItems: 'center',
+                justify: 'space-between',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  bgcolor: 'rgba(255, 244, 225, 0.9)',
+                  transform: 'translateY(-2px)'
+                }
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <Avatar sx={{ bgcolor: 'rgba(66, 132, 117, 0.15)', color: '#428475', width: 42, height: 42, fontWeight: 800 }}>
+                  {patient.firstName ? patient.firstName[0].toUpperCase() : <PersonIcon />}
+                </Avatar>
+                <Box>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#1A312C', lineHeight: 1.2 }}>
+                    {patient.firstName} {patient.lastName}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: '#428475', fontWeight: 700, display: 'block', mt: 0.3 }}>
+                    🩺 {patient.latestPrescription?.medication || (patient.diagnoses && patient.diagnoses[0]) || 'Latest Treatment: General Checkup'}
+                  </Typography>
+                </Box>
+              </Box>
+              
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <Chip 
+                  label="View Details" 
+                  size="small" 
+                  sx={{ bgcolor: '#1A312C', color: '#89D7B7', fontWeight: 800, fontSize: '0.68rem', cursor: 'pointer' }} 
+                />
+                <ChevronRightIcon sx={{ color: '#428475' }} />
+              </Box>
+            </Card>
           ))}
-        </Grid>
+        </Box>
       )}
 
       {maxPatients && patients.length > maxPatients && (
