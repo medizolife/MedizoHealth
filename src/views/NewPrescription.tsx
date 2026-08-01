@@ -3,10 +3,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getMyPatients } from '../services/patients';
-import { usersAPI } from '../services/api';
-import { createPrescription } from '../services/prescriptions';
+import { usersAPI, prescriptionsAPI } from '../services/api';
+import { createPrescription, lookupPrescriptionByCode } from '../services/prescriptions';
 import { digilockerAPI } from '../services/api';
 import { Patient } from '../types/auth';
+import { Prescription } from '../types/prescription';
+import QrScannerModal from '../components/QrScannerModal';
 import { 
   Container,
   Typography,
@@ -39,7 +41,14 @@ import {
   Tabs,
   Tab,
   Autocomplete,
-  Popover
+  Popover,
+  Avatar,
+  List,
+  ListItem,
+  ListItemText,
+  Snackbar,
+  Tooltip,
+  Collapse
 } from '@mui/material';
 import indianMedicines from '../data/indianMedicines.json';
 import {
@@ -84,7 +93,14 @@ import {
   LocalCafe as EmptyStomachIcon,
   AccessTime as AnyTimeIcon,
   FlashOn as SosIcon,
-  ReportProblem as WarningBadgeIcon
+  ReportProblem as WarningBadgeIcon,
+  History as HistoryIcon,
+  QrCodeScanner as QrCodeScannerIcon,
+  ContentCopy as CopyIcon,
+  Visibility as ViewIcon,
+  Bloodtype as BloodIcon,
+  ExpandLess as ExpandLessIcon,
+  ChevronRight as ChevronRightIcon
 } from '@mui/icons-material';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { CreatePrescriptionData, MedicationItem, Investigation, VitalSigns, FollowUpInfo } from '../types/prescription';
@@ -124,6 +140,17 @@ const NewPrescription = () => {
   const [foundPatient, setFoundPatient] = useState<Patient | null>(null);
   const [lookupError, setLookupError] = useState('');
   const [scanningQR, setScanningQR] = useState(false);
+
+  // Patient context & past prescriptions state
+  const [pastDoctorPrescriptions, setPastDoctorPrescriptions] = useState<Prescription[]>([]);
+  const [scannedExternalPrescriptions, setScannedExternalPrescriptions] = useState<Prescription[]>([]);
+  const [externalQrScannerOpen, setExternalQrScannerOpen] = useState(false);
+  const [externalLookupLoading, setExternalLookupLoading] = useState(false);
+  const [externalLookupCode, setExternalLookupCode] = useState('');
+  const [patientContextExpanded, setPatientContextExpanded] = useState(true);
+  const [pastRxExpanded, setPastRxExpanded] = useState(true);
+  const [rxSnackbar, setRxSnackbar] = useState({ open: false, message: '', severity: 'info' as 'info' | 'success' | 'error' | 'warning' });
+  const [loadingPastRx, setLoadingPastRx] = useState(false);
   
   // Form data state
   const [formData, setFormData] = useState<CreatePrescriptionData>({
@@ -430,15 +457,117 @@ const NewPrescription = () => {
       .catch(() => setDigilockerVerified(false));
   }, []);
 
-  // Update selected patient when patientId changes
+  // Update selected patient when patientId changes + fetch past prescriptions
   useEffect(() => {
     if (formData.patientId) {
       const patient = patients.find(p => p.id === formData.patientId);
       setSelectedPatient(patient || null);
+      
+      // Fetch this doctor's past prescriptions for the selected patient
+      setLoadingPastRx(true);
+      setPastDoctorPrescriptions([]);
+      setScannedExternalPrescriptions([]);
+      prescriptionsAPI.getMyPrescriptions()
+        .then((allRx: any) => {
+          const rxList = Array.isArray(allRx) ? allRx : (allRx?.prescriptions || []);
+          // Filter: only prescriptions for this patient, by the current doctor
+          const doctorRxForPatient = rxList.filter((rx: any) =>
+            rx.patientId === formData.patientId && rx.doctorId === user?.id
+          );
+          // Sort by createdAt descending (newest first)
+          doctorRxForPatient.sort((a: any, b: any) =>
+            new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+          );
+          setPastDoctorPrescriptions(doctorRxForPatient);
+        })
+        .catch(err => {
+          console.error('Error fetching past prescriptions:', err);
+        })
+        .finally(() => setLoadingPastRx(false));
     } else {
       setSelectedPatient(null);
+      setPastDoctorPrescriptions([]);
+      setScannedExternalPrescriptions([]);
     }
   }, [formData.patientId, patients]);
+
+  // Handle External QR Scan Success
+  const handleExternalQrScanSuccess = async (decodedText: string) => {
+    setExternalQrScannerOpen(false);
+    setExternalLookupLoading(true);
+    setRxSnackbar({ open: true, message: '🔍 Looking up external prescription...', severity: 'info' });
+
+    try {
+      const result = await lookupPrescriptionByCode(decodedText);
+      if (result.success && result.prescription) {
+        const rx = result.prescription as Prescription;
+        // Check if already scanned
+        if (scannedExternalPrescriptions.some(s => s.id === rx.id)) {
+          setRxSnackbar({ open: true, message: '⚠️ This prescription has already been added.', severity: 'warning' });
+        } else {
+          setScannedExternalPrescriptions(prev => [...prev, rx]);
+          setRxSnackbar({ open: true, message: `✅ External prescription from Dr. ${(rx as any).doctorName || 'Unknown'} loaded successfully!`, severity: 'success' });
+        }
+      }
+    } catch (err: any) {
+      const msg = err.response?.data?.message || 'Prescription not found for this QR code.';
+      setRxSnackbar({ open: true, message: `❌ ${msg}`, severity: 'error' });
+    } finally {
+      setExternalLookupLoading(false);
+    }
+  };
+
+  // Manual external code lookup
+  const handleExternalManualLookup = async () => {
+    if (!externalLookupCode.trim()) return;
+    setExternalLookupLoading(true);
+    setRxSnackbar({ open: true, message: '🔍 Looking up prescription code...', severity: 'info' });
+
+    try {
+      const result = await lookupPrescriptionByCode(externalLookupCode.trim());
+      if (result.success && result.prescription) {
+        const rx = result.prescription as Prescription;
+        if (scannedExternalPrescriptions.some(s => s.id === rx.id)) {
+          setRxSnackbar({ open: true, message: '⚠️ This prescription has already been added.', severity: 'warning' });
+        } else {
+          setScannedExternalPrescriptions(prev => [...prev, rx]);
+          setRxSnackbar({ open: true, message: `✅ External prescription loaded!`, severity: 'success' });
+          setExternalLookupCode('');
+        }
+      }
+    } catch (err: any) {
+      const msg = err.response?.data?.message || 'Prescription not found.';
+      setRxSnackbar({ open: true, message: `❌ ${msg}`, severity: 'error' });
+    } finally {
+      setExternalLookupLoading(false);
+    }
+  };
+
+  // Copy past prescription data into current form (re-order)
+  const handleCopyPastRx = (rx: Prescription) => {
+    // Copy diagnosis
+    if (rx.provisionalDiagnosis && rx.provisionalDiagnosis.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        provisionalDiagnosis: Array.from(new Set([...(prev.provisionalDiagnosis || []), ...rx.provisionalDiagnosis!]))
+      }));
+    }
+    // Copy medications
+    if (rx.medications && rx.medications.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        medications: [...(prev.medications || []), ...rx.medications!]
+      }));
+    }
+    // Copy complaints
+    if (rx.presentingComplaints && rx.presentingComplaints.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        presentingComplaints: Array.from(new Set([...(prev.presentingComplaints || []), ...rx.presentingComplaints!]))
+      }));
+    }
+    setRxSnackbar({ open: true, message: '✅ Past prescription data copied to current form!', severity: 'success' });
+  };
 
   // Handle select changes
   const handleSelectChange = (e: SelectChangeEvent) => {
@@ -832,20 +961,324 @@ const NewPrescription = () => {
             </Grid>
             
             {selectedPatient && (
-              <Grid item xs={12} sm={6}>
-                <Card variant="outlined" sx={{ borderRadius: '16px', bgcolor: mode === 'dark' ? 'rgba(0, 0, 0, 0.3)' : 'rgba(102, 205, 170, 0.1)', borderColor: 'var(--glass-border)', p: 1.5 }}>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#123029' }}>
-                    {selectedPatient.firstName} {selectedPatient.lastName}
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-teal)', display: 'block', fontWeight: 600 }}>
-                    Email: {selectedPatient.email}
-                  </Typography>
-                  {selectedPatient.contactNumber && (
-                    <Typography variant="caption" sx={{ color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-teal)', display: 'block', fontWeight: 600 }}>
-                      Phone: {selectedPatient.contactNumber}
-                    </Typography>
-                  )}
-                </Card>
+              <Grid item xs={12}>
+                {/* ═══ Rich Patient Context Card ═══ */}
+                <Paper
+                  elevation={0}
+                  sx={{
+                    borderRadius: '22px',
+                    border: mode === 'dark' ? '1.5px solid rgba(137, 215, 183, 0.3)' : '1.5px solid rgba(18, 48, 41, 0.12)',
+                    bgcolor: mode === 'dark' ? 'rgba(17, 29, 26, 0.85)' : 'rgba(255, 255, 255, 0.95)',
+                    overflow: 'hidden',
+                    backdropFilter: 'blur(16px)',
+                    boxShadow: mode === 'dark' ? '0 8px 32px rgba(0,0,0,0.3)' : '0 8px 32px rgba(18, 48, 41, 0.06)'
+                  }}
+                >
+                  {/* Patient Header - Always Visible */}
+                  <Box
+                    onClick={() => setPatientContextExpanded(!patientContextExpanded)}
+                    sx={{
+                      p: 2,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      cursor: 'pointer',
+                      transition: 'background 0.2s',
+                      '&:hover': { bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.06)' : 'rgba(102, 205, 170, 0.06)' }
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <Avatar
+                        sx={{
+                          width: 48,
+                          height: 48,
+                          bgcolor: mode === 'dark' ? '#428475' : '#1A312C',
+                          color: '#89D7B7',
+                          fontWeight: 900,
+                          fontSize: '1.1rem'
+                        }}
+                      >
+                        {selectedPatient.firstName?.[0]?.toUpperCase() || 'P'}
+                      </Avatar>
+                      <Box>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', lineHeight: 1.2 }}>
+                          {selectedPatient.firstName} {selectedPatient.lastName}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: mode === 'dark' ? '#89D7B7' : '#428475', fontWeight: 700, display: 'block' }}>
+                          {selectedPatient.email}
+                          {(selectedPatient as any).dateOfBirth && ` • ${new Date().getFullYear() - new Date((selectedPatient as any).dateOfBirth).getFullYear()} yrs`}
+                        </Typography>
+                      </Box>
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      {pastDoctorPrescriptions.length > 0 && (
+                        <Chip
+                          label={`${pastDoctorPrescriptions.length} Past Rx`}
+                          size="small"
+                          sx={{ bgcolor: 'rgba(66, 132, 117, 0.15)', color: '#428475', fontWeight: 800, fontSize: '0.68rem', height: 22 }}
+                        />
+                      )}
+                      {patientContextExpanded ? <ExpandLessIcon sx={{ color: '#428475' }} /> : <ExpandMoreIcon sx={{ color: '#428475' }} />}
+                    </Box>
+                  </Box>
+
+                  <Collapse in={patientContextExpanded}>
+                    <Divider sx={{ borderColor: mode === 'dark' ? 'rgba(137, 215, 183, 0.15)' : 'rgba(18, 48, 41, 0.08)' }} />
+
+                    {/* Patient Details Grid */}
+                    <Box sx={{ px: 2, py: 1.5 }}>
+                      <Grid container spacing={1.5}>
+                        {selectedPatient.contactNumber && (
+                          <Grid item xs={6} sm={4}>
+                            <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.62rem', display: 'block' }}>📱 Phone</Typography>
+                            <Typography variant="body2" sx={{ fontWeight: 700, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.82rem' }}>{selectedPatient.contactNumber}</Typography>
+                          </Grid>
+                        )}
+                        {(selectedPatient as any).dateOfBirth && (
+                          <Grid item xs={6} sm={4}>
+                            <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.62rem', display: 'block' }}>🎂 Date of Birth</Typography>
+                            <Typography variant="body2" sx={{ fontWeight: 700, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.82rem' }}>
+                              {new Date((selectedPatient as any).dateOfBirth).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </Typography>
+                          </Grid>
+                        )}
+                        {(selectedPatient as any).address && (
+                          <Grid item xs={12} sm={4}>
+                            <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.62rem', display: 'block' }}>📍 Address</Typography>
+                            <Typography variant="body2" sx={{ fontWeight: 700, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.82rem' }} noWrap>{(selectedPatient as any).address}</Typography>
+                          </Grid>
+                        )}
+                        {(selectedPatient as any).bloodType && (
+                          <Grid item xs={6} sm={4}>
+                            <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.62rem', display: 'block' }}>🩸 Blood Group</Typography>
+                            <Chip label={(selectedPatient as any).bloodType} size="small" icon={<BloodIcon sx={{ fontSize: 14 }} />} sx={{ bgcolor: '#fee2e2', color: '#dc2626', fontWeight: 800, fontSize: '0.72rem', height: 22 }} />
+                          </Grid>
+                        )}
+                        {(selectedPatient as any).emergencyContact && (
+                          <Grid item xs={6} sm={4}>
+                            <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.62rem', display: 'block' }}>🚨 Emergency</Typography>
+                            <Typography variant="body2" sx={{ fontWeight: 700, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.82rem' }}>{(selectedPatient as any).emergencyContact}</Typography>
+                          </Grid>
+                        )}
+                      </Grid>
+
+                      {/* Allergies & Medical History */}
+                      {((selectedPatient as any).allergies?.length > 0 || (selectedPatient as any).medicalHistory) && (
+                        <Box sx={{ mt: 1.5 }}>
+                          {(selectedPatient as any).allergies?.length > 0 && (
+                            <Box sx={{ mb: 1 }}>
+                              <Typography variant="caption" sx={{ color: '#dc2626', fontWeight: 800, textTransform: 'uppercase', fontSize: '0.62rem', display: 'block', mb: 0.5 }}>⚠️ Allergies</Typography>
+                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                {((selectedPatient as any).allergies || []).map((allergy: string, i: number) => (
+                                  <Chip key={i} label={allergy} size="small" sx={{ bgcolor: '#fef2f2', color: '#dc2626', fontWeight: 800, fontSize: '0.68rem', height: 22, border: '1px solid #fecaca' }} />
+                                ))}
+                              </Box>
+                            </Box>
+                          )}
+                          {(selectedPatient as any).medicalHistory && (
+                            <Box>
+                              <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 800, textTransform: 'uppercase', fontSize: '0.62rem', display: 'block', mb: 0.3 }}>📋 Medical History</Typography>
+                              <Typography variant="caption" sx={{ color: mode === 'dark' ? '#cbd5e1' : '#475569', fontWeight: 600, fontSize: '0.75rem' }}>
+                                {typeof (selectedPatient as any).medicalHistory === 'string'
+                                  ? (selectedPatient as any).medicalHistory
+                                  : Array.isArray((selectedPatient as any).medicalHistory)
+                                    ? ((selectedPatient as any).medicalHistory as string[]).join(', ')
+                                    : ''}
+                              </Typography>
+                            </Box>
+                          )}
+                        </Box>
+                      )}
+                    </Box>
+
+                    <Divider sx={{ borderColor: mode === 'dark' ? 'rgba(137, 215, 183, 0.15)' : 'rgba(18, 48, 41, 0.08)' }} />
+
+                    {/* ═══ Your Past Prescriptions for This Patient ═══ */}
+                    <Box sx={{ px: 2, py: 1.5 }}>
+                      <Box
+                        onClick={() => setPastRxExpanded(!pastRxExpanded)}
+                        sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', mb: pastRxExpanded ? 1 : 0 }}
+                      >
+                        <Typography variant="subtitle2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#1A312C', display: 'flex', alignItems: 'center', gap: 0.8, fontSize: '0.85rem' }}>
+                          <HistoryIcon sx={{ fontSize: 18, color: '#428475' }} /> Your Past Prescriptions ({pastDoctorPrescriptions.length})
+                        </Typography>
+                        {pastRxExpanded ? <ExpandLessIcon sx={{ color: '#428475', fontSize: 20 }} /> : <ExpandMoreIcon sx={{ color: '#428475', fontSize: 20 }} />}
+                      </Box>
+
+                      <Collapse in={pastRxExpanded}>
+                        {loadingPastRx ? (
+                          <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+                            <CircularProgress size={24} sx={{ color: '#428475' }} />
+                          </Box>
+                        ) : pastDoctorPrescriptions.length === 0 ? (
+                          <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600, fontStyle: 'italic', display: 'block', py: 1 }}>
+                            No previous prescriptions found for this patient.
+                          </Typography>
+                        ) : (
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, maxHeight: 260, overflowY: 'auto', pr: 0.5, '&::-webkit-scrollbar': { width: 4 }, '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(66,132,117,0.3)', borderRadius: 2 } }}>
+                            {pastDoctorPrescriptions.slice(0, 5).map((rx) => (
+                              <Card
+                                key={rx.id}
+                                variant="outlined"
+                                sx={{
+                                  p: 1.5,
+                                  borderRadius: '14px',
+                                  bgcolor: mode === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(244, 248, 246, 0.8)',
+                                  borderColor: mode === 'dark' ? 'rgba(137, 215, 183, 0.15)' : 'rgba(18, 48, 41, 0.08)',
+                                  transition: 'all 0.2s',
+                                  '&:hover': { borderColor: '#428475' }
+                                }}
+                              >
+                                <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1 }}>
+                                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, mb: 0.5, flexWrap: 'wrap' }}>
+                                      <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.78rem' }} noWrap>
+                                        {rx.provisionalDiagnosis?.[0] || rx.medication || 'Prescription'}
+                                      </Typography>
+                                      <Chip
+                                        label={rx.status}
+                                        size="small"
+                                        sx={{
+                                          height: 18,
+                                          fontSize: '0.6rem',
+                                          fontWeight: 800,
+                                          bgcolor: rx.status === 'active' ? '#dcfce7' : rx.status === 'completed' ? '#e0f2fe' : '#fef2f2',
+                                          color: rx.status === 'active' ? '#16a34a' : rx.status === 'completed' ? '#0284c7' : '#dc2626'
+                                        }}
+                                      />
+                                    </Box>
+                                    <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600, display: 'block', fontSize: '0.7rem' }}>
+                                      📅 {new Date(rx.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                      {rx.medications && rx.medications.length > 0 && ` • 💊 ${rx.medications.map(m => m.name).slice(0, 2).join(', ')}${rx.medications.length > 2 ? ` +${rx.medications.length - 2}` : ''}`}
+                                    </Typography>
+                                  </Box>
+                                  <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0 }}>
+                                    <Tooltip title="Copy to current Rx">
+                                      <IconButton
+                                        size="small"
+                                        onClick={() => handleCopyPastRx(rx)}
+                                        sx={{ bgcolor: 'rgba(66, 132, 117, 0.1)', '&:hover': { bgcolor: 'rgba(66, 132, 117, 0.2)' } }}
+                                      >
+                                        <CopyIcon sx={{ fontSize: 16, color: '#428475' }} />
+                                      </IconButton>
+                                    </Tooltip>
+                                    <Tooltip title="View full prescription">
+                                      <IconButton
+                                        size="small"
+                                        onClick={() => window.open(`/prescriptions/${rx.id}`, '_blank')}
+                                        sx={{ bgcolor: 'rgba(66, 132, 117, 0.1)', '&:hover': { bgcolor: 'rgba(66, 132, 117, 0.2)' } }}
+                                      >
+                                        <ViewIcon sx={{ fontSize: 16, color: '#428475' }} />
+                                      </IconButton>
+                                    </Tooltip>
+                                  </Box>
+                                </Box>
+                              </Card>
+                            ))}
+                          </Box>
+                        )}
+                      </Collapse>
+                    </Box>
+
+                    <Divider sx={{ borderColor: mode === 'dark' ? 'rgba(137, 215, 183, 0.15)' : 'rgba(18, 48, 41, 0.08)' }} />
+
+                    {/* ═══ External Prescription Scanner ═══ */}
+                    <Box sx={{ px: 2, py: 1.5 }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#1A312C', display: 'flex', alignItems: 'center', gap: 0.8, fontSize: '0.85rem', mb: 1 }}>
+                        <QrCodeScannerIcon sx={{ fontSize: 18, color: '#0284c7' }} /> External Doctor Prescriptions
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600, display: 'block', mb: 1.2, fontSize: '0.72rem' }}>
+                        Scan or enter a QR code / verification code from another doctor's prescription to view it during this consultation.
+                      </Typography>
+
+                      <Box sx={{ display: 'flex', gap: 1, mb: 1.5 }}>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<QrCodeScannerIcon sx={{ fontSize: 18 }} />}
+                          onClick={() => setExternalQrScannerOpen(true)}
+                          disabled={externalLookupLoading}
+                          sx={{
+                            borderRadius: '14px',
+                            fontWeight: 800,
+                            fontSize: '0.76rem',
+                            borderColor: '#0284c7',
+                            color: '#0284c7',
+                            '&:hover': { bgcolor: 'rgba(2, 132, 199, 0.08)', borderColor: '#0369a1' }
+                          }}
+                        >
+                          Scan QR
+                        </Button>
+                        <TextField
+                          size="small"
+                          placeholder="Enter Rx code..."
+                          value={externalLookupCode}
+                          onChange={(e) => setExternalLookupCode(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && handleExternalManualLookup()}
+                          InputProps={{
+                            sx: { borderRadius: '14px', fontSize: '0.82rem', fontWeight: 700 },
+                            endAdornment: (
+                              <InputAdornment position="end">
+                                <IconButton
+                                  size="small"
+                                  onClick={handleExternalManualLookup}
+                                  disabled={externalLookupLoading || !externalLookupCode.trim()}
+                                >
+                                  {externalLookupLoading ? <CircularProgress size={16} /> : <SearchIcon sx={{ fontSize: 18 }} />}
+                                </IconButton>
+                              </InputAdornment>
+                            )
+                          }}
+                          sx={{ flex: 1 }}
+                        />
+                      </Box>
+
+                      {/* Scanned External Prescriptions List */}
+                      {scannedExternalPrescriptions.length > 0 && (
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                          {scannedExternalPrescriptions.map((rx) => (
+                            <Card
+                              key={rx.id}
+                              variant="outlined"
+                              sx={{
+                                p: 1.5,
+                                borderRadius: '14px',
+                                bgcolor: mode === 'dark' ? 'rgba(2, 132, 199, 0.08)' : 'rgba(224, 242, 254, 0.5)',
+                                borderColor: 'rgba(2, 132, 199, 0.3)',
+                              }}
+                            >
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                                <Chip
+                                  label={`External — Dr. ${(rx as any).doctorName || 'Unknown Doctor'}`}
+                                  size="small"
+                                  sx={{ bgcolor: '#0284c7', color: '#fff', fontWeight: 800, fontSize: '0.65rem', height: 20 }}
+                                />
+                                <Chip
+                                  label={rx.status}
+                                  size="small"
+                                  sx={{
+                                    height: 18,
+                                    fontSize: '0.58rem',
+                                    fontWeight: 800,
+                                    bgcolor: rx.status === 'active' ? '#dcfce7' : '#e0f2fe',
+                                    color: rx.status === 'active' ? '#16a34a' : '#0284c7'
+                                  }}
+                                />
+                              </Box>
+                              <Typography variant="caption" sx={{ fontWeight: 700, color: mode === 'dark' ? '#FAF2F5' : '#0f172a', fontSize: '0.78rem', display: 'block' }}>
+                                {rx.provisionalDiagnosis?.[0] || rx.medication || 'Prescription'}
+                              </Typography>
+                              <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600, display: 'block', fontSize: '0.7rem' }}>
+                                📅 {new Date(rx.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                {rx.medications && rx.medications.length > 0 && ` • 💊 ${rx.medications.map(m => m.name).join(', ')}`}
+                              </Typography>
+                            </Card>
+                          ))}
+                        </Box>
+                      )}
+                    </Box>
+                  </Collapse>
+                </Paper>
               </Grid>
             )}
           </Grid>
@@ -2940,6 +3373,29 @@ const NewPrescription = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* External Prescription QR Scanner Modal */}
+      <QrScannerModal
+        open={externalQrScannerOpen}
+        onClose={() => setExternalQrScannerOpen(false)}
+        onScanSuccess={handleExternalQrScanSuccess}
+      />
+
+      {/* Prescription Action Snackbar */}
+      <Snackbar
+        open={rxSnackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setRxSnackbar({ ...rxSnackbar, open: false })}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setRxSnackbar({ ...rxSnackbar, open: false })}
+          severity={rxSnackbar.severity}
+          sx={{ borderRadius: '16px', fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}
+        >
+          {rxSnackbar.message}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };
