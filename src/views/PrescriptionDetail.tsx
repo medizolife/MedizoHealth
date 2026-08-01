@@ -2,7 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { getPrescriptionById, updatePrescription } from '../services/prescriptions';
+import { getPrescriptionById } from '../services/prescriptions';
+import { prescriptionsAPI } from '../services/api';
 import { getPatientById } from '../services/patients';
 import { findUserById } from '../utils/auth';
 import { Prescription } from '../types/prescription';
@@ -44,6 +45,7 @@ const PrescriptionDetail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [qrModalOpen, setQrModalOpen] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   
   useEffect(() => {
     const fetchPrescriptionDetails = async () => {
@@ -99,13 +101,24 @@ const PrescriptionDetail = () => {
     }
   };
 
-  const handleMarkComplete = async () => {
+  const handleDownloadPdf = async () => {
+    if (!id) return;
     try {
-      if (!prescription || !id) return;
-      const updated = await updatePrescription(id, { status: 'completed' });
-      setPrescription(updated);
+      setDownloadingPdf(true);
+      const blob = await prescriptionsAPI.downloadPrescription(id);
+      const blobUrl = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.setAttribute('download', `Prescription_${id.substring(0, 8)}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(blobUrl);
     } catch (err) {
-      console.error('Error updating status:', err);
+      console.error('Error downloading prescription PDF:', err);
+      window.print();
+    } finally {
+      setDownloadingPdf(false);
     }
   };
   
@@ -254,45 +267,68 @@ const PrescriptionDetail = () => {
         </Paper>
 
         {/* Mobile Actions Stack */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.2 }}>
+          {/* Download Full PDF */}
           <Button
             fullWidth
             variant="contained"
-            startIcon={<ShareIcon />}
-            onClick={handleShare}
-            sx={{ height: 48, bgcolor: '#134F4D', fontWeight: 700, '&:hover': { bgcolor: '#0e3b3a' } }}
+            startIcon={downloadingPdf ? <CircularProgress size={20} color="inherit" /> : <DownloadIcon />}
+            onClick={handleDownloadPdf}
+            disabled={downloadingPdf}
+            sx={{ 
+              height: 48, 
+              borderRadius: '16px',
+              bgcolor: '#134F4D', 
+              color: '#ffffff',
+              fontWeight: 800, 
+              boxShadow: '0 4px 16px rgba(19, 79, 77, 0.25)',
+              '&:hover': { bgcolor: '#0e3b3a' } 
+            }}
           >
-            Share Prescription
+            {downloadingPdf ? 'Generating PDF...' : 'Download Full PDF'}
           </Button>
 
+          {/* Print Prescription */}
           <Button
             fullWidth
             variant="outlined"
             startIcon={<PrintIcon />}
             onClick={handlePrint}
-            sx={{ height: 44, borderColor: '#134F4D', color: '#134F4D' }}
+            sx={{ 
+              height: 44, 
+              borderRadius: '16px',
+              borderColor: 'rgba(19, 79, 77, 0.4)', 
+              color: '#134F4D',
+              fontWeight: 800,
+              '&:hover': { bgcolor: 'rgba(19, 79, 77, 0.06)', borderColor: '#134F4D' }
+            }}
           >
-            Print / Save PDF
+            Print Prescription
           </Button>
-          
-          {isDoctor && prescription.status !== 'completed' && (
-            <Button
-              fullWidth
-              variant="contained"
-              color="success"
-              startIcon={<DoneIcon />}
-              onClick={handleMarkComplete}
-              sx={{ height: 44 }}
-            >
-              Mark Completed
-            </Button>
-          )}
+
+          {/* Share Link */}
+          <Button
+            fullWidth
+            variant="outlined"
+            startIcon={<ShareIcon />}
+            onClick={handleShare}
+            sx={{ 
+              height: 44, 
+              borderRadius: '16px',
+              borderColor: 'rgba(19, 79, 77, 0.4)', 
+              color: '#134F4D',
+              fontWeight: 800,
+              '&:hover': { bgcolor: 'rgba(19, 79, 77, 0.06)', borderColor: '#134F4D' }
+            }}
+          >
+            Share Prescription
+          </Button>
 
           <Button 
             fullWidth
             variant="text" 
             onClick={() => navigate('/dashboard')}
-            sx={{ color: '#64748b', mt: 1 }}
+            sx={{ color: '#64748b', mt: 0.5, fontWeight: 700 }}
           >
             Back to Dashboard
           </Button>
