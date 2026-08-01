@@ -294,34 +294,6 @@ const Register = () => {
                 mb: 2 
               }}
             >
-              {/* Highlight Badge when Role Selected */}
-              {highlightGoogle && (
-                <Typography 
-                  variant="caption" 
-                  sx={{ 
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 0.5,
-                    px: 1.5,
-                    py: 0.5,
-                    mb: 1.2,
-                    borderRadius: '20px',
-                    bgcolor: '#4285F4',
-                    color: '#FFFFFF',
-                    fontWeight: 800,
-                    fontSize: '0.73rem',
-                    boxShadow: '0 4px 14px rgba(66, 133, 244, 0.45)',
-                    animation: 'pulseGlow 1.5s ease-in-out infinite',
-                    '@keyframes pulseGlow': {
-                      '0%, 100%': { transform: 'scale(1)' },
-                      '50%': { transform: 'scale(1.05)' }
-                    }
-                  }}
-                >
-                  ⚡ Recommended: Fast 1-Click Sign-Up with Google
-                </Typography>
-              )}
-
               {googleProcessing ? (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <CircularProgress size={20} sx={{ color: '#428475' }} />
@@ -342,12 +314,12 @@ const Register = () => {
                     sx={{ 
                       pointerEvents: !formData.role ? 'none' : 'auto', 
                       opacity: !formData.role ? 0.5 : 1, 
-                      borderRadius: '8px',
-                      transform: highlightGoogle ? 'scale(1.04)' : 'scale(1)',
+                      borderRadius: '6px',
+                      transform: highlightGoogle ? 'scale(1.02)' : 'scale(1)',
                       boxShadow: highlightGoogle 
-                        ? '0 0 0 4px rgba(66, 133, 244, 0.45), 0 8px 24px rgba(66, 133, 244, 0.35)' 
+                        ? '0 0 0 4px rgba(66, 133, 244, 0.45), 0 6px 20px rgba(66, 133, 244, 0.25)' 
                         : 'none',
-                      transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                      transition: 'all 0.3s ease'
                     }}
                   >
                     <GoogleLogin
