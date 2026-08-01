@@ -21,6 +21,18 @@ export interface MedicationItem {
   quantityValue?: number | string;
   quantityUnit?: string;
   instructions: string;
+  timing?: {
+    morning?: boolean;
+    afternoon?: boolean;
+    evening?: boolean;
+    night?: boolean;
+  };
+  mealRelations?: {
+    morning?: string;
+    afternoon?: string;
+    evening?: string;
+    night?: string;
+  };
 }
 
 // Investigation/Test required

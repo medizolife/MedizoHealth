@@ -37,7 +37,8 @@ import {
   DialogActions,
   Tabs,
   Tab,
-  Autocomplete
+  Autocomplete,
+  Popover
 } from '@mui/material';
 import indianMedicines from '../data/indianMedicines.json';
 import {
@@ -71,7 +72,16 @@ import {
   PhoneInTalk as EmergencyIcon,
   PlaylistAddCheck as ListCheckIcon,
   Healing as HealingIcon,
-  Search as SearchIcon
+  Search as SearchIcon,
+  WbSunny as MorningIcon,
+  LightMode as AfternoonIcon,
+  WbTwilight as EveningIcon,
+  NightsStay as NightIcon,
+  Restaurant as WithFoodIcon,
+  FreeBreakfast as BeforeFoodIcon,
+  DinnerDining as AfterFoodIcon,
+  LocalCafe as EmptyStomachIcon,
+  AccessTime as AnyTimeIcon
 } from '@mui/icons-material';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { CreatePrescriptionData, MedicationItem, Investigation, VitalSigns, FollowUpInfo } from '../types/prescription';
@@ -169,9 +179,15 @@ const NewPrescription = () => {
     quantity: '10 Tablets',
     quantityValue: 10,
     quantityUnit: 'Tablets',
-    instructions: ''
+    instructions: '',
+    timing: { morning: false, afternoon: false, evening: false, night: false },
+    mealRelations: { morning: '', afternoon: '', evening: '', night: '' }
   });
   const [medSearchOpen, setMedSearchOpen] = useState(false);
+
+  // Popover state for per-time-of-day meal relation
+  const [mealPopoverAnchor, setMealPopoverAnchor] = useState<HTMLElement | null>(null);
+  const [mealPopoverTimeKey, setMealPopoverTimeKey] = useState<'morning' | 'afternoon' | 'evening' | 'night'>('morning');
 
   const getDefaultUnit = (form?: string) => {
     switch (form) {
@@ -337,10 +353,30 @@ const NewPrescription = () => {
       const durStr = newMedication.duration || `${durVal} ${durUnit}`;
       const qtyStr = newMedication.quantity || (newMedication.quantityValue ? `${newMedication.quantityValue} ${newMedication.quantityUnit || 'Tablets'}` : '');
 
+      // Format dosage string automatically based on selected timing & meal relations if dosage wasn't manually typed
+      let computedDosage = newMedication.dosage;
+      if (!computedDosage) {
+        const timingsActive: string[] = [];
+        if (newMedication.timing?.morning) {
+          timingsActive.push(`Morning${newMedication.mealRelations?.morning ? ` (${newMedication.mealRelations.morning})` : ''}`);
+        }
+        if (newMedication.timing?.afternoon) {
+          timingsActive.push(`Afternoon${newMedication.mealRelations?.afternoon ? ` (${newMedication.mealRelations.afternoon})` : ''}`);
+        }
+        if (newMedication.timing?.evening) {
+          timingsActive.push(`Evening${newMedication.mealRelations?.evening ? ` (${newMedication.mealRelations.evening})` : ''}`);
+        }
+        if (newMedication.timing?.night) {
+          timingsActive.push(`Night${newMedication.mealRelations?.night ? ` (${newMedication.mealRelations.night})` : ''}`);
+        }
+        computedDosage = timingsActive.join(', ');
+      }
+
       setFormData({
         ...formData,
         medications: [...(formData.medications || []), {
           ...newMedication,
+          dosage: computedDosage,
           duration: durStr,
           quantity: qtyStr
         }]
@@ -355,7 +391,9 @@ const NewPrescription = () => {
         quantity: '10 Tablets',
         quantityValue: 10,
         quantityUnit: 'Tablets',
-        instructions: ''
+        instructions: '',
+        timing: { morning: false, afternoon: false, evening: false, night: false },
+        mealRelations: { morning: '', afternoon: '', evening: '', night: '' }
       });
     }
   };
@@ -1139,70 +1177,186 @@ const NewPrescription = () => {
                   />
                 </Grid>
 
-                {/* Quick Dose Timing Preset Pills */}
+                {/* Time of Day Toggle Buttons */}
                 <Grid item xs={12}>
-                  <Typography variant="caption" sx={{ fontWeight: 800, color: 'var(--color-forest)', display: 'block', mb: 0.5 }}>
-                    Quick Dose Timing Presets:
+                  <Typography variant="caption" sx={{ fontWeight: 800, color: 'var(--color-forest)', display: 'block', mb: 0.8 }}>
+                    Time of Day:
                   </Typography>
-                  <Box sx={{ display: 'flex', gap: 0.8, flexWrap: 'wrap' }}>
-                    {[
-                      { label: '🌅 1-0-0 (Morning)', val: '1-0-0 (Once Morning)' },
-                      { label: '☀️ 0-1-0 (Noon)', val: '0-1-0 (Once Afternoon)' },
-                      { label: '🌙 0-0-1 (Night)', val: '0-0-1 (Once Night)' },
-                      { label: '🌅🌙 1-0-1 (BD)', val: '1-0-1 (Twice Daily)' },
-                      { label: '🌅☀️🌙 1-1-1 (TDS)', val: '1-1-1 (Thrice Daily)' }
-                    ].map(preset => (
-                      <Chip
-                        key={preset.label}
-                        label={preset.label}
-                        size="small"
-                        onClick={() => {
-                          const calc = calculateQuantity(preset.val, newMedication.durationValue || 5, newMedication.durationUnit || 'Days', newMedication.type);
-                          setNewMedication({
-                            ...newMedication,
-                            dosage: preset.val,
-                            quantityValue: calc.qtyVal,
-                            quantityUnit: calc.qtyUnit,
-                            quantity: calc.qtyStr
-                          });
-                        }}
-                        sx={{ 
-                          fontWeight: 700, 
-                          fontSize: '0.7rem', 
-                          cursor: 'pointer',
-                          bgcolor: newMedication.dosage === preset.val ? 'var(--color-forest)' : 'rgba(0,0,0,0.06)',
-                          color: newMedication.dosage === preset.val ? '#ffffff' : 'inherit'
-                        }}
-                      />
-                    ))}
+                  <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+                    {([
+                      { key: 'morning' as const, label: 'Morning', icon: <MorningIcon />, color: '#F57C00', bg: '#FFF3E0', activeBg: '#FFE0B2', border: '#F57C00' },
+                      { key: 'afternoon' as const, label: 'Afternoon', icon: <AfternoonIcon />, color: '#FBC02D', bg: '#FFFDE7', activeBg: '#FFF9C4', border: '#F9A825' },
+                      { key: 'evening' as const, label: 'Evening', icon: <EveningIcon />, color: '#E64A19', bg: '#FBE9E7', activeBg: '#FFCCBC', border: '#E64A19' },
+                      { key: 'night' as const, label: 'Night', icon: <NightIcon />, color: '#3949AB', bg: '#E8EAF6', activeBg: '#C5CAE9', border: '#3949AB' }
+                    ]).map((time) => {
+                      const isActive = newMedication.timing?.[time.key] || false;
+                      const mealRel = newMedication.mealRelations?.[time.key] || '';
+                      return (
+                        <Box
+                          key={time.key}
+                          onClick={(e) => {
+                            const wasActive = newMedication.timing?.[time.key] || false;
+                            setNewMedication({
+                              ...newMedication,
+                              timing: { ...newMedication.timing, [time.key]: !wasActive },
+                              // Clear meal relation if deselecting
+                              mealRelations: !wasActive
+                                ? newMedication.mealRelations
+                                : { ...newMedication.mealRelations, [time.key]: '' }
+                            });
+                            // Open meal relation popup only when selecting (not deselecting)
+                            if (!wasActive) {
+                              setMealPopoverAnchor(e.currentTarget);
+                              setMealPopoverTimeKey(time.key);
+                            }
+                          }}
+                          sx={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            px: 2,
+                            py: 1.2,
+                            borderRadius: '14px',
+                            border: isActive ? `2.5px solid ${time.border}` : '2px solid #e0e0e0',
+                            bgcolor: isActive ? time.activeBg : 'transparent',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            minWidth: 68,
+                            position: 'relative',
+                            '&:hover': {
+                              bgcolor: isActive ? time.activeBg : time.bg,
+                              borderColor: time.border,
+                              transform: 'translateY(-1px)',
+                              boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+                            },
+                            '& .MuiSvgIcon-root': {
+                              color: isActive ? time.color : '#9e9e9e',
+                              fontSize: 26,
+                              transition: 'color 0.2s'
+                            }
+                          }}
+                        >
+                          {time.icon}
+                          <Typography variant="caption" sx={{ mt: 0.3, fontWeight: isActive ? 800 : 600, color: isActive ? time.color : '#757575', fontSize: '0.7rem' }}>
+                            {time.label}
+                          </Typography>
+                          {isActive && mealRel && (
+                            <Typography variant="caption" sx={{ fontSize: '0.58rem', fontWeight: 700, color: time.color, mt: 0.2, opacity: 0.85 }}>
+                              {mealRel}
+                            </Typography>
+                          )}
+                        </Box>
+                      );
+                    })}
                   </Box>
                 </Grid>
 
-                {/* Quick Meal Relation Pills */}
-                <Grid item xs={12}>
-                  <Typography variant="caption" sx={{ fontWeight: 800, color: 'var(--color-forest)', display: 'block', mb: 0.5 }}>
-                    Meal Timing Relation:
-                  </Typography>
-                  <Box sx={{ display: 'flex', gap: 0.8, flexWrap: 'wrap' }}>
-                    {[
-                      { label: '🥣 Before Food (AC)', text: 'Take 30 min before food' },
-                      { label: '🍽️ After Food (PC)', text: 'Take immediately after food' },
-                      { label: '🥗 With Food', text: 'Take with meals' },
-                      { label: '🥛 Empty Stomach', text: 'Take on empty stomach with water' }
-                    ].map(meal => (
-                      <Chip
-                        key={meal.label}
-                        label={meal.label}
-                        size="small"
-                        onClick={() => setNewMedication({ 
-                          ...newMedication, 
-                          instructions: newMedication.instructions ? `${newMedication.instructions}, ${meal.text}` : meal.text 
-                        })}
-                        sx={{ fontWeight: 700, fontSize: '0.7rem', cursor: 'pointer', bgcolor: 'rgba(102, 205, 170, 0.2)' }}
-                      />
-                    ))}
+                {/* Per-Time-of-Day Meal Relation Popover */}
+                <Popover
+                  open={Boolean(mealPopoverAnchor)}
+                  anchorEl={mealPopoverAnchor}
+                  onClose={() => setMealPopoverAnchor(null)}
+                  anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+                  transformOrigin={{ vertical: 'top', horizontal: 'center' }}
+                  slotProps={{
+                    paper: {
+                      sx: {
+                        p: 2,
+                        borderRadius: '18px',
+                        boxShadow: '0 12px 36px rgba(26, 49, 44, 0.2)',
+                        border: '1.5px solid rgba(137, 215, 183, 0.5)',
+                        bgcolor: mode === 'dark' ? 'rgba(18, 38, 34, 0.98)' : 'rgba(255, 255, 255, 0.99)',
+                        backdropFilter: 'blur(16px)',
+                        maxWidth: 340,
+                        mt: 1
+                      }
+                    }
+                  }}
+                >
+                  <Box sx={{ mb: 1.5, textAlign: 'center' }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#1A312C', fontSize: '0.85rem' }}>
+                      Meal Relation — {mealPopoverTimeKey.charAt(0).toUpperCase() + mealPopoverTimeKey.slice(1)}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: '#428475', fontSize: '0.7rem' }}>
+                      When should this medicine be taken?
+                    </Typography>
                   </Box>
-                </Grid>
+
+                  {/* Row 1 */}
+                  <Box sx={{ display: 'flex', gap: 0.8, mb: 0.8, justifyContent: 'center' }}>
+                    {[
+                      { label: 'With Food', icon: <WithFoodIcon sx={{ fontSize: 15 }} />, color: '#1565c0', bg: '#e3f2fd' },
+                      { label: 'Before Food', icon: <BeforeFoodIcon sx={{ fontSize: 15 }} />, color: '#e65100', bg: '#fff3e0' },
+                      { label: 'After Food', icon: <AfterFoodIcon sx={{ fontSize: 15 }} />, color: '#6a1b9a', bg: '#f3e5f5' }
+                    ].map((opt) => {
+                      const isSelected = newMedication.mealRelations?.[mealPopoverTimeKey] === opt.label;
+                      return (
+                        <Chip
+                          key={opt.label}
+                          icon={opt.icon}
+                          label={opt.label}
+                          size="small"
+                          clickable
+                          onClick={() => {
+                            setNewMedication({
+                              ...newMedication,
+                              mealRelations: { ...newMedication.mealRelations, [mealPopoverTimeKey]: isSelected ? '' : opt.label }
+                            });
+                            setMealPopoverAnchor(null);
+                          }}
+                          sx={{
+                            fontWeight: 700,
+                            fontSize: '0.72rem',
+                            py: 1.6,
+                            borderRadius: '14px',
+                            bgcolor: isSelected ? opt.color : opt.bg,
+                            color: isSelected ? '#fff' : opt.color,
+                            border: isSelected ? `2px solid ${opt.color}` : '1.5px solid rgba(0,0,0,0.06)',
+                            '& .MuiChip-icon': { color: isSelected ? '#fff' : opt.color },
+                            '&:hover': { bgcolor: opt.color, color: '#fff', '& .MuiChip-icon': { color: '#fff' } }
+                          }}
+                        />
+                      );
+                    })}
+                  </Box>
+
+                  {/* Row 2 */}
+                  <Box sx={{ display: 'flex', gap: 0.8, justifyContent: 'center' }}>
+                    {[
+                      { label: 'Empty Stomach', icon: <EmptyStomachIcon sx={{ fontSize: 15 }} />, color: '#00695c', bg: '#e0f2f1' },
+                      { label: 'Any Time', icon: <AnyTimeIcon sx={{ fontSize: 15 }} />, color: '#37474f', bg: '#eceff1' }
+                    ].map((opt) => {
+                      const isSelected = newMedication.mealRelations?.[mealPopoverTimeKey] === opt.label;
+                      return (
+                        <Chip
+                          key={opt.label}
+                          icon={opt.icon}
+                          label={opt.label}
+                          size="small"
+                          clickable
+                          onClick={() => {
+                            setNewMedication({
+                              ...newMedication,
+                              mealRelations: { ...newMedication.mealRelations, [mealPopoverTimeKey]: isSelected ? '' : opt.label }
+                            });
+                            setMealPopoverAnchor(null);
+                          }}
+                          sx={{
+                            fontWeight: 700,
+                            fontSize: '0.72rem',
+                            py: 1.6,
+                            borderRadius: '14px',
+                            bgcolor: isSelected ? opt.color : opt.bg,
+                            color: isSelected ? '#fff' : opt.color,
+                            border: isSelected ? `2px solid ${opt.color}` : '1.5px solid rgba(0,0,0,0.06)',
+                            '& .MuiChip-icon': { color: isSelected ? '#fff' : opt.color },
+                            '&:hover': { bgcolor: opt.color, color: '#fff', '& .MuiChip-icon': { color: '#fff' } }
+                          }}
+                        />
+                      );
+                    })}
+                  </Box>
+                </Popover>
 
                 {/* Duration Inputs & Presets */}
                 <Grid item xs={7} sm={4}>
@@ -1425,6 +1579,41 @@ const NewPrescription = () => {
                             />
                           )}
                         </Box>
+
+                        {/* Per-time-of-day meal relation summary chips */}
+                        {med.timing && (med.timing.morning || med.timing.afternoon || med.timing.evening || med.timing.night) && (
+                          <Box sx={{ display: 'flex', gap: 0.6, flexWrap: 'wrap', mb: 0.8 }}>
+                            {med.timing.morning && (
+                              <Chip
+                                label={`🌅 Morning${med.mealRelations?.morning ? `: ${med.mealRelations.morning}` : ''}`}
+                                size="small"
+                                sx={{ fontWeight: 700, bgcolor: '#FFF3E0', color: '#F57C00', fontSize: '0.68rem', height: 22 }}
+                              />
+                            )}
+                            {med.timing.afternoon && (
+                              <Chip
+                                label={`☀️ Afternoon${med.mealRelations?.afternoon ? `: ${med.mealRelations.afternoon}` : ''}`}
+                                size="small"
+                                sx={{ fontWeight: 700, bgcolor: '#FFFDE7', color: '#F9A825', fontSize: '0.68rem', height: 22 }}
+                              />
+                            )}
+                            {med.timing.evening && (
+                              <Chip
+                                label={`🌆 Evening${med.mealRelations?.evening ? `: ${med.mealRelations.evening}` : ''}`}
+                                size="small"
+                                sx={{ fontWeight: 700, bgcolor: '#FBE9E7', color: '#E64A19', fontSize: '0.68rem', height: 22 }}
+                              />
+                            )}
+                            {med.timing.night && (
+                              <Chip
+                                label={`🌙 Night${med.mealRelations?.night ? `: ${med.mealRelations.night}` : ''}`}
+                                size="small"
+                                sx={{ fontWeight: 700, bgcolor: '#E8EAF6', color: '#3949AB', fontSize: '0.68rem', height: 22 }}
+                              />
+                            )}
+                          </Box>
+                        )}
+
                         {med.instructions && (
                           <Typography variant="caption" sx={{ display: 'block', color: '#64748b', fontStyle: 'italic', mt: 0.5 }}>
                             "{med.instructions}"
