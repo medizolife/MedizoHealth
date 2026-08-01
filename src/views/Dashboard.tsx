@@ -97,6 +97,34 @@ const Dashboard = () => {
     severity: 'info'
   });
 
+  // Touch swipe gesture state for native sliding tab animation
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [touchEndX, setTouchEndX] = useState<number | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartX(e.targetTouches[0].clientX);
+    setTouchEndX(null);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEndX(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (touchStartX === null || touchEndX === null) return;
+    const distance = touchStartX - touchEndX;
+    const minSwipeDistance = 40;
+    const totalTabs = user?.role === 'doctor' ? 3 : 2;
+
+    if (distance > minSwipeDistance) {
+      // Swiped left -> Go to next tab
+      setTabValue(prev => Math.min(prev + 1, totalTabs - 1));
+    } else if (distance < -minSwipeDistance) {
+      // Swiped right -> Go to previous tab
+      setTabValue(prev => Math.max(prev - 1, 0));
+    }
+  };
+
   // Handle DigiLocker callback query params
   useEffect(() => {
     const digilockerResult = searchParams.get('digilocker');
@@ -557,11 +585,24 @@ const Dashboard = () => {
             <Typography color="error" variant="body2" sx={{ fontWeight: 600 }}>{error}</Typography>
           </Box>
         ) : (
-          <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
-            
-            {/* Active Prescriptions Tab */}
-            {tabValue === 0 && (
-              <>
+          <Box 
+            sx={{ overflow: 'hidden', width: '100%', position: 'relative', touchAction: 'pan-y' }}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
+            {/* Horizontal sliding track across all 3 tabs */}
+            <Box
+              sx={{
+                display: 'flex',
+                width: user?.role === 'doctor' ? '300%' : '200%',
+                transform: `translateX(-${(tabValue * 100) / (user?.role === 'doctor' ? 3 : 2)}%)`,
+                transition: 'transform 0.35s cubic-bezier(0.25, 1, 0.5, 1)',
+                willChange: 'transform'
+              }}
+            >
+              {/* ─── Pane 0: Active Prescriptions ─── */}
+              <Box sx={{ width: user?.role === 'doctor' ? '33.3333%' : '50%', p: { xs: 1.5, sm: 2 }, flexShrink: 0, boxSizing: 'border-box' }}>
                 {/* 📅 Top-most Upcoming Appointments Section in Active Tab */}
                 {user?.role === 'doctor' && upcomingAppointments.length > 0 && (
                   <Paper
@@ -634,166 +675,165 @@ const Dashboard = () => {
                 )}
 
                 {activePrescriptions.length === 0 ? (
-                <Box sx={{ py: 6, textAlign: 'center' }}>
-                  <Box sx={{ p: 2, borderRadius: '50%', bgcolor: 'rgba(137, 215, 183, 0.2)', width: 72, height: 72, mx: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2 }}>
-                    <MedicationIcon sx={{ fontSize: 36, color: '#428475' }} />
+                  <Box sx={{ py: 6, textAlign: 'center' }}>
+                    <Box sx={{ p: 2, borderRadius: '50%', bgcolor: 'rgba(137, 215, 183, 0.2)', width: 72, height: 72, mx: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2 }}>
+                      <MedicationIcon sx={{ fontSize: 36, color: '#428475' }} />
+                    </Box>
+                    <Typography variant="h6" sx={{ fontWeight: 800, color: '#1A312C', mb: 0.5 }}>
+                      No Active Prescriptions
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 300, mx: 'auto', mb: 2 }}>
+                      {searchQuery ? 'No records match your search criteria.' : 'Create a new digital prescription to display active health records here.'}
+                    </Typography>
+                    {user?.role === 'doctor' && (
+                      <Chip 
+                        label="+ Issue First Prescription" 
+                        onClick={() => navigate('/prescriptions/new')}
+                        sx={{ bgcolor: '#1A312C', color: '#89D7B7', fontWeight: 800, cursor: 'pointer', px: 1, py: 2 }}
+                      />
+                    )}
                   </Box>
-                  <Typography variant="h6" sx={{ fontWeight: 800, color: '#1A312C', mb: 0.5 }}>
-                    No Active Prescriptions
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 300, mx: 'auto', mb: 2 }}>
-                    {searchQuery ? 'No records match your search criteria.' : 'Create a new digital prescription to display active health records here.'}
-                  </Typography>
-                  {user?.role === 'doctor' && (
-                    <Chip 
-                      label="+ Issue First Prescription" 
-                      onClick={() => navigate('/prescriptions/new')}
-                      sx={{ bgcolor: '#1A312C', color: '#89D7B7', fontWeight: 800, cursor: 'pointer', px: 1, py: 2 }}
-                    />
-                  )}
-                </Box>
-              ) : (
-                <>
-                  <List disablePadding>
-                    {activePrescriptions.slice(0, 3).map((prescription, idx) => (
-                      <React.Fragment key={prescription.id || idx}>
-                        <ListItem 
-                          button 
-                          onClick={() => navigate(`/prescriptions/${prescription.id}`)}
-                          className="touch-active"
-                          sx={{ 
-                            borderRadius: '16px', 
-                            my: 1, 
-                            p: 2,
-                            bgcolor: 'rgba(255, 255, 255, 0.75)',
-                            border: '1px solid rgba(137, 215, 183, 0.4)',
-                            boxShadow: '0 4px 16px rgba(26, 49, 44, 0.04)',
-                            transition: 'all 0.2s ease',
-                            '&:hover': {
-                              bgcolor: 'rgba(255, 244, 225, 0.9)',
-                              transform: 'translateY(-2px)',
-                              boxShadow: '0 8px 24px rgba(26, 49, 44, 0.08)'
-                            }
-                          }}
-                        >
-                          <Box sx={{ p: 1.5, borderRadius: '14px', bgcolor: 'rgba(66, 132, 117, 0.12)', mr: 2, display: 'flex', alignItems: 'center' }}>
-                            <MedicationIcon sx={{ color: '#428475', fontSize: 26 }} />
-                          </Box>
-                          
-                          <ListItemText
-                            primary={
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 0.5 }}>
-                                <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#1A312C' }}>
-                                  {prescription.medication || (prescription.provisionalDiagnosis && prescription.provisionalDiagnosis[0]) || 'Prescription Document'}
+                ) : (
+                  <>
+                    <List disablePadding>
+                      {activePrescriptions.slice(0, 3).map((prescription, idx) => (
+                        <React.Fragment key={prescription.id || idx}>
+                          <ListItem 
+                            button 
+                            onClick={() => navigate(`/prescriptions/${prescription.id}`)}
+                            className="touch-active"
+                            sx={{ 
+                              borderRadius: '16px', 
+                              my: 1, 
+                              p: 2,
+                              bgcolor: 'rgba(255, 255, 255, 0.75)',
+                              border: '1px solid rgba(137, 215, 183, 0.4)',
+                              boxShadow: '0 4px 16px rgba(26, 49, 44, 0.04)',
+                              transition: 'all 0.2s ease',
+                              '&:hover': {
+                                bgcolor: 'rgba(255, 244, 225, 0.9)',
+                                transform: 'translateY(-2px)',
+                                boxShadow: '0 8px 24px rgba(26, 49, 44, 0.08)'
+                              }
+                            }}
+                          >
+                            <Box sx={{ p: 1.5, borderRadius: '14px', bgcolor: 'rgba(66, 132, 117, 0.12)', mr: 2, display: 'flex', alignItems: 'center' }}>
+                              <MedicationIcon sx={{ color: '#428475', fontSize: 26 }} />
+                            </Box>
+                            
+                            <ListItemText
+                              primary={
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 0.5 }}>
+                                  <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#1A312C' }}>
+                                    {prescription.medication || (prescription.provisionalDiagnosis && prescription.provisionalDiagnosis[0]) || 'Prescription Document'}
+                                  </Typography>
+                                  <Chip 
+                                    label="Active" 
+                                    size="small" 
+                                    sx={{ 
+                                      height: 20, 
+                                      fontSize: '0.65rem', 
+                                      fontWeight: 800, 
+                                      bgcolor: '#89D7B7', 
+                                      color: '#1A312C'
+                                    }} 
+                                  />
+                                </Box>
+                              }
+                              secondary={
+                                <Typography variant="caption" sx={{ color: '#428475', fontWeight: 600, display: 'block' }}>
+                                  Patient: {(prescription as any).patientName || 'Linked Patient'} • Dosage: {prescription.dosage || 'As directed'}
+                                  <span style={{ display: 'block', color: '#64748b', fontSize: '0.72rem', marginTop: '2px' }}>
+                                    Issued: {new Date(prescription.createdAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                  </span>
                                 </Typography>
-                                <Chip 
-                                  label="Active" 
-                                  size="small" 
-                                  sx={{ 
-                                    height: 20, 
-                                    fontSize: '0.65rem', 
-                                    fontWeight: 800, 
-                                    bgcolor: '#89D7B7', 
-                                    color: '#1A312C'
-                                  }} 
-                                />
-                              </Box>
-                            }
-                            secondary={
-                              <Typography variant="caption" sx={{ color: '#428475', fontWeight: 600, display: 'block' }}>
-                                Patient: {(prescription as any).patientName || 'Linked Patient'} • Dosage: {prescription.dosage || 'As directed'}
-                                <span style={{ display: 'block', color: '#64748b', fontSize: '0.72rem', marginTop: '2px' }}>
-                                  Issued: {new Date(prescription.createdAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                                </span>
-                              </Typography>
-                            }
-                          />
-                          <ChevronRightIcon sx={{ color: '#428475' }} />
-                        </ListItem>
-                      </React.Fragment>
-                    ))}
-                  </List>
-                  {activePrescriptions.length > 3 && (
-                    <Box sx={{ mt: 1, p: 1.5, textAlign: 'center', bgcolor: 'rgba(137, 215, 183, 0.12)', borderRadius: '12px' }}>
-                      <Typography variant="caption" sx={{ fontWeight: 800, color: '#1A312C' }}>
-                        Showing latest 3 of {activePrescriptions.length} active prescriptions
-                      </Typography>
-                    </Box>
-                  )}
-                </>
-              )}
-            </>
-          )}
-
-            {/* Completed Prescriptions Tab */}
-            {tabValue === 1 && (
-              completedPrescriptions.length === 0 ? (
-                <Box sx={{ py: 6, textAlign: 'center' }}>
-                  <Box sx={{ p: 2, borderRadius: '50%', bgcolor: 'rgba(26, 49, 44, 0.08)', width: 72, height: 72, mx: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2 }}>
-                    <HistoryIcon sx={{ fontSize: 36, color: '#1A312C' }} />
-                  </Box>
-                  <Typography variant="h6" sx={{ fontWeight: 800, color: '#1A312C', mb: 0.5 }}>
-                    No Completed Records
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Completed prescriptions and archived medical files will appear here.
-                  </Typography>
-                </Box>
-              ) : (
-                <>
-                  <List disablePadding>
-                    {completedPrescriptions.slice(0, 3).map((prescription, idx) => (
-                      <React.Fragment key={prescription.id || idx}>
-                        <ListItem 
-                          button 
-                          onClick={() => navigate(`/prescriptions/${prescription.id}`)}
-                          className="touch-active"
-                          sx={{ 
-                            borderRadius: '16px', 
-                            my: 1, 
-                            p: 2,
-                            bgcolor: 'rgba(244, 248, 246, 0.8)',
-                            border: '1px solid rgba(0,0,0,0.06)'
-                          }}
-                        >
-                          <Box sx={{ p: 1.5, borderRadius: '14px', bgcolor: 'rgba(0,0,0,0.04)', mr: 2 }}>
-                            <HistoryIcon sx={{ color: '#64748b', fontSize: 26 }} />
-                          </Box>
-                          <ListItemText
-                            primary={
-                              <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#334155' }}>
-                                {prescription.medication || (prescription.provisionalDiagnosis && prescription.provisionalDiagnosis[0]) || 'Prescription Record'}
-                              </Typography>
-                            }
-                            secondary={
-                              <Typography variant="caption" color="text.secondary">
-                                Completed: {new Date(prescription.createdAt || Date.now()).toLocaleDateString()}
-                              </Typography>
-                            }
-                          />
-                          <ChevronRightIcon sx={{ color: '#94a3b8' }} />
-                        </ListItem>
-                      </React.Fragment>
-                    ))}
-                  </List>
-                  {completedPrescriptions.length > 3 && (
-                    <Box sx={{ mt: 1, p: 1.5, textAlign: 'center', bgcolor: 'rgba(0, 0, 0, 0.04)', borderRadius: '12px' }}>
-                      <Typography variant="caption" sx={{ fontWeight: 800, color: '#64748b' }}>
-                        Showing latest 3 of {completedPrescriptions.length} completed records
-                      </Typography>
-                    </Box>
-                  )}
-                </>
-              )
-            )}
-
-            {/* Patients Tab */}
-            {tabValue === 2 && user?.role === 'doctor' && (
-              <Box sx={{ p: 0.5 }}>
-                <EnhancedPatientManagement maxPatients={4} />
+                              }
+                            />
+                            <ChevronRightIcon sx={{ color: '#428475' }} />
+                          </ListItem>
+                        </React.Fragment>
+                      ))}
+                    </List>
+                    {activePrescriptions.length > 3 && (
+                      <Box sx={{ mt: 1, p: 1.5, textAlign: 'center', bgcolor: 'rgba(137, 215, 183, 0.12)', borderRadius: '12px' }}>
+                        <Typography variant="caption" sx={{ fontWeight: 800, color: '#1A312C' }}>
+                          Showing latest 3 of {activePrescriptions.length} active prescriptions
+                        </Typography>
+                      </Box>
+                    )}
+                  </>
+                )}
               </Box>
-            )}
 
+              {/* ─── Pane 1: Completed Prescriptions ─── */}
+              <Box sx={{ width: user?.role === 'doctor' ? '33.3333%' : '50%', p: { xs: 1.5, sm: 2 }, flexShrink: 0, boxSizing: 'border-box' }}>
+                {completedPrescriptions.length === 0 ? (
+                  <Box sx={{ py: 6, textAlign: 'center' }}>
+                    <Box sx={{ p: 2, borderRadius: '50%', bgcolor: 'rgba(26, 49, 44, 0.08)', width: 72, height: 72, mx: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2 }}>
+                      <HistoryIcon sx={{ fontSize: 36, color: '#1A312C' }} />
+                    </Box>
+                    <Typography variant="h6" sx={{ fontWeight: 800, color: '#1A312C', mb: 0.5 }}>
+                      No Completed Records
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Completed prescriptions and archived medical files will appear here.
+                    </Typography>
+                  </Box>
+                ) : (
+                  <>
+                    <List disablePadding>
+                      {completedPrescriptions.slice(0, 3).map((prescription, idx) => (
+                        <React.Fragment key={prescription.id || idx}>
+                          <ListItem 
+                            button 
+                            onClick={() => navigate(`/prescriptions/${prescription.id}`)}
+                            className="touch-active"
+                            sx={{ 
+                              borderRadius: '16px', 
+                              my: 1, 
+                              p: 2,
+                              bgcolor: 'rgba(244, 248, 246, 0.8)',
+                              border: '1px solid rgba(0,0,0,0.06)'
+                            }}
+                          >
+                            <Box sx={{ p: 1.5, borderRadius: '14px', bgcolor: 'rgba(0,0,0,0.04)', mr: 2 }}>
+                              <HistoryIcon sx={{ color: '#64748b', fontSize: 26 }} />
+                            </Box>
+                            <ListItemText
+                              primary={
+                                <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#334155' }}>
+                                  {prescription.medication || (prescription.provisionalDiagnosis && prescription.provisionalDiagnosis[0]) || 'Prescription Record'}
+                                </Typography>
+                              }
+                              secondary={
+                                <Typography variant="caption" color="text.secondary">
+                                  Completed: {new Date(prescription.createdAt || Date.now()).toLocaleDateString()}
+                                </Typography>
+                              }
+                            />
+                            <ChevronRightIcon sx={{ color: '#94a3b8' }} />
+                          </ListItem>
+                        </React.Fragment>
+                      ))}
+                    </List>
+                    {completedPrescriptions.length > 3 && (
+                      <Box sx={{ mt: 1, p: 1.5, textAlign: 'center', bgcolor: 'rgba(0, 0, 0, 0.04)', borderRadius: '12px' }}>
+                        <Typography variant="caption" sx={{ fontWeight: 800, color: '#64748b' }}>
+                          Showing latest 3 of {completedPrescriptions.length} completed records
+                        </Typography>
+                      </Box>
+                    )}
+                  </>
+                )}
+              </Box>
+
+              {/* ─── Pane 2: Patients (Doctor Only) ─── */}
+              {user?.role === 'doctor' && (
+                <Box sx={{ width: '33.3333%', p: { xs: 1.5, sm: 2 }, flexShrink: 0, boxSizing: 'border-box' }}>
+                  <EnhancedPatientManagement maxPatients={4} />
+                </Box>
+              )}
+            </Box>
           </Box>
         )}
       </Paper>
