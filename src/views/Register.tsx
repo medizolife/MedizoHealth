@@ -235,10 +235,58 @@ const Register = () => {
           </Alert>
         )}
 
-        {/* Google Sign-Up Button (only show if NOT already in Google flow) */}
+        {/* Step 1: Mandatory Role Selection at the top */}
+        <Box sx={{ mb: 2.5 }}>
+          <TextField
+            select
+            required
+            fullWidth
+            id="role"
+            name="role"
+            label="Register As (Select Role) *"
+            value={formData.role}
+            onChange={handleChange}
+            error={!!roleError}
+            helperText={roleError || 'Select whether you are registering as a Patient or Doctor'}
+            InputLabelProps={{ shrink: true, sx: { color: '#2A6B5D', fontWeight: 700 } }}
+            SelectProps={{
+              displayEmpty: true,
+            }}
+            InputProps={{ 
+              sx: { 
+                borderRadius: '14px',
+                bgcolor: 'rgba(255, 255, 255, 0.95)',
+                color: '#123029',
+                fontWeight: 700,
+                '& fieldset': { borderColor: roleError ? '#ef4444' : 'rgba(137, 215, 183, 0.6)' },
+                '&:hover fieldset': { borderColor: '#428475 !important' }
+              } 
+            }}
+          >
+            <MenuItem value="" disabled sx={{ color: '#888', fontStyle: 'italic' }}>
+              -- Select Role --
+            </MenuItem>
+            <MenuItem value="patient" sx={{ fontWeight: 600, py: 1.2 }}>
+              Patient
+            </MenuItem>
+            <MenuItem value="doctor" sx={{ fontWeight: 600, py: 1.2 }}>
+              Doctor
+            </MenuItem>
+          </TextField>
+        </Box>
+
+        {/* Step 2: Google Sign-Up (Guarded by Role Selection) */}
         {!isGoogleSignUp && (
           <>
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mb: 2 }}>
+            <Box 
+              sx={{ 
+                position: 'relative', 
+                display: 'flex', 
+                flexDirection: 'column',
+                alignItems: 'center', 
+                mb: 2 
+              }}
+            >
               {googleProcessing ? (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <CircularProgress size={20} sx={{ color: '#428475' }} />
@@ -247,16 +295,33 @@ const Register = () => {
                   </Typography>
                 </Box>
               ) : (
-                <GoogleLogin
-                  onSuccess={handleGoogleSuccess}
-                  onError={handleGoogleError}
-                  useOneTap={false}
-                  theme="outline"
-                  size="large"
-                  text="signup_with"
-                  shape="rectangular"
-                  width="320"
-                />
+                <Box
+                  onClick={() => {
+                    if (!formData.role) {
+                      setRoleError('Please select your role (Patient or Doctor) above first before signing up with Google');
+                    }
+                  }}
+                  sx={{ width: '100%', display: 'flex', justifyContent: 'center', cursor: !formData.role ? 'pointer' : 'default' }}
+                >
+                  <Box 
+                    sx={{ 
+                      pointerEvents: !formData.role ? 'none' : 'auto', 
+                      opacity: !formData.role ? 0.5 : 1, 
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <GoogleLogin
+                      onSuccess={handleGoogleSuccess}
+                      onError={handleGoogleError}
+                      useOneTap={false}
+                      theme="outline"
+                      size="large"
+                      text="signup_with"
+                      shape="rectangular"
+                      width="320"
+                    />
+                  </Box>
+                </Box>
               )}
             </Box>
 
@@ -270,46 +335,6 @@ const Register = () => {
         
         <Box component="form" onSubmit={handleSubmit}>
           <Grid container spacing={1.5}>
-            {/* Mandatory Unselected Role Dropdown */}
-            <Grid item xs={12}>
-              <TextField
-                select
-                required
-                fullWidth
-                id="role"
-                name="role"
-                label="Register As (Select Role)"
-                value={formData.role}
-                onChange={handleChange}
-                error={!!roleError}
-                helperText={roleError || 'Select whether you are registering as a Patient or Doctor'}
-                InputLabelProps={{ shrink: true, sx: { color: '#2A6B5D', fontWeight: 600 } }}
-                SelectProps={{
-                  displayEmpty: true,
-                }}
-                InputProps={{ 
-                  sx: { 
-                    borderRadius: '14px',
-                    bgcolor: 'rgba(255, 255, 255, 0.95)',
-                    color: '#123029',
-                    fontWeight: 600,
-                    '& fieldset': { borderColor: roleError ? '#ef4444' : 'rgba(137, 215, 183, 0.5)' },
-                    '&:hover fieldset': { borderColor: '#428475 !important' }
-                  } 
-                }}
-              >
-                <MenuItem value="" disabled sx={{ color: '#888', fontStyle: 'italic' }}>
-                  -- Select Role --
-                </MenuItem>
-                <MenuItem value="patient" sx={{ fontWeight: 600, py: 1.2 }}>
-                  Patient
-                </MenuItem>
-                <MenuItem value="doctor" sx={{ fontWeight: 600, py: 1.2 }}>
-                  Doctor
-                </MenuItem>
-              </TextField>
-            </Grid>
-
             <Grid item xs={6}>
               <TextField
                 name="firstName"
