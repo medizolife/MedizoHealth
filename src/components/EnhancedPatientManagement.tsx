@@ -286,8 +286,8 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
 
   return (
     <Box>
-      {/* Today's Appointments Alert */}
-      {todayAppointments.length > 0 && (
+      {/* Today's Appointments Alert (Only in Main Patients view) */}
+      {!maxPatients && todayAppointments.length > 0 && (
         <Alert 
           severity="warning" 
           icon={<TodayIcon />}
@@ -302,8 +302,8 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
         </Alert>
       )}
 
-      {/* Today's Appointments Section */}
-      {todayAppointments.length > 0 && (
+      {/* Today's Appointments Section (Only in Main Patients view) */}
+      {!maxPatients && todayAppointments.length > 0 && (
         <Paper 
           elevation={3} 
           sx={{ 
@@ -356,8 +356,8 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
         </Paper>
       )}
 
-      {/* Upcoming Appointments Section (Next 7 Days) */}
-      {upcomingAppointments.length > 0 && (
+      {/* Upcoming Appointments Section (Next 7 Days) (Only in Main Patients view) */}
+      {!maxPatients && upcomingAppointments.length > 0 && (
         <Paper 
           elevation={2} 
           sx={{ 
@@ -448,23 +448,23 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
                   }}
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 3 }}>
-                    {/* Patient Name & Email */}
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '32%' }}>
+                    {/* Column 1: Patient Name & Email */}
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '28%' }}>
                       <Avatar sx={{ bgcolor: '#1A312C', color: '#89D7B7', width: 44, height: 44, fontWeight: 800 }}>
                         {patient.firstName ? patient.firstName[0].toUpperCase() : 'P'}
                       </Avatar>
-                      <Box>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#1A312C' }}>
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#1A312C' }} noWrap>
                           {patient.firstName} {patient.lastName}
                         </Typography>
-                        <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600 }}>
+                        <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600 }} noWrap display="block">
                           {patient.email}
                         </Typography>
                       </Box>
                     </Box>
 
-                    {/* Latest Treatment */}
-                    <Box sx={{ width: '38%' }}>
+                    {/* Column 2: Latest Treatment */}
+                    <Box sx={{ width: '32%' }}>
                       <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 700, display: 'block', textTransform: 'uppercase', fontSize: '0.65rem', mb: 0.3 }}>
                         Latest Treatment / Diagnosis
                       </Typography>
@@ -475,18 +475,18 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
                       />
                     </Box>
 
-                    {/* Last Visit */}
-                    <Box sx={{ width: '18%' }}>
+                    {/* Column 3: Patient Since / First Visit */}
+                    <Box sx={{ width: '24%' }}>
                       <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 700, display: 'block', textTransform: 'uppercase', fontSize: '0.65rem', mb: 0.3 }}>
-                        Last Visit
+                        Patient Since / First Visit
                       </Typography>
                       <Typography variant="body2" sx={{ fontWeight: 700, color: '#1A312C' }}>
-                        {patient.lastVisit ? new Date(patient.lastVisit).toLocaleDateString() : 'Recent'}
+                        {patient.createdAt ? new Date(patient.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Aug 1, 2026'}
                       </Typography>
                     </Box>
 
-                    {/* Action */}
-                    <Box sx={{ width: '12%', textAlign: 'right' }}>
+                    {/* Column 4: Action */}
+                    <Box sx={{ width: '16%', textAlign: 'right' }}>
                       <Button
                         variant="outlined"
                         size="small"
@@ -515,9 +515,9 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
               onClick={() => handleViewMedicalDetails(patient)}
               className="touch-active"
               sx={{
-                p: 1.8,
-                borderRadius: '16px',
-                bgcolor: 'rgba(255, 255, 255, 0.85)',
+                p: 2,
+                borderRadius: '18px',
+                bgcolor: 'rgba(255, 255, 255, 0.9)',
                 border: '1px solid rgba(137, 215, 183, 0.4)',
                 boxShadow: '0 4px 16px rgba(26, 49, 44, 0.04)',
                 display: 'flex',
@@ -526,32 +526,37 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
                 '&:hover': {
-                  bgcolor: 'rgba(255, 244, 225, 0.9)',
+                  bgcolor: 'rgba(255, 244, 225, 0.95)',
                   transform: 'translateY(-2px)'
                 }
               }}
             >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                <Avatar sx={{ bgcolor: 'rgba(66, 132, 117, 0.15)', color: '#428475', width: 42, height: 42, fontWeight: 800 }}>
+              {/* Left Info Block */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1, minWidth: 0, mr: 1 }}>
+                <Avatar sx={{ bgcolor: 'rgba(66, 132, 117, 0.15)', color: '#428475', width: 44, height: 44, fontWeight: 800, flexShrink: 0 }}>
                   {patient.firstName ? patient.firstName[0].toUpperCase() : <PersonIcon />}
                 </Avatar>
-                <Box>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#1A312C', lineHeight: 1.2 }}>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#1A312C', lineHeight: 1.2 }} noWrap>
                     {patient.firstName} {patient.lastName}
                   </Typography>
-                  <Typography variant="caption" sx={{ color: '#428475', fontWeight: 700, display: 'block', mt: 0.3 }}>
-                    🩺 {patient.latestPrescription?.medication || (patient.diagnoses && patient.diagnoses[0]) || 'Latest Treatment: General Checkup'}
+                  <Typography variant="caption" sx={{ color: '#428475', fontWeight: 700, display: 'block', mt: 0.3 }} noWrap>
+                    🩺 {patient.latestPrescription?.medication || (patient.diagnoses && patient.diagnoses[0]) || 'General Checkup'}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600, fontSize: '0.7rem', display: 'block', mt: 0.2 }}>
+                    📅 Since: {patient.createdAt ? new Date(patient.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Aug 1, 2026'}
                   </Typography>
                 </Box>
               </Box>
               
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              {/* Right Action Block */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
                 <Chip 
                   label="View Details" 
                   size="small" 
-                  sx={{ bgcolor: '#1A312C', color: '#89D7B7', fontWeight: 800, fontSize: '0.68rem', cursor: 'pointer' }} 
+                  sx={{ bgcolor: '#1A312C', color: '#89D7B7', fontWeight: 800, fontSize: '0.68rem', cursor: 'pointer', height: 24 }} 
                 />
-                <ChevronRightIcon sx={{ color: '#428475' }} />
+                <ChevronRightIcon sx={{ color: '#428475', fontSize: 20 }} />
               </Box>
             </Card>
           ))}

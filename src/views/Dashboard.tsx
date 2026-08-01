@@ -830,7 +830,7 @@ const Dashboard = () => {
               {/* ─── Pane 2: Patients (Doctor Only) ─── */}
               {user?.role === 'doctor' && (
                 <Box sx={{ width: '33.3333%', p: { xs: 1.5, sm: 2 }, flexShrink: 0, boxSizing: 'border-box' }}>
-                  <EnhancedPatientManagement maxPatients={4} />
+                  <EnhancedPatientManagement maxPatients={3} />
                 </Box>
               )}
             </Box>
