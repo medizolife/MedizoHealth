@@ -627,46 +627,63 @@ const Dashboard = () => {
                       {upcomingAppointments.slice(0, 3).map((apt) => (
                         <Card
                           key={apt.id}
+                          onClick={() => navigate(`/prescriptions/${apt.id}`)}
+                          className="touch-active"
                           sx={{
-                            p: 1.5,
-                            borderRadius: '14px',
+                            p: 1.8,
+                            borderRadius: '16px',
                             bgcolor: mode === 'dark' ? 'rgba(15, 23, 42, 0.8)' : '#ffffff',
-                            border: '1px solid rgba(2, 132, 199, 0.2)',
+                            border: '1.5px solid rgba(2, 132, 199, 0.2)',
+                            boxShadow: '0 4px 16px rgba(2, 132, 199, 0.06)',
                             display: 'flex',
                             alignItems: 'center',
-                            justify: 'space-between'
+                            justify: 'space-between',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                              bgcolor: mode === 'dark' ? 'rgba(30, 41, 59, 0.9)' : 'rgba(224, 242, 254, 0.6)',
+                              transform: 'translateY(-2px)',
+                              boxShadow: '0 8px 24px rgba(2, 132, 199, 0.12)'
+                            }
                           }}
                         >
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                            <Avatar sx={{ bgcolor: apt.isToday ? '#ef4444' : '#0284c7', width: 38, height: 38 }}>
-                              <CalendarIcon sx={{ fontSize: 20 }} />
+                          {/* Left Info Block */}
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1, minWidth: 0, mr: 1 }}>
+                            <Avatar sx={{ bgcolor: apt.isToday ? '#ef4444' : '#0284c7', color: '#fff', width: 42, height: 42, flexShrink: 0 }}>
+                              <CalendarIcon sx={{ fontSize: 22 }} />
                             </Avatar>
-                            <Box>
-                              <Typography variant="subtitle2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#0f172a', fontSize: '0.85rem' }}>
+                            <Box sx={{ flex: 1, minWidth: 0 }}>
+                              <Typography variant="subtitle2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#0f172a', fontSize: '0.88rem' }} noWrap>
                                 {apt.patientName}
                               </Typography>
-                              <Typography variant="caption" sx={{ color: '#475569', fontWeight: 600, display: 'block' }}>
-                                {apt.purpose}
+                              <Typography variant="caption" sx={{ color: '#0369a1', fontWeight: 700, display: 'block', mt: 0.2 }} noWrap>
+                                🩺 {apt.purpose}
                               </Typography>
                             </Box>
                           </Box>
-                          <Box sx={{ textAlign: 'right' }}>
-                            <Chip
-                              label={apt.dateStr}
-                              size="small"
-                              sx={{
-                                fontWeight: 800,
-                                fontSize: '0.65rem',
-                                bgcolor: apt.isToday ? '#fee2e2' : '#e0f2fe',
-                                color: apt.isToday ? '#dc2626' : '#0369a1',
-                                border: apt.isToday ? '1px solid #ef4444' : '1px solid #0284c7'
-                              }}
-                            />
-                            {apt.timeStr && (
-                              <Typography variant="caption" sx={{ display: 'block', color: '#64748b', fontWeight: 700, fontSize: '0.65rem', mt: 0.2 }}>
-                                ⏰ {apt.timeStr}
-                              </Typography>
-                            )}
+
+                          {/* Rightmost Date, Time & Chevron Block */}
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0, ml: 'auto' }}>
+                            <Box sx={{ textAlign: 'right' }}>
+                              <Chip
+                                label={apt.dateStr}
+                                size="small"
+                                sx={{
+                                  fontWeight: 800,
+                                  fontSize: '0.68rem',
+                                  bgcolor: apt.isToday ? '#fee2e2' : '#e0f2fe',
+                                  color: apt.isToday ? '#dc2626' : '#0369a1',
+                                  border: apt.isToday ? '1px solid #ef4444' : '1px solid #0284c7',
+                                  height: 22
+                                }}
+                              />
+                              {apt.timeStr && (
+                                <Typography variant="caption" sx={{ display: 'block', color: '#64748b', fontWeight: 700, fontSize: '0.65rem', mt: 0.3 }}>
+                                  ⏰ {apt.timeStr}
+                                </Typography>
+                              )}
+                            </Box>
+                            <ChevronRightIcon sx={{ color: '#0284c7', fontSize: 20 }} />
                           </Box>
                         </Card>
                       ))}
