@@ -33,25 +33,10 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import { getPrescriptions } from '../services/prescriptions';
 import { useThemeContext } from '../contexts/ThemeContext';
 
-interface Prescription {
-  id: string;
-  patientId: string;
-  patientName: string;
-  patientEmail: string;
-  diagnosis: string;
-  provisionalDiagnosis?: string[];
-  medications: Array<{
-    name: string;
-    dosage: string;
-    frequency: string;
-    duration: string;
-  }>;
-  createdAt: string;
-  status: 'active' | 'completed' | 'cancelled';
-  notes?: string;
-}
+import { Prescription } from '../types/prescription';
 
 interface Stats {
   total: number;
@@ -72,27 +57,31 @@ export default function DoctorPrescriptions() {
 
   useEffect(() => {
     fetchPrescriptions();
+    const timer = setTimeout(() => fetchPrescriptions(true), 150);
+    return () => clearTimeout(timer);
   }, [statusFilter]);
 
-  const fetchPrescriptions = async () => {
+  const fetchPrescriptions = async (isBackgroundRefresh = false) => {
     try {
-      setLoading(true);
+      if (!isBackgroundRefresh) setLoading(true);
       setError(null);
-      const params: any = {};
+      
+      const data = await getPrescriptions(isBackgroundRefresh);
+      let prescriptionList: Prescription[] = Array.isArray(data) ? data : [];
+      
       if (statusFilter !== 'all') {
-        params.status = statusFilter;
+        prescriptionList = prescriptionList.filter(p => p.status === statusFilter);
       }
       
-      const response = await api.get('/prescriptions', { params });
-      
-      const prescriptionList = Array.isArray(response.data) ? response.data : response.data?.data?.prescriptions || response.data?.prescriptions || [];
       setPrescriptions(prescriptionList);
       calculateStats(prescriptionList);
     } catch (err: any) {
       console.error('Error fetching prescriptions:', err);
-      setError(err.response?.data?.message || 'Failed to load prescriptions');
+      if (!isBackgroundRefresh) {
+        setError(err.response?.data?.message || 'Failed to load prescriptions');
+      }
     } finally {
-      setLoading(false);
+      if (!isBackgroundRefresh) setLoading(false);
     }
   };
 
@@ -139,8 +128,8 @@ export default function DoctorPrescriptions() {
     if (!searchQuery || !searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase().trim();
     const patientName = (p.patientName || '').toLowerCase();
-    const patientEmail = (p.patientEmail || '').toLowerCase();
-    const diagnosis = (p.diagnosis || (Array.isArray(p.provisionalDiagnosis) ? p.provisionalDiagnosis.join(' ') : '')).toLowerCase();
+    const patientEmail = ((p as any).patientEmail || '').toLowerCase();
+    const diagnosis = ((p as any).diagnosis || (Array.isArray(p.provisionalDiagnosis) ? p.provisionalDiagnosis.join(' ') : '')).toLowerCase();
     const notes = (p.notes || '').toLowerCase();
     const medMatch = Array.isArray(p.medications) && p.medications.some(m => (m?.name || '').toLowerCase().includes(query));
     
@@ -398,7 +387,7 @@ export default function DoctorPrescriptions() {
                   Diagnosis / Condition
                 </Typography>
                 <Typography variant="body2" sx={{ fontWeight: 700, color: mode === 'dark' ? '#FAF2F5' : '#1A312C' }}>
-                  {prescription.diagnosis || 'General Medical Consultation'}
+                  {(prescription as any).diagnosis || (Array.isArray(prescription.provisionalDiagnosis) && prescription.provisionalDiagnosis.length > 0 ? prescription.provisionalDiagnosis.join(', ') : 'General Medical Consultation')}
                 </Typography>
                 
                 {prescription.medications && prescription.medications.length > 0 && (

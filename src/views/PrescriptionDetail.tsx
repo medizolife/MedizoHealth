@@ -5,9 +5,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { getPrescriptionById } from '../services/prescriptions';
 import { prescriptionsAPI } from '../services/api';
 import { getPatientById } from '../services/patients';
-import { findUserById } from '../utils/auth';
 import { Prescription } from '../types/prescription';
-import { Doctor, Patient } from '../types/auth';
+import { Patient } from '../types/auth';
 import { 
   Container,
   Typography,
@@ -40,7 +39,6 @@ const PrescriptionDetail = () => {
   const { user } = authState;
   
   const [prescription, setPrescription] = useState<Prescription | null>(null);
-  const [doctor, setDoctor] = useState<Doctor | null>(null);
   const [patient, setPatient] = useState<Patient | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -62,11 +60,6 @@ const PrescriptionDetail = () => {
           } catch (e) {
             console.log('Patient details fetch failed');
           }
-        }
-        
-        if (prescriptionData.doctorId) {
-          const doctorData = findUserById(prescriptionData.doctorId);
-          setDoctor(doctorData as Doctor);
         }
         setError(null);
       } catch (err) {
@@ -218,16 +211,115 @@ const PrescriptionDetail = () => {
           )}
         </Box>
         
+        {/* Diagnosis & Complaints */}
+        {((prescription as any).provisionalDiagnosis && (prescription as any).provisionalDiagnosis.length > 0) && (
+          <Box sx={{ bgcolor: '#f8fafc', p: 2, borderRadius: '16px', mb: 2, border: '1px solid #e2e8f0' }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#134F4D', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+              🩺 Diagnosis
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+              {(prescription as any).provisionalDiagnosis.map((d: string, i: number) => (
+                <Chip key={i} label={d} size="small" sx={{ fontWeight: 700, bgcolor: 'rgba(19, 79, 77, 0.08)', color: '#134F4D' }} />
+              ))}
+            </Box>
+          </Box>
+        )}
+
+        {((prescription as any).presentingComplaints && (prescription as any).presentingComplaints.length > 0) && (
+          <Box sx={{ bgcolor: '#f8fafc', p: 2, borderRadius: '16px', mb: 2, border: '1px solid #e2e8f0' }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#134F4D', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+              📋 Presenting Complaints
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+              {(prescription as any).presentingComplaints.map((c: string, i: number) => (
+                <Chip key={i} label={c} size="small" sx={{ fontWeight: 700, bgcolor: 'rgba(245, 158, 11, 0.1)', color: '#92400e' }} />
+              ))}
+            </Box>
+          </Box>
+        )}
+
+        {((prescription as any).clinicalFindings && (prescription as any).clinicalFindings.length > 0) && (
+          <Box sx={{ bgcolor: '#f8fafc', p: 2, borderRadius: '16px', mb: 2, border: '1px solid #e2e8f0' }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#134F4D', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+              🔬 Clinical Findings
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+              {(prescription as any).clinicalFindings.map((f: string, i: number) => (
+                <Chip key={i} label={f} size="small" sx={{ fontWeight: 700, bgcolor: 'rgba(59, 130, 246, 0.08)', color: '#1d4ed8' }} />
+              ))}
+            </Box>
+          </Box>
+        )}
+
+        {/* Vital Signs */}
+        {(prescription as any).vitalSigns && Object.keys((prescription as any).vitalSigns).some(k => (prescription as any).vitalSigns[k]) && (
+          <Box sx={{ bgcolor: '#f8fafc', p: 2, borderRadius: '16px', mb: 2, border: '1px solid #e2e8f0' }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#134F4D', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+              📊 Vital Signs
+            </Typography>
+            <Grid container spacing={1}>
+              {(prescription as any).vitalSigns.bloodPressure && (
+                <Grid item xs={6}>
+                  <Typography variant="caption" color="text.secondary">Blood Pressure</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 700 }}>{(prescription as any).vitalSigns.bloodPressure}</Typography>
+                </Grid>
+              )}
+              {(prescription as any).vitalSigns.pulse && (
+                <Grid item xs={6}>
+                  <Typography variant="caption" color="text.secondary">Pulse</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 700 }}>{(prescription as any).vitalSigns.pulse} bpm</Typography>
+                </Grid>
+              )}
+              {(prescription as any).vitalSigns.temperature && (
+                <Grid item xs={6}>
+                  <Typography variant="caption" color="text.secondary">Temperature</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 700 }}>{(prescription as any).vitalSigns.temperature} °F</Typography>
+                </Grid>
+              )}
+              {(prescription as any).vitalSigns.weight && (
+                <Grid item xs={6}>
+                  <Typography variant="caption" color="text.secondary">Weight</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 700 }}>{(prescription as any).vitalSigns.weight} kg</Typography>
+                </Grid>
+              )}
+              {(prescription as any).vitalSigns.spo2 && (
+                <Grid item xs={6}>
+                  <Typography variant="caption" color="text.secondary">SpO₂</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 700 }}>{(prescription as any).vitalSigns.spo2}%</Typography>
+                </Grid>
+              )}
+            </Grid>
+          </Box>
+        )}
+
+        {/* Notes */}
+        {(prescription as any).notes && (
+          <Box sx={{ bgcolor: '#fffbeb', p: 2, borderRadius: '16px', mb: 2, border: '1px solid rgba(245, 158, 11, 0.2)' }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#92400e', mb: 0.5 }}>📝 Notes</Typography>
+            <Typography variant="body2" sx={{ color: '#78350f' }}>{(prescription as any).notes}</Typography>
+          </Box>
+        )}
+
+        {/* Follow-up */}
+        {(prescription as any).followUpDate && (
+          <Box sx={{ bgcolor: 'rgba(59, 130, 246, 0.04)', p: 2, borderRadius: '16px', mb: 2, border: '1px solid rgba(59, 130, 246, 0.15)' }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#1d4ed8', mb: 0.5 }}>📅 Follow-Up Date</Typography>
+            <Typography variant="body2" sx={{ fontWeight: 700, color: '#1e40af' }}>
+              {new Date((prescription as any).followUpDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            </Typography>
+          </Box>
+        )}
+
         {/* Doctor & Patient Info */}
         <Grid container spacing={1.5} sx={{ mb: 2 }}>
           <Grid item xs={6}>
             <Paper variant="outlined" sx={{ p: 1.5, borderRadius: '12px', bgcolor: '#f1f5f9' }}>
               <Typography variant="caption" color="text.secondary">DOCTOR</Typography>
               <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                {doctor ? `Dr. ${doctor.lastName}` : 'Attending MD'}
+                {(prescription as any).doctorName ? `Dr. ${(prescription as any).doctorName}` : 'Attending MD'}
               </Typography>
               <Typography variant="caption" color="text.secondary" display="block">
-                {doctor?.specialization || 'Healthcare'}
+                {(prescription as any).doctorSpecialization || 'Healthcare'}
               </Typography>
             </Paper>
           </Grid>
@@ -235,7 +327,7 @@ const PrescriptionDetail = () => {
             <Paper variant="outlined" sx={{ p: 1.5, borderRadius: '12px', bgcolor: '#f1f5f9' }}>
               <Typography variant="caption" color="text.secondary">PATIENT</Typography>
               <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                {patient ? `${patient.firstName} ${patient.lastName}` : 'Registered Patient'}
+                {patient ? `${patient.firstName} ${patient.lastName}` : ((prescription as any).patientName || 'Registered Patient')}
               </Typography>
               <Typography variant="caption" color="text.secondary" display="block">
                 Issued: {new Date(prescription.createdAt || Date.now()).toLocaleDateString()}

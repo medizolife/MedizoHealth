@@ -192,6 +192,8 @@ export const getCurrentUser = async (): Promise<User> => {
     endpoint = '/doctors/profile';
   } else if (role === 'patient') {
     endpoint = '/patients/profile';
+  } else if (role === 'pharmacist') {
+    endpoint = '/auth/me';
   } else {
     throw new Error('Invalid user role');
   }
