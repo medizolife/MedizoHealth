@@ -100,24 +100,32 @@ export const prescriptionsAPI = {
 };
 
 // Users API
+import { getCachedData, setCachedData, clearApiCache } from './apiCache';
+
 export const usersAPI = {
   getPatients: async () => {
     const response = await api.get('/users/patients');
     return response.data;
   },
-  getMyPatients: async () => {
+  getMyPatients: async (forceRefresh = false) => {
+    if (!forceRefresh) {
+      const cached = getCachedData<any>('users_my_patients');
+      if (cached) return cached;
+    }
     const response = await api.get('/users/patients/my-patients');
-    return response.data;
+    return setCachedData('users_my_patients', response.data);
   },
   lookupPatientById: async (patientId: string) => {
     const response = await api.get(`/users/patients/lookup/${patientId}`);
     return response.data;
   },
   linkPatient: async (patientId: string) => {
+    clearApiCache();
     const response = await api.post(`/users/patients/link/${patientId}`);
     return response.data;
   },
   createPatient: async (patientData: any) => {
+    clearApiCache();
     const response = await api.post('/users/patients/create', patientData);
     return response.data;
   },

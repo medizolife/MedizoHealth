@@ -162,6 +162,52 @@ const Dashboard = () => {
     return p.status === 'completed' && matchesSearch;
   });
 
+  // Extract upcoming follow-up appointments from prescriptions
+  const upcomingAppointments = React.useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const appointments: Array<{
+      id: string;
+      patientName: string;
+      dateStr: string;
+      timeStr: string;
+      purpose: string;
+      isToday: boolean;
+      dateObj: Date;
+    }> = [];
+
+    prescriptions.forEach((p: any) => {
+      const fDate = p.followUpInfo?.appointmentDate || p.followUpDate;
+      if (!fDate) return;
+
+      const aptDate = new Date(fDate);
+      if (isNaN(aptDate.getTime())) return;
+      aptDate.setHours(0, 0, 0, 0);
+
+      if (aptDate >= today) {
+        const isToday = aptDate.getTime() === today.getTime();
+        const dateStr = isToday
+          ? 'Today'
+          : aptDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+        appointments.push({
+          id: p.id || Math.random().toString(),
+          patientName: p.patientName || (p.patient ? `${p.patient.firstName} ${p.patient.lastName}` : 'Linked Patient'),
+          dateStr,
+          timeStr: p.followUpInfo?.appointmentTime || '',
+          purpose: p.followUpInfo?.purpose || (p.provisionalDiagnosis && p.provisionalDiagnosis[0]) || 'Follow-up Consultation',
+          isToday,
+          dateObj: aptDate
+        });
+      }
+    });
+
+    // Sort closest date first
+    appointments.sort((a, b) => a.dateObj.getTime() - b.dateObj.getTime());
+    return appointments;
+  }, [prescriptions]);
+
   const currentDate = new Date().toLocaleDateString('en-US', { 
     weekday: 'short', 
     month: 'short', 
@@ -515,7 +561,79 @@ const Dashboard = () => {
             
             {/* Active Prescriptions Tab */}
             {tabValue === 0 && (
-              activePrescriptions.length === 0 ? (
+              <>
+                {/* 📅 Top-most Upcoming Appointments Section in Active Tab */}
+                {user?.role === 'doctor' && upcomingAppointments.length > 0 && (
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      p: 2,
+                      mb: 2,
+                      borderRadius: '20px',
+                      bgcolor: mode === 'dark' ? 'rgba(30, 41, 59, 0.9)' : 'rgba(2, 132, 199, 0.06)',
+                      border: '1.5px solid rgba(2, 132, 199, 0.3)',
+                      boxShadow: '0 4px 20px rgba(2, 132, 199, 0.08)'
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.2 }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#0369a1', display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <CalendarIcon sx={{ fontSize: 20, color: '#0284c7' }} /> Upcoming Appointments & Follow-ups
+                      </Typography>
+                      <Chip label={`${upcomingAppointments.length} Scheduled`} size="small" sx={{ bgcolor: '#0284c7', color: '#fff', fontWeight: 800, fontSize: '0.68rem' }} />
+                    </Box>
+
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                      {upcomingAppointments.slice(0, 3).map((apt) => (
+                        <Card
+                          key={apt.id}
+                          sx={{
+                            p: 1.5,
+                            borderRadius: '14px',
+                            bgcolor: mode === 'dark' ? 'rgba(15, 23, 42, 0.8)' : '#ffffff',
+                            border: '1px solid rgba(2, 132, 199, 0.2)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justify: 'space-between'
+                          }}
+                        >
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                            <Avatar sx={{ bgcolor: apt.isToday ? '#ef4444' : '#0284c7', width: 38, height: 38 }}>
+                              <CalendarIcon sx={{ fontSize: 20 }} />
+                            </Avatar>
+                            <Box>
+                              <Typography variant="subtitle2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#0f172a', fontSize: '0.85rem' }}>
+                                {apt.patientName}
+                              </Typography>
+                              <Typography variant="caption" sx={{ color: '#475569', fontWeight: 600, display: 'block' }}>
+                                {apt.purpose}
+                              </Typography>
+                            </Box>
+                          </Box>
+                          <Box sx={{ textAlign: 'right' }}>
+                            <Chip
+                              label={apt.dateStr}
+                              size="small"
+                              sx={{
+                                fontWeight: 800,
+                                fontSize: '0.65rem',
+                                bgcolor: apt.isToday ? '#fee2e2' : '#e0f2fe',
+                                color: apt.isToday ? '#dc2626' : '#0369a1',
+                                border: apt.isToday ? '1px solid #ef4444' : '1px solid #0284c7'
+                              }}
+                            />
+                            {apt.timeStr && (
+                              <Typography variant="caption" sx={{ display: 'block', color: '#64748b', fontWeight: 700, fontSize: '0.65rem', mt: 0.2 }}>
+                                ⏰ {apt.timeStr}
+                              </Typography>
+                            )}
+                          </Box>
+                        </Card>
+                      ))}
+                    </Box>
+                  </Paper>
+                )}
+
+                {activePrescriptions.length === 0 ? (
                 <Box sx={{ py: 6, textAlign: 'center' }}>
                   <Box sx={{ p: 2, borderRadius: '50%', bgcolor: 'rgba(137, 215, 183, 0.2)', width: 72, height: 72, mx: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2 }}>
                     <MedicationIcon sx={{ fontSize: 36, color: '#428475' }} />
@@ -603,8 +721,9 @@ const Dashboard = () => {
                     </Box>
                   )}
                 </>
-              )
-            )}
+              )}
+            </>
+          )}
 
             {/* Completed Prescriptions Tab */}
             {tabValue === 1 && (

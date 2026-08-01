@@ -1,32 +1,45 @@
 import api from './api';
 import { CreatePrescriptionData, Prescription, UpdatePrescriptionData } from '../types/prescription';
+import { getCachedData, setCachedData, clearApiCache } from './apiCache';
 
-// Prescription service functions
-export const getPrescriptions = async (): Promise<Prescription[]> => {
+// Prescription service functions with caching
+export const getPrescriptions = async (forceRefresh = false): Promise<Prescription[]> => {
+  if (!forceRefresh) {
+    const cached = getCachedData<Prescription[]>('prescriptions_list');
+    if (cached) return cached;
+  }
   const response = await api.get<Prescription[]>('/prescriptions');
-  return response.data;
+  return setCachedData('prescriptions_list', response.data);
 };
 
-export const getPrescriptionById = async (id: string): Promise<Prescription> => {
+export const getPrescriptionById = async (id: string, forceRefresh = false): Promise<Prescription> => {
+  if (!forceRefresh) {
+    const cached = getCachedData<Prescription>(`prescription_${id}`);
+    if (cached) return cached;
+  }
   const response = await api.get<Prescription>(`/prescriptions/${id}`);
-  return response.data;
+  return setCachedData(`prescription_${id}`, response.data);
 };
 
 export const createPrescription = async (data: CreatePrescriptionData): Promise<Prescription> => {
+  clearApiCache();
   const response = await api.post<Prescription>('/prescriptions', data);
   return response.data;
 };
 
 export const updatePrescription = async (id: string, data: UpdatePrescriptionData): Promise<Prescription> => {
+  clearApiCache();
   const response = await api.put<Prescription>(`/prescriptions/${id}`, data);
   return response.data;
 };
 
 export const deletePrescription = async (id: string): Promise<void> => {
+  clearApiCache();
   await api.delete(`/prescriptions/${id}`);
 };
 
 export const dispensePrescription = async (id: string, dispenseNotes?: string): Promise<{ success: boolean; message: string; prescription: Prescription }> => {
+  clearApiCache();
   const response = await api.put(`/prescriptions/${id}/dispense`, { dispenseNotes });
   return response.data;
 };
