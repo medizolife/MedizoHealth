@@ -8,20 +8,18 @@ import {
   Paper, 
   Typography, 
   TextField, 
+  MenuItem,
   Button, 
   Alert, 
   CircularProgress, 
   Container, 
   Grid,
-  Chip,
   Divider,
   IconButton,
   InputAdornment,
   Link
 } from '@mui/material';
 import { 
-  Person as PersonIcon, 
-  MedicalServices as DoctorIcon,
   Visibility,
   VisibilityOff,
   Google as GoogleIcon
@@ -51,12 +49,13 @@ const Register = () => {
     email: googleData?.email || '',
     password: '',
     confirmPassword: '',
-    role: 'patient' as 'doctor' | 'patient'
+    role: '' as 'doctor' | 'patient' | ''
   });
   
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordError, setPasswordError] = useState('');
+  const [roleError, setRoleError] = useState('');
   const [googleError, setGoogleError] = useState<string | null>(null);
   const [googleProcessing, setGoogleProcessing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -75,10 +74,23 @@ const Register = () => {
     if (e.target.name === 'password' || e.target.name === 'confirmPassword') {
       setPasswordError('');
     }
+    if (e.target.name === 'role') {
+      setRoleError('');
+    }
   };
   
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setRoleError('');
+    setPasswordError('');
+    
+    const { firstName, lastName, email, password, confirmPassword, role } = formData;
+
+    if (!role) {
+      setRoleError('Please select your role (Patient or Doctor)');
+      return;
+    }
+
     setIsSubmitting(true);
     
     try {
@@ -87,14 +99,13 @@ const Register = () => {
         return;
       }
       
-      const { firstName, lastName, email, password, confirmPassword, role } = formData;
       if (password !== confirmPassword) {
         setPasswordError('Passwords do not match');
         setIsSubmitting(false);
         return;
       }
 
-      await register({ firstName, lastName, email, password, role });
+      await register({ firstName, lastName, email, password, role: role as 'doctor' | 'patient' });
       navigate('/login');
     } catch (err) {
       console.error('Registration failed:', err);
@@ -105,6 +116,13 @@ const Register = () => {
 
   const handleGoogleSuccess = async (credentialResponse: any) => {
     setGoogleError(null);
+    setRoleError('');
+
+    if (!formData.role) {
+      setRoleError('Please select your role (Patient or Doctor) before signing up with Google');
+      return;
+    }
+
     setGoogleProcessing(true);
     
     try {
@@ -177,7 +195,7 @@ const Register = () => {
           </Typography>
           <Typography variant="body2" sx={{ color: '#428475', fontWeight: 600, mt: 0.5 }}>
             {isGoogleSignUp 
-              ? 'Choose your role to get started' 
+              ? 'Select your role to complete registration' 
               : 'Join Medizo Healthcare Platform'}
           </Typography>
         </Box>
@@ -204,43 +222,6 @@ const Register = () => {
             </Typography>
           </Alert>
         )}
-
-        {/* Role Selector Chips */}
-        <Box sx={{ display: 'flex', gap: 1, mb: 2.5, justifyContent: 'center', p: 0.5, bgcolor: 'rgba(26, 49, 44, 0.05)', borderRadius: '16px' }}>
-          <Chip
-            icon={<PersonIcon sx={{ color: formData.role === 'patient' ? '#1A312C !important' : '#428475 !important' }} />}
-            label="Patient"
-            clickable
-            onClick={() => setFormData({ ...formData, role: 'patient' })}
-            sx={{ 
-              flex: 1, 
-              height: 40, 
-              fontWeight: 800,
-              borderRadius: '12px',
-              bgcolor: formData.role === 'patient' ? '#89D7B7' : 'transparent',
-              color: formData.role === 'patient' ? '#1A312C' : '#428475',
-              border: formData.role === 'patient' ? '1px solid #428475' : 'none',
-              transition: 'all 0.2s ease',
-              '&:hover': { bgcolor: formData.role === 'patient' ? '#78caa8' : 'rgba(137, 215, 183, 0.15)' }
-            }}
-          />
-          <Chip
-            icon={<DoctorIcon sx={{ color: formData.role === 'doctor' ? '#FFF4E1 !important' : '#428475 !important' }} />}
-            label="Doctor"
-            clickable
-            onClick={() => setFormData({ ...formData, role: 'doctor' })}
-            sx={{ 
-              flex: 1, 
-              height: 40, 
-              fontWeight: 800,
-              borderRadius: '12px',
-              bgcolor: formData.role === 'doctor' ? '#1A312C' : 'transparent',
-              color: formData.role === 'doctor' ? '#FFF4E1' : '#428475',
-              transition: 'all 0.2s ease',
-              '&:hover': { bgcolor: formData.role === 'doctor' ? '#0F1D1A' : 'rgba(26, 49, 44, 0.08)' }
-            }}
-          />
-        </Box>
 
         {error && (
           <Alert severity="error" sx={{ mb: 2, borderRadius: '14px', bgcolor: 'rgba(239, 68, 68, 0.1)', color: '#b91c1c', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
@@ -289,6 +270,46 @@ const Register = () => {
         
         <Box component="form" onSubmit={handleSubmit}>
           <Grid container spacing={1.5}>
+            {/* Mandatory Unselected Role Dropdown */}
+            <Grid item xs={12}>
+              <TextField
+                select
+                required
+                fullWidth
+                id="role"
+                name="role"
+                label="Register As (Select Role)"
+                value={formData.role}
+                onChange={handleChange}
+                error={!!roleError}
+                helperText={roleError || 'Select whether you are registering as a Patient or Doctor'}
+                InputLabelProps={{ sx: { color: '#2A6B5D', fontWeight: 600 } }}
+                SelectProps={{
+                  displayEmpty: true,
+                }}
+                InputProps={{ 
+                  sx: { 
+                    borderRadius: '14px',
+                    bgcolor: 'rgba(255, 255, 255, 0.95)',
+                    color: '#123029',
+                    fontWeight: 600,
+                    '& fieldset': { borderColor: roleError ? '#ef4444' : 'rgba(137, 215, 183, 0.5)' },
+                    '&:hover fieldset': { borderColor: '#428475 !important' }
+                  } 
+                }}
+              >
+                <MenuItem value="" disabled sx={{ color: '#888', fontStyle: 'italic' }}>
+                  -- Select Role --
+                </MenuItem>
+                <MenuItem value="patient" sx={{ fontWeight: 600, py: 1.2 }}>
+                  Patient
+                </MenuItem>
+                <MenuItem value="doctor" sx={{ fontWeight: 600, py: 1.2 }}>
+                  Doctor
+                </MenuItem>
+              </TextField>
+            </Grid>
+
             <Grid item xs={6}>
               <TextField
                 name="firstName"
@@ -503,9 +524,13 @@ const Register = () => {
                 </Typography>
               </Box>
             ) : isGoogleSignUp ? (
-              `Continue as ${formData.role === 'doctor' ? 'Doctor' : 'Patient'}`
+              formData.role 
+                ? `Continue as ${formData.role === 'doctor' ? 'Doctor' : 'Patient'}`
+                : 'Continue Registration'
             ) : (
-              `Register as ${formData.role === 'doctor' ? 'Doctor' : 'Patient'}`
+              formData.role 
+                ? `Register as ${formData.role === 'doctor' ? 'Doctor' : 'Patient'}`
+                : 'Register Account'
             )}
           </Button>
 
@@ -586,3 +611,4 @@ const Register = () => {
 };
 
 export default Register;
+
