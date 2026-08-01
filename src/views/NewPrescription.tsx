@@ -1843,32 +1843,34 @@ const NewPrescription = () => {
                   />
                 </Grid>
 
-                {/* Quick Quantity Presets */}
-                <Grid item xs={12}>
-                  <Typography variant="caption" sx={{ fontWeight: 800, color: 'var(--color-forest)', display: 'block', mb: 0.5 }}>
-                    Quick Quantity Presets:
-                  </Typography>
-                  <Box sx={{ display: 'flex', gap: 0.8, flexWrap: 'wrap' }}>
-                    {[
-                      '10 Tablets', '14 Tablets', '20 Tablets', '30 Tablets',
-                      '10 Capsules', '14 Capsules', '1 Bottle (100ml)', '1 Strip', '2 Vials', '1 Tube'
-                    ].map(q => (
-                      <Chip
-                        key={q}
-                        label={q}
-                        size="small"
-                        onClick={() => setNewMedication({ ...newMedication, quantity: q })}
-                        sx={{
-                          fontWeight: 700,
-                          fontSize: '0.7rem',
-                          cursor: 'pointer',
-                          bgcolor: newMedication.quantity === q ? 'var(--color-forest)' : 'rgba(0,100,0,0.06)',
-                          color: newMedication.quantity === q ? '#ffffff' : 'inherit'
-                        }}
-                      />
-                    ))}
-                  </Box>
-                </Grid>
+                {/* Quick Quantity Presets — ONLY visible when no time of day is selected */}
+                {(!newMedication.timing || ((newMedication.timing.morning || 0) === 0 && (newMedication.timing.afternoon || 0) === 0 && (newMedication.timing.evening || 0) === 0 && (newMedication.timing.night || 0) === 0)) && !newMedication.isSOS && (
+                  <Grid item xs={12}>
+                    <Typography variant="caption" sx={{ fontWeight: 800, color: 'var(--color-forest)', display: 'block', mb: 0.5 }}>
+                      Quick Quantity Presets:
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 0.8, flexWrap: 'wrap' }}>
+                      {[
+                        '10 Tablets', '14 Tablets', '20 Tablets', '30 Tablets',
+                        '10 Capsules', '14 Capsules', '1 Bottle (100ml)', '1 Strip', '2 Vials', '1 Tube'
+                      ].map(q => (
+                        <Chip
+                          key={q}
+                          label={q}
+                          size="small"
+                          onClick={() => setNewMedication({ ...newMedication, quantity: q })}
+                          sx={{
+                            fontWeight: 700,
+                            fontSize: '0.7rem',
+                            cursor: 'pointer',
+                            bgcolor: newMedication.quantity === q ? 'var(--color-forest)' : 'rgba(0,100,0,0.06)',
+                            color: newMedication.quantity === q ? '#ffffff' : 'inherit'
+                          }}
+                        />
+                      ))}
+                    </Box>
+                  </Grid>
+                )}
 
                 <Grid item xs={12}>
                   <Button 
