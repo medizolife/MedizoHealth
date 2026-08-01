@@ -104,9 +104,10 @@ interface FollowUpAppointment {
 
 interface EnhancedPatientManagementProps {
   maxPatients?: number;
+  searchQuery?: string;
 }
 
-const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ maxPatients }) => {
+const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ maxPatients, searchQuery = '' }) => {
   const navigate = useNavigate();
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
@@ -129,10 +130,13 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
     insurance: { provider: '', policyNumber: '', groupNumber: '' }
   });
 
-  // Fetch managed patients and appointments on component mount
+  // Fetch from cache first, then background refresh
   useEffect(() => {
     fetchManagedPatients();
+    // Background refresh after showing cached data
+    const timer = setTimeout(() => fetchManagedPatients(true), 100);
     fetchFollowUpAppointments();
+    return () => clearTimeout(timer);
   }, []);
 
   const fetchFollowUpAppointments = async () => {
@@ -178,19 +182,32 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
     }
   };
 
-  const fetchManagedPatients = async () => {
+  const fetchManagedPatients = async (isBackgroundRefresh = false) => {
     try {
-      setLoading(true);
-      const data = await getManagedPatients();
+      if (!isBackgroundRefresh) setLoading(true);
+      const data = await getManagedPatients(isBackgroundRefresh);
       setPatients(data as EnhancedPatient[]);
       setError(null);
     } catch (err) {
       console.error('Error fetching managed patients:', err);
-      setError('Failed to load patients');
+      if (!isBackgroundRefresh) setError('Failed to load patients');
     } finally {
-      setLoading(false);
+      if (!isBackgroundRefresh) setLoading(false);
     }
   };
+
+  // Filter patients by search query
+  const filteredPatients = React.useMemo(() => {
+    if (!searchQuery.trim()) return patients;
+    const q = searchQuery.toLowerCase();
+    return patients.filter(p =>
+      `${p.firstName || ''} ${p.lastName || ''}`.toLowerCase().includes(q) ||
+      (p.email || '').toLowerCase().includes(q) ||
+      (p.contactNumber || '').toLowerCase().includes(q) ||
+      (p.diagnoses && p.diagnoses.some((d: string) => d.toLowerCase().includes(q))) ||
+      (p.latestPrescription?.medication && p.latestPrescription.medication.toLowerCase().includes(q))
+    );
+  }, [patients, searchQuery]);
 
   const handleViewMedicalDetails = async (patient: EnhancedPatient) => {
     try {
@@ -434,7 +451,7 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
         /* 💻 Desktop Widescreen Modern List Layout */
         <Paper elevation={0} sx={{ borderRadius: '20px', overflow: 'hidden', border: '1px solid rgba(137, 215, 183, 0.4)', bgcolor: 'rgba(255, 255, 255, 0.95)' }}>
           <List disablePadding>
-            {(maxPatients ? patients.slice(0, maxPatients) : patients).map((patient, idx) => (
+            {(maxPatients ? filteredPatients.slice(0, maxPatients) : filteredPatients).map((patient, idx) => (
               <React.Fragment key={patient.id}>
                 {idx > 0 && <Divider sx={{ borderColor: 'rgba(137, 215, 183, 0.2)' }} />}
                 <ListItem
@@ -509,7 +526,7 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
       ) : (
         /* 📱 Mobile Compact Cards Mode */
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-          {(maxPatients ? patients.slice(0, maxPatients) : patients).map((patient) => (
+          {(maxPatients ? filteredPatients.slice(0, maxPatients) : filteredPatients).map((patient) => (
             <Card
               key={patient.id}
               onClick={() => handleViewMedicalDetails(patient)}

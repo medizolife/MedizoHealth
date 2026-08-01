@@ -16,6 +16,7 @@ import {
   Verified as VerifiedIcon,
   MedicalServices as StethoscopeIcon,
   LocalPharmacy as PharmacyIcon,
+  QrCodeScanner as QrScannerIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { useThemeContext } from '../contexts/ThemeContext';
@@ -60,6 +61,7 @@ interface WallpaperCarouselHeroProps {
   showCreateButton?: boolean;
   searchQuery?: string;
   onSearchChange?: (val: string) => void;
+  onQrScanClick?: () => void;
 }
 
 export default function WallpaperCarouselHero({
@@ -68,7 +70,8 @@ export default function WallpaperCarouselHero({
   showSearch = true,
   showCreateButton = false,
   searchQuery = '',
-  onSearchChange
+  onSearchChange,
+  onQrScanClick
 }: WallpaperCarouselHeroProps) {
   const { authState } = useAuth();
   const { user } = authState;
@@ -264,7 +267,7 @@ export default function WallpaperCarouselHero({
 
         {/* Embedded Search Field (If enabled) */}
         {showSearch && (
-          <Box sx={{ mt: 2 }}>
+          <Box sx={{ mt: 2, display: 'flex', gap: 1, alignItems: 'center' }}>
             <TextField 
               fullWidth
               placeholder="Search prescriptions, diagnosis or patients..."
@@ -297,6 +300,23 @@ export default function WallpaperCarouselHero({
                 }
               }}
             />
+            {onQrScanClick && (
+              <IconButton
+                onClick={onQrScanClick}
+                sx={{
+                  bgcolor: 'rgba(13, 148, 136, 0.5)',
+                  color: '#ffffff',
+                  border: '1px solid rgba(255, 255, 255, 0.35)',
+                  backdropFilter: 'blur(16px)',
+                  width: 42,
+                  height: 42,
+                  flexShrink: 0,
+                  '&:hover': { bgcolor: 'rgba(13, 148, 136, 0.7)' }
+                }}
+              >
+                <QrScannerIcon sx={{ fontSize: 22 }} />
+              </IconButton>
+            )}
           </Box>
         )}
 

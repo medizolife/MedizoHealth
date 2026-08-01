@@ -26,7 +26,8 @@ import {
   Alert,
   AlertTitle,
   Snackbar,
-  Button
+  Button,
+  Dialog
 } from '@mui/material';
 import { 
   Add as AddIcon, 
@@ -51,12 +52,13 @@ import {
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useThemeContext } from '../contexts/ThemeContext';
-import { getPrescriptions } from '../services/prescriptions';
-import { digilockerAPI } from '../services/api';
+import { getPrescriptions, lookupPrescriptionByCode } from '../services/prescriptions';
+import { digilockerAPI, usersAPI } from '../services/api';
 import { Prescription } from '../types/prescription';
 import EnhancedPatientManagement from '../components/EnhancedPatientManagement';
 import WallpaperCarouselHero from '../components/WallpaperCarouselHero';
 import PharmacistDashboard from './PharmacistDashboard';
+import QrScannerModal from '../components/QrScannerModal';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -96,6 +98,12 @@ const Dashboard = () => {
     message: '',
     severity: 'info'
   });
+
+  // QR Scanner state
+  const [qrScannerOpen, setQrScannerOpen] = useState(false);
+  const [scannedRxDialogOpen, setScannedRxDialogOpen] = useState(false);
+  const [scannedRx, setScannedRx] = useState<any>(null);
+  const [qrLinking, setQrLinking] = useState(false);
 
   // Touch swipe gesture state for native sliding tab animation
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
@@ -158,37 +166,42 @@ const Dashboard = () => {
       setLoading(false);
       return;
     }
-    const fetchPrescriptions = async () => {
+    const fetchPrescriptions = async (isBackgroundRefresh = false) => {
       try {
-        setLoading(true);
-        const data = await getPrescriptions();
+        if (!isBackgroundRefresh) setLoading(true);
+        const data = await getPrescriptions(isBackgroundRefresh);
         setPrescriptions(Array.isArray(data) ? data : []);
         setError(null);
       } catch (err) {
         console.error('Error fetching prescriptions:', err);
-        setError('Failed to load prescriptions');
+        if (!isBackgroundRefresh) setError('Failed to load prescriptions');
       } finally {
-        setLoading(false);
+        if (!isBackgroundRefresh) setLoading(false);
       }
     };
+    // Load from cache first (instant), then background refresh
     fetchPrescriptions();
+    const timer = setTimeout(() => fetchPrescriptions(true), 150);
+    return () => clearTimeout(timer);
   }, [authState.isAuthenticated]);
   
   // Filter prescriptions based on search and status
-  const activePrescriptions = prescriptions.filter((p: any) => {
-    const matchesSearch = !searchQuery || 
-      (p.medication && p.medication.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (p.patientName && p.patientName.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (p.provisionalDiagnosis && p.provisionalDiagnosis.some((d: string) => d.toLowerCase().includes(searchQuery.toLowerCase())));
-    return p.status !== 'completed' && matchesSearch;
-  });
+  const matchesSearch = (p: any): boolean => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      (p.medication && p.medication.toLowerCase().includes(q)) ||
+      (p.patientName && p.patientName.toLowerCase().includes(q)) ||
+      (p.provisionalDiagnosis && p.provisionalDiagnosis.some((d: string) => d.toLowerCase().includes(q))) ||
+      (p.presentingComplaints && p.presentingComplaints.some((c: string) => c.toLowerCase().includes(q))) ||
+      (p.clinicalFindings && p.clinicalFindings.some((f: string) => f.toLowerCase().includes(q))) ||
+      (p.medications && p.medications.some((m: any) => m.name && m.name.toLowerCase().includes(q))) ||
+      (p.notes && p.notes.toLowerCase().includes(q))
+    );
+  };
 
-  const completedPrescriptions = prescriptions.filter((p: any) => {
-    const matchesSearch = !searchQuery || 
-      (p.medication && p.medication.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (p.patientName && p.patientName.toLowerCase().includes(searchQuery.toLowerCase()));
-    return p.status === 'completed' && matchesSearch;
-  });
+  const activePrescriptions = prescriptions.filter((p: any) => p.status !== 'completed' && matchesSearch(p));
+  const completedPrescriptions = prescriptions.filter((p: any) => p.status === 'completed' && matchesSearch(p));
 
   // Extract upcoming follow-up appointments from prescriptions
   const upcomingAppointments = React.useMemo(() => {
@@ -242,12 +255,49 @@ const Dashboard = () => {
     day: 'numeric' 
   });
 
+  // Handle QR scan success — lookup prescription and auto-link patient
+  const handleDashboardQrScan = async (decodedText: string) => {
+    setQrScannerOpen(false);
+    try {
+      const result = await lookupPrescriptionByCode(decodedText);
+      if (result?.prescription) {
+        setScannedRx(result.prescription);
+        setScannedRxDialogOpen(true);
+
+        // Auto-link the patient from this prescription to the current doctor
+        if (result.prescription.patientId) {
+          setQrLinking(true);
+          try {
+            await usersAPI.linkPatient(result.prescription.patientId);
+            setSnackbar({ open: true, message: '✅ Patient linked to your records! You can now prescribe for them.', severity: 'success' });
+          } catch (linkErr: any) {
+            // Already linked is fine
+            if (linkErr?.response?.status !== 400) {
+              console.warn('Patient link error (may already be linked):', linkErr);
+            }
+          } finally {
+            setQrLinking(false);
+          }
+        }
+      } else {
+        setSnackbar({ open: true, message: 'No prescription found for this QR code.', severity: 'warning' });
+      }
+    } catch (err: any) {
+      console.error('QR lookup error:', err);
+      setSnackbar({ open: true, message: err?.response?.data?.message || 'Failed to look up prescription.', severity: 'error' });
+    }
+  };
+
   return (
     <>
     <Container maxWidth="md" sx={{ pt: 2, pb: 6, px: { xs: 2, sm: 3 } }}>
       
       {/* ─── Wallpaper Carousel Hero Greeting Header ─── */}
-      <WallpaperCarouselHero searchQuery={searchQuery} onSearchChange={setSearchQuery} />
+      <WallpaperCarouselHero 
+        searchQuery={searchQuery} 
+        onSearchChange={setSearchQuery} 
+        onQrScanClick={user?.role === 'doctor' ? () => setQrScannerOpen(true) : undefined}
+      />
 
       {/* ─── Medical Disclaimer Banner (One-time, dismissible) ─── */}
       {showDisclaimer && (
@@ -847,7 +897,7 @@ const Dashboard = () => {
               {/* ─── Pane 2: Patients (Doctor Only) ─── */}
               {user?.role === 'doctor' && (
                 <Box sx={{ width: '33.3333%', p: { xs: 1.5, sm: 2 }, flexShrink: 0, boxSizing: 'border-box' }}>
-                  <EnhancedPatientManagement maxPatients={3} />
+                  <EnhancedPatientManagement maxPatients={3} searchQuery={searchQuery} />
                 </Box>
               )}
             </Box>
@@ -895,6 +945,129 @@ const Dashboard = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      {/* QR Scanner Modal */}
+      <QrScannerModal
+        open={qrScannerOpen}
+        onClose={() => setQrScannerOpen(false)}
+        onScanSuccess={handleDashboardQrScan}
+      />
+
+      {/* Scanned Prescription Preview Dialog */}
+      <Dialog
+        open={scannedRxDialogOpen}
+        onClose={() => setScannedRxDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: '24px', bgcolor: mode === 'dark' ? '#0F1D1A' : '#ffffff' } }}
+      >
+        <Box sx={{ p: 3 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h6" sx={{ fontWeight: 900, color: mode === 'dark' ? '#FAF2F5' : '#0f172a' }}>
+              📋 Scanned Prescription
+            </Typography>
+            <IconButton onClick={() => setScannedRxDialogOpen(false)} size="small">
+              <CloseIcon />
+            </IconButton>
+          </Box>
+
+          {scannedRx && (
+            <Box>
+              {/* Patient Info */}
+              <Paper sx={{ p: 2, mb: 2, borderRadius: '16px', bgcolor: mode === 'dark' ? 'rgba(13, 148, 136, 0.08)' : 'rgba(19, 79, 77, 0.04)', border: '1px solid rgba(13, 148, 136, 0.2)' }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#0D9488', mb: 0.5 }}>Patient</Typography>
+                <Typography variant="body1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#0f172a' }}>
+                  {scannedRx.patientName || 'Linked Patient'}
+                </Typography>
+                {scannedRx.patientEmail && (
+                  <Typography variant="caption" sx={{ color: mode === 'dark' ? 'rgba(255,255,255,0.6)' : '#64748b' }}>
+                    {scannedRx.patientEmail}
+                  </Typography>
+                )}
+              </Paper>
+
+              {/* Doctor Info */}
+              {scannedRx.doctorName && (
+                <Paper sx={{ p: 2, mb: 2, borderRadius: '16px', bgcolor: mode === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)' }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', mb: 0.5 }}>Prescribed By</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 700, color: mode === 'dark' ? '#FAF2F5' : '#0f172a' }}>
+                    Dr. {scannedRx.doctorName} {scannedRx.doctorSpecialization ? `— ${scannedRx.doctorSpecialization}` : ''}
+                  </Typography>
+                </Paper>
+              )}
+
+              {/* Diagnosis */}
+              {scannedRx.provisionalDiagnosis && scannedRx.provisionalDiagnosis.length > 0 && (
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 0.5, color: mode === 'dark' ? '#FAF2F5' : '#0f172a' }}>Diagnosis</Typography>
+                  <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                    {scannedRx.provisionalDiagnosis.map((d: string, i: number) => (
+                      <Chip key={i} label={d} size="small" sx={{ fontWeight: 700, bgcolor: mode === 'dark' ? 'rgba(13, 148, 136, 0.15)' : 'rgba(19, 79, 77, 0.08)', color: '#0D9488' }} />
+                    ))}
+                  </Box>
+                </Box>
+              )}
+
+              {/* Medications */}
+              {scannedRx.medications && scannedRx.medications.length > 0 && (
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 0.5, color: mode === 'dark' ? '#FAF2F5' : '#0f172a' }}>Medications</Typography>
+                  {scannedRx.medications.map((med: any, i: number) => (
+                    <Paper key={i} sx={{ p: 1.5, mb: 1, borderRadius: '12px', bgcolor: mode === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)' }}>
+                      <Typography variant="body2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#0f172a' }}>
+                        {i + 1}. {med.name} {med.type ? `(${med.type})` : ''}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: mode === 'dark' ? 'rgba(255,255,255,0.5)' : '#64748b' }}>
+                        {med.dosage || ''} {med.frequency || ''} {med.durationDays ? `for ${med.durationDays} days` : ''}
+                      </Typography>
+                    </Paper>
+                  ))}
+                </Box>
+              )}
+
+              {/* Linking Status */}
+              {qrLinking && (
+                <Alert severity="info" sx={{ borderRadius: '12px', mb: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <CircularProgress size={16} />
+                    Linking patient to your records...
+                  </Box>
+                </Alert>
+              )}
+
+              {/* Actions */}
+              <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
+                <Button
+                  fullWidth
+                  variant="contained"
+                  onClick={() => {
+                    setScannedRxDialogOpen(false);
+                    navigate(`/prescriptions/${scannedRx.id || scannedRx._id}`);
+                  }}
+                  sx={{ borderRadius: '14px', fontWeight: 800, bgcolor: '#134F4D', '&:hover': { bgcolor: '#0e3b3a' } }}
+                >
+                  View Full Prescription
+                </Button>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  onClick={() => {
+                    setScannedRxDialogOpen(false);
+                    if (scannedRx.patientId) {
+                      navigate(`/prescriptions/new?patientId=${scannedRx.patientId}`);
+                    } else {
+                      navigate('/prescriptions/new');
+                    }
+                  }}
+                  sx={{ borderRadius: '14px', fontWeight: 800, borderColor: '#134F4D', color: '#134F4D' }}
+                >
+                  New Rx for Patient
+                </Button>
+              </Box>
+            </Box>
+          )}
+        </Box>
+      </Dialog>
     </>
   );
 };
