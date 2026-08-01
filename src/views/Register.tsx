@@ -283,7 +283,7 @@ const Register = () => {
                 onChange={handleChange}
                 error={!!roleError}
                 helperText={roleError || 'Select whether you are registering as a Patient or Doctor'}
-                InputLabelProps={{ sx: { color: '#2A6B5D', fontWeight: 600 } }}
+                InputLabelProps={{ shrink: true, sx: { color: '#2A6B5D', fontWeight: 600 } }}
                 SelectProps={{
                   displayEmpty: true,
                 }}
@@ -321,7 +321,7 @@ const Register = () => {
                 value={formData.firstName}
                 onChange={handleChange}
                 disabled={isGoogleSignUp}
-                InputLabelProps={{ sx: { color: '#2A6B5D', fontWeight: 600 } }}
+                InputLabelProps={{ shrink: true, sx: { color: '#2A6B5D', fontWeight: 600 } }}
                 InputProps={{ 
                   sx: { 
                     borderRadius: '14px',
@@ -345,7 +345,7 @@ const Register = () => {
                 value={formData.lastName}
                 onChange={handleChange}
                 disabled={isGoogleSignUp}
-                InputLabelProps={{ sx: { color: '#2A6B5D', fontWeight: 600 } }}
+                InputLabelProps={{ shrink: true, sx: { color: '#2A6B5D', fontWeight: 600 } }}
                 InputProps={{ 
                   sx: { 
                     borderRadius: '14px',
@@ -370,7 +370,7 @@ const Register = () => {
                 value={formData.email}
                 onChange={handleChange}
                 disabled={isGoogleSignUp}
-                InputLabelProps={{ sx: { color: '#2A6B5D', fontWeight: 600 } }}
+                InputLabelProps={{ shrink: true, sx: { color: '#2A6B5D', fontWeight: 600 } }}
                 InputProps={{ 
                   sx: { 
                     borderRadius: '14px',
@@ -398,7 +398,7 @@ const Register = () => {
                     id="password"
                     value={formData.password}
                     onChange={handleChange}
-                    InputLabelProps={{ sx: { color: '#2A6B5D', fontWeight: 600 } }}
+                    InputLabelProps={{ shrink: true, sx: { color: '#2A6B5D', fontWeight: 600 } }}
                     InputProps={{
                       endAdornment: (
                         <InputAdornment position="end">
@@ -436,7 +436,7 @@ const Register = () => {
                     onChange={handleChange}
                     error={!!passwordError}
                     helperText={passwordError}
-                    InputLabelProps={{ sx: { color: '#2A6B5D', fontWeight: 600 } }}
+                    InputLabelProps={{ shrink: true, sx: { color: '#2A6B5D', fontWeight: 600 } }}
                     InputProps={{
                       endAdornment: (
                         <InputAdornment position="end">
