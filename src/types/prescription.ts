@@ -34,6 +34,8 @@ export interface MedicationItem {
     evening?: string;
     night?: string;
   };
+  isSOS?: boolean;
+  sosReason?: string;
 }
 
 // Investigation/Test required

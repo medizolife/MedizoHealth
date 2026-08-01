@@ -81,7 +81,9 @@ import {
   FreeBreakfast as BeforeFoodIcon,
   DinnerDining as AfterFoodIcon,
   LocalCafe as EmptyStomachIcon,
-  AccessTime as AnyTimeIcon
+  AccessTime as AnyTimeIcon,
+  FlashOn as SosIcon,
+  ReportProblem as WarningBadgeIcon
 } from '@mui/icons-material';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { CreatePrescriptionData, MedicationItem, Investigation, VitalSigns, FollowUpInfo } from '../types/prescription';
@@ -181,7 +183,9 @@ const NewPrescription = () => {
     quantityUnit: 'Tablets',
     instructions: '',
     timing: { morning: 0, afternoon: 0, evening: 0, night: 0 },
-    mealRelations: { morning: '', afternoon: '', evening: '', night: '' }
+    mealRelations: { morning: '', afternoon: '', evening: '', night: '' },
+    isSOS: false,
+    sosReason: ''
   });
   const [medSearchOpen, setMedSearchOpen] = useState(false);
 
@@ -280,8 +284,17 @@ const NewPrescription = () => {
     };
   };
 
-  // Build dosage string from timing based on medicine form
-  const buildDosageString = (timing: { morning?: number; afternoon?: number; evening?: number; night?: number }, medForm: string = 'Tablet') => {
+  // Build dosage string from timing based on medicine form and SOS state
+  const buildDosageString = (
+    timing: { morning?: number; afternoon?: number; evening?: number; night?: number },
+    medForm: string = 'Tablet',
+    isSOS: boolean = false,
+    sosReason: string = ''
+  ) => {
+    if (isSOS) {
+      return sosReason ? `SOS — As needed (${sosReason})` : 'SOS — Only when needed';
+    }
+
     const m = timing.morning || 0;
     const a = timing.afternoon || 0;
     const e = timing.evening || 0;
@@ -310,13 +323,13 @@ const NewPrescription = () => {
     return `${m}-${a}-${e}-${n}`;
   };
 
-  // Recalculate quantity and dosage whenever timing or duration changes
+  // Recalculate quantity and dosage whenever timing, duration, or SOS changes
   const recalcMedication = (med: MedicationItem): MedicationItem => {
     const t = med.timing || { morning: 0, afternoon: 0, evening: 0, night: 0 };
     const calc = calculateQuantityFromTiming(t, med.durationValue || 5, med.durationUnit || 'Days', med.type);
     return {
       ...med,
-      dosage: buildDosageString(t, med.type),
+      dosage: buildDosageString(t, med.type, med.isSOS, med.sosReason),
       quantityValue: calc.qtyVal,
       quantityUnit: calc.qtyUnit,
       quantity: calc.qtyStr
@@ -498,7 +511,9 @@ const NewPrescription = () => {
         quantityUnit: 'Tablets',
         instructions: '',
         timing: { morning: 0, afternoon: 0, evening: 0, night: 0 },
-        mealRelations: { morning: '', afternoon: '', evening: '', night: '' }
+        mealRelations: { morning: '', afternoon: '', evening: '', night: '' },
+        isSOS: false,
+        sosReason: ''
       });
     }
   };
@@ -1270,12 +1285,13 @@ const NewPrescription = () => {
                     size="small"
                     label="Dosage"
                     placeholder="Auto: M-A-E-N"
-                    value={buildDosageString(newMedication.timing || { morning: 0, afternoon: 0, evening: 0, night: 0 }, newMedication.type)}
+                    value={buildDosageString(newMedication.timing || { morning: 0, afternoon: 0, evening: 0, night: 0 }, newMedication.type, newMedication.isSOS, newMedication.sosReason)}
                     InputProps={{
                       readOnly: true,
-                      sx: { borderRadius: '12px', bgcolor: 'rgba(66,132,117,0.06)', fontWeight: 700, fontSize: '0.8rem' }
+                      sx: { borderRadius: '12px', bgcolor: newMedication.isSOS ? 'rgba(239,68,68,0.08)' : 'rgba(66,132,117,0.06)', fontWeight: 700, fontSize: '0.8rem', color: newMedication.isSOS ? '#dc2626' : 'inherit' }
                     }}
                     helperText={(() => {
+                      if (newMedication.isSOS) return '⚡ SOS — Take only when needed';
                       const t = newMedication.timing || { morning: 0, afternoon: 0, evening: 0, night: 0 };
                       const total = (t.morning || 0) + (t.afternoon || 0) + (t.evening || 0) + (t.night || 0);
                       if (total === 0) return 'Select time of day below';
@@ -1286,11 +1302,116 @@ const NewPrescription = () => {
                   />
                 </Grid>
 
-                {/* Time of Day Toggle Buttons */}
+                {/* Time of Day & SOS Toggle Row */}
                 <Grid item xs={12}>
-                  <Typography variant="caption" sx={{ fontWeight: 800, color: 'var(--color-forest)', display: 'block', mb: 0.8 }}>
-                    Time of Day:
-                  </Typography>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.8 }}>
+                    <Typography variant="caption" sx={{ fontWeight: 800, color: 'var(--color-forest)' }}>
+                      Time of Day:
+                    </Typography>
+
+                    {/* SOS / PRN Mode Toggle */}
+                    <Chip
+                      icon={<SosIcon sx={{ fontSize: 16, color: newMedication.isSOS ? '#fff !important' : '#dc2626 !important' }} />}
+                      label={newMedication.isSOS ? '🆘 SOS Mode (ACTIVE)' : '🆘 SOS (When Needed)'}
+                      size="small"
+                      clickable
+                      onClick={() => {
+                        const newSOS = !newMedication.isSOS;
+                        const defaultReason = newSOS ? 'Fever / Pain' : '';
+                        let newInst = newMedication.instructions || '';
+                        if (newSOS && !newInst.toLowerCase().includes('when needed')) {
+                          newInst = newInst ? `${newInst}, Take only when needed for ${defaultReason}` : `Take only when needed for ${defaultReason}`;
+                        }
+                        const updated = recalcMedication({
+                          ...newMedication,
+                          isSOS: newSOS,
+                          sosReason: defaultReason,
+                          instructions: newInst
+                        });
+                        setNewMedication(updated);
+                      }}
+                      sx={{
+                        fontWeight: 800,
+                        fontSize: '0.7rem',
+                        height: 26,
+                        borderRadius: '10px',
+                        bgcolor: newMedication.isSOS ? '#dc2626' : 'rgba(220, 38, 38, 0.1)',
+                        color: newMedication.isSOS ? '#ffffff' : '#dc2626',
+                        border: '1.5px solid #dc2626',
+                        transition: 'all 0.2s ease',
+                        '&:active': { transform: 'scale(0.95)' }
+                      }}
+                    />
+                  </Box>
+
+                  {/* SOS Reason Selector Bar when SOS is active */}
+                  {newMedication.isSOS && (
+                    <Box sx={{ mb: 1.2, p: 1.2, borderRadius: '14px', bgcolor: 'rgba(220, 38, 38, 0.06)', border: '1.5px dashed rgba(220, 38, 38, 0.4)' }}>
+                      <Typography variant="caption" sx={{ fontWeight: 800, color: '#dc2626', display: 'block', mb: 0.6 }}>
+                        🆘 Indicate Reason for SOS (Only When Needed):
+                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 0.6, flexWrap: 'wrap', mb: 1 }}>
+                        {[
+                          { label: 'Fever', icon: '🌡️' },
+                          { label: 'Pain / Headache', icon: '⚡' },
+                          { label: 'Nausea / Vomiting', icon: '🤢' },
+                          { label: 'Acidity / Gas', icon: '💨' },
+                          { label: 'Cough / Breathlessness', icon: '🫁' }
+                        ].map((r) => {
+                          const isSelected = newMedication.sosReason === r.label;
+                          return (
+                            <Chip
+                              key={r.label}
+                              label={`${r.icon} ${r.label}`}
+                              size="small"
+                              clickable
+                              onClick={() => {
+                                const newReason = r.label;
+                                let updatedInst = (newMedication.instructions || '').replace(/,? Take only when needed for .*/i, '');
+                                updatedInst = updatedInst ? `${updatedInst}, Take only when needed for ${newReason}` : `Take only when needed for ${newReason}`;
+                                const updated = recalcMedication({
+                                  ...newMedication,
+                                  sosReason: newReason,
+                                  instructions: updatedInst
+                                });
+                                setNewMedication(updated);
+                              }}
+                              sx={{
+                                fontWeight: 700,
+                                fontSize: '0.68rem',
+                                height: 24,
+                                borderRadius: '8px',
+                                bgcolor: isSelected ? '#dc2626' : 'rgba(255,255,255,0.9)',
+                                color: isSelected ? '#fff' : '#b91c1c',
+                                border: isSelected ? '1.5px solid #dc2626' : '1px solid rgba(220,38,38,0.2)'
+                              }}
+                            />
+                          );
+                        })}
+                      </Box>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        placeholder="Or type custom SOS condition (e.g., High Blood Pressure)"
+                        value={newMedication.sosReason || ''}
+                        onChange={(e) => {
+                          const customR = e.target.value;
+                          let updatedInst = (newMedication.instructions || '').replace(/,? Take only when needed for .*/i, '');
+                          if (customR) {
+                            updatedInst = updatedInst ? `${updatedInst}, Take only when needed for ${customR}` : `Take only when needed for ${customR}`;
+                          }
+                          const updated = recalcMedication({
+                            ...newMedication,
+                            sosReason: customR,
+                            instructions: updatedInst
+                          });
+                          setNewMedication(updated);
+                        }}
+                        InputProps={{ sx: { borderRadius: '10px', bgcolor: '#fff', fontSize: '0.78rem' } }}
+                      />
+                    </Box>
+                  )}
+
                   <Box sx={{ display: 'flex', gap: 1, width: '100%' }}>
                     {([
                       { key: 'morning' as const, label: 'Morn', icon: <MorningIcon />, color: '#F57C00', bg: '#FFF3E0', activeBg: '#FFE0B2', border: '#F57C00' },
@@ -1752,6 +1873,18 @@ const NewPrescription = () => {
                             />
                           )}
                         </Box>
+
+                        {/* SOS / PRN Badge if marked SOS */}
+                        {med.isSOS && (
+                          <Box sx={{ mb: 0.8 }}>
+                            <Chip
+                              icon={<SosIcon sx={{ fontSize: 14, color: '#fff !important' }} />}
+                              label={`🆘 SOS (Only When Needed)${med.sosReason ? `: ${med.sosReason}` : ''}`}
+                              size="small"
+                              sx={{ fontWeight: 800, bgcolor: '#dc2626', color: '#fff', fontSize: '0.68rem', height: 22 }}
+                            />
+                          </Box>
+                        )}
 
                         {/* Per-time-of-day dose & meal relation summary chips */}
                         {med.timing && ((med.timing.morning || 0) > 0 || (med.timing.afternoon || 0) > 0 || (med.timing.evening || 0) > 0 || (med.timing.night || 0) > 0) && (
