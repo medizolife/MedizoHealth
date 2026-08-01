@@ -21,11 +21,12 @@ export interface MedicationItem {
   quantityValue?: number | string;
   quantityUnit?: string;
   instructions: string;
+  // Per-time-of-day dose count: 0 = not selected, 1/2/3 = number of units at that time
   timing?: {
-    morning?: boolean;
-    afternoon?: boolean;
-    evening?: boolean;
-    night?: boolean;
+    morning?: number;
+    afternoon?: number;
+    evening?: number;
+    night?: number;
   };
   mealRelations?: {
     morning?: string;

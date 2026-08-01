@@ -176,16 +176,16 @@ const NewPrescription = () => {
     duration: '5 Days',
     durationValue: 5,
     durationUnit: 'Days',
-    quantity: '10 Tablets',
-    quantityValue: 10,
+    quantity: '',
+    quantityValue: 0,
     quantityUnit: 'Tablets',
     instructions: '',
-    timing: { morning: false, afternoon: false, evening: false, night: false },
+    timing: { morning: 0, afternoon: 0, evening: 0, night: 0 },
     mealRelations: { morning: '', afternoon: '', evening: '', night: '' }
   });
   const [medSearchOpen, setMedSearchOpen] = useState(false);
 
-  // Popover state for per-time-of-day meal relation
+  // Popover state for per-time-of-day dose count + meal relation
   const [mealPopoverAnchor, setMealPopoverAnchor] = useState<HTMLElement | null>(null);
   const [mealPopoverTimeKey, setMealPopoverTimeKey] = useState<'morning' | 'afternoon' | 'evening' | 'night'>('morning');
 
@@ -200,6 +200,57 @@ const NewPrescription = () => {
     }
   };
 
+  // Calculate total quantity from per-time-of-day dose counts × duration
+  // This is the CORE logic reusable in pharmacist portal:
+  //   totalPerDay = morning + afternoon + evening + night dose counts
+  //   totalDays = durationValue converted to days
+  //   totalUnits = totalPerDay × totalDays
+  const calculateQuantityFromTiming = (
+    timing: { morning?: number; afternoon?: number; evening?: number; night?: number },
+    durVal: number | string,
+    durUnit: string,
+    medForm: string = 'Tablet'
+  ) => {
+    const totalPerDay = (timing.morning || 0) + (timing.afternoon || 0) + (timing.evening || 0) + (timing.night || 0);
+    const val = typeof durVal === 'number' ? durVal : parseInt(String(durVal), 10) || 0;
+    if (val <= 0 || totalPerDay <= 0) return { qtyVal: 0, qtyUnit: getDefaultUnit(medForm), qtyStr: '' };
+
+    let days = val;
+    if (durUnit === 'Weeks') days = val * 7;
+    if (durUnit === 'Months') days = val * 30;
+
+    const totalUnits = totalPerDay * days;
+    const unit = getDefaultUnit(medForm);
+
+    let qtyStr = `${totalUnits} ${unit}`;
+    if (medForm === 'Syrup' || medForm === 'Drops') {
+      qtyStr = totalUnits <= 14 ? '1 Bottle (100ml)' : '2 Bottles (100ml)';
+    } else if (medForm === 'Ointment') {
+      qtyStr = '1 Tube';
+    }
+
+    return { qtyVal: totalUnits, qtyUnit: unit, qtyStr };
+  };
+
+  // Build dosage string from timing, e.g. "1-0-2-1"
+  const buildDosageString = (timing: { morning?: number; afternoon?: number; evening?: number; night?: number }) => {
+    return `${timing.morning || 0}-${timing.afternoon || 0}-${timing.evening || 0}-${timing.night || 0}`;
+  };
+
+  // Recalculate quantity and dosage whenever timing or duration changes
+  const recalcMedication = (med: MedicationItem): MedicationItem => {
+    const t = med.timing || { morning: 0, afternoon: 0, evening: 0, night: 0 };
+    const calc = calculateQuantityFromTiming(t, med.durationValue || 5, med.durationUnit || 'Days', med.type);
+    return {
+      ...med,
+      dosage: buildDosageString(t),
+      quantityValue: calc.qtyVal,
+      quantityUnit: calc.qtyUnit,
+      quantity: calc.qtyStr
+    };
+  };
+
+  // Legacy calculateQuantity kept for backwards compat with manual dosage field
   const calculateQuantity = (dosageStr: string, durVal: number | string, durUnit: string, medForm: string = 'Tablet') => {
     const val = typeof durVal === 'number' ? durVal : parseInt(String(durVal), 10) || 0;
     if (val <= 0) return { qtyVal: 0, qtyUnit: getDefaultUnit(medForm), qtyStr: '' };
@@ -348,35 +399,16 @@ const NewPrescription = () => {
   // Add medication
   const addMedication = () => {
     if (newMedication.name.trim()) {
-      const durVal = newMedication.durationValue || 5;
-      const durUnit = newMedication.durationUnit || 'Days';
-      const durStr = newMedication.duration || `${durVal} ${durUnit}`;
-      const qtyStr = newMedication.quantity || (newMedication.quantityValue ? `${newMedication.quantityValue} ${newMedication.quantityUnit || 'Tablets'}` : '');
-
-      // Format dosage string automatically based on selected timing & meal relations if dosage wasn't manually typed
-      let computedDosage = newMedication.dosage;
-      if (!computedDosage) {
-        const timingsActive: string[] = [];
-        if (newMedication.timing?.morning) {
-          timingsActive.push(`Morning${newMedication.mealRelations?.morning ? ` (${newMedication.mealRelations.morning})` : ''}`);
-        }
-        if (newMedication.timing?.afternoon) {
-          timingsActive.push(`Afternoon${newMedication.mealRelations?.afternoon ? ` (${newMedication.mealRelations.afternoon})` : ''}`);
-        }
-        if (newMedication.timing?.evening) {
-          timingsActive.push(`Evening${newMedication.mealRelations?.evening ? ` (${newMedication.mealRelations.evening})` : ''}`);
-        }
-        if (newMedication.timing?.night) {
-          timingsActive.push(`Night${newMedication.mealRelations?.night ? ` (${newMedication.mealRelations.night})` : ''}`);
-        }
-        computedDosage = timingsActive.join(', ');
-      }
+      const finalMed = recalcMedication(newMedication);
+      const durVal = finalMed.durationValue || 5;
+      const durUnit = finalMed.durationUnit || 'Days';
+      const durStr = finalMed.duration || `${durVal} ${durUnit}`;
+      const qtyStr = finalMed.quantity || '';
 
       setFormData({
         ...formData,
         medications: [...(formData.medications || []), {
-          ...newMedication,
-          dosage: computedDosage,
+          ...finalMed,
           duration: durStr,
           quantity: qtyStr
         }]
@@ -388,11 +420,11 @@ const NewPrescription = () => {
         duration: '5 Days',
         durationValue: 5,
         durationUnit: 'Days',
-        quantity: '10 Tablets',
-        quantityValue: 10,
+        quantity: '',
+        quantityValue: 0,
         quantityUnit: 'Tablets',
         instructions: '',
-        timing: { morning: false, afternoon: false, evening: false, night: false },
+        timing: { morning: 0, afternoon: 0, evening: 0, night: 0 },
         mealRelations: { morning: '', afternoon: '', evening: '', night: '' }
       });
     }
@@ -1160,20 +1192,17 @@ const NewPrescription = () => {
                     fullWidth
                     size="small"
                     label="Dosage"
-                    placeholder="e.g., 1-0-1"
-                    value={newMedication.dosage}
-                    onChange={(e) => {
-                      const newDosage = e.target.value;
-                      const calc = calculateQuantity(newDosage, newMedication.durationValue || 5, newMedication.durationUnit || 'Days', newMedication.type);
-                      setNewMedication({
-                        ...newMedication,
-                        dosage: newDosage,
-                        quantityValue: calc.qtyVal,
-                        quantityUnit: calc.qtyUnit,
-                        quantity: calc.qtyStr
-                      });
+                    placeholder="Auto: M-A-E-N"
+                    value={buildDosageString(newMedication.timing || { morning: 0, afternoon: 0, evening: 0, night: 0 })}
+                    InputProps={{
+                      readOnly: true,
+                      sx: { borderRadius: '12px', bgcolor: 'rgba(66,132,117,0.06)', fontWeight: 700 }
                     }}
-                    InputProps={{ sx: { borderRadius: '12px' } }}
+                    helperText={(() => {
+                      const t = newMedication.timing || { morning: 0, afternoon: 0, evening: 0, night: 0 };
+                      const total = (t.morning || 0) + (t.afternoon || 0) + (t.evening || 0) + (t.night || 0);
+                      return total > 0 ? `${total} ${getDefaultUnit(newMedication.type).toLowerCase()}/day` : 'Select time of day';
+                    })()}
                   />
                 </Grid>
 
@@ -1189,23 +1218,28 @@ const NewPrescription = () => {
                       { key: 'evening' as const, label: 'Evening', icon: <EveningIcon />, color: '#E64A19', bg: '#FBE9E7', activeBg: '#FFCCBC', border: '#E64A19' },
                       { key: 'night' as const, label: 'Night', icon: <NightIcon />, color: '#3949AB', bg: '#E8EAF6', activeBg: '#C5CAE9', border: '#3949AB' }
                     ]).map((time) => {
-                      const isActive = newMedication.timing?.[time.key] || false;
+                      const doseCount = newMedication.timing?.[time.key] || 0;
+                      const isActive = doseCount > 0;
                       const mealRel = newMedication.mealRelations?.[time.key] || '';
                       return (
                         <Box
                           key={time.key}
                           onClick={(e) => {
-                            const wasActive = newMedication.timing?.[time.key] || false;
-                            setNewMedication({
-                              ...newMedication,
-                              timing: { ...newMedication.timing, [time.key]: !wasActive },
-                              // Clear meal relation if deselecting
-                              mealRelations: !wasActive
-                                ? newMedication.mealRelations
-                                : { ...newMedication.mealRelations, [time.key]: '' }
-                            });
-                            // Open meal relation popup only when selecting (not deselecting)
-                            if (!wasActive) {
+                            if (isActive) {
+                              // Deselect: set to 0 and clear meal relation
+                              const updated = recalcMedication({
+                                ...newMedication,
+                                timing: { ...newMedication.timing, [time.key]: 0 },
+                                mealRelations: { ...newMedication.mealRelations, [time.key]: '' }
+                              });
+                              setNewMedication(updated);
+                            } else {
+                              // Select: default to 1 dose, open popover for dose count + meal relation
+                              const updated = recalcMedication({
+                                ...newMedication,
+                                timing: { ...newMedication.timing, [time.key]: 1 }
+                              });
+                              setNewMedication(updated);
                               setMealPopoverAnchor(e.currentTarget);
                               setMealPopoverTimeKey(time.key);
                             }
@@ -1240,9 +1274,9 @@ const NewPrescription = () => {
                           <Typography variant="caption" sx={{ mt: 0.3, fontWeight: isActive ? 800 : 600, color: isActive ? time.color : '#757575', fontSize: '0.7rem' }}>
                             {time.label}
                           </Typography>
-                          {isActive && mealRel && (
-                            <Typography variant="caption" sx={{ fontSize: '0.58rem', fontWeight: 700, color: time.color, mt: 0.2, opacity: 0.85 }}>
-                              {mealRel}
+                          {isActive && (
+                            <Typography variant="caption" sx={{ fontSize: '0.6rem', fontWeight: 800, color: '#fff', bgcolor: time.color, borderRadius: '8px', px: 0.8, mt: 0.3 }}>
+                              ×{doseCount}{mealRel ? ` · ${mealRel}` : ''}
                             </Typography>
                           )}
                         </Box>
@@ -1275,12 +1309,76 @@ const NewPrescription = () => {
                 >
                   <Box sx={{ mb: 1.5, textAlign: 'center' }}>
                     <Typography variant="subtitle2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#1A312C', fontSize: '0.85rem' }}>
-                      Meal Relation — {mealPopoverTimeKey.charAt(0).toUpperCase() + mealPopoverTimeKey.slice(1)}
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: '#428475', fontSize: '0.7rem' }}>
-                      When should this medicine be taken?
+                      {mealPopoverTimeKey.charAt(0).toUpperCase() + mealPopoverTimeKey.slice(1)} — Dose & Meal
                     </Typography>
                   </Box>
+
+                  {/* Dose Count Selector */}
+                  <Box sx={{ mb: 1.5 }}>
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: '#428475', display: 'block', mb: 0.5, textAlign: 'center' }}>
+                      How many {(getDefaultUnit(newMedication.type) || 'units').toLowerCase()}?
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 0.8, justifyContent: 'center' }}>
+                      {[1, 2, 3].map((count) => {
+                        const currentDose = newMedication.timing?.[mealPopoverTimeKey] || 0;
+                        const isSelected = currentDose === count;
+                        return (
+                          <Box
+                            key={count}
+                            onClick={() => {
+                              const updated = recalcMedication({
+                                ...newMedication,
+                                timing: { ...newMedication.timing, [mealPopoverTimeKey]: count }
+                              });
+                              setNewMedication(updated);
+                            }}
+                            sx={{
+                              width: 44,
+                              height: 44,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              borderRadius: '12px',
+                              border: isSelected ? '2.5px solid var(--color-forest)' : '2px solid #e0e0e0',
+                              bgcolor: isSelected ? 'var(--color-forest)' : 'transparent',
+                              color: isSelected ? '#fff' : '#1A312C',
+                              fontWeight: 800,
+                              fontSize: '1.1rem',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s',
+                              '&:hover': { borderColor: 'var(--color-forest)', bgcolor: isSelected ? 'var(--color-forest)' : 'rgba(66,132,117,0.1)' }
+                            }}
+                          >
+                            {count}
+                          </Box>
+                        );
+                      })}
+                      {/* Custom number input */}
+                      <TextField
+                        size="small"
+                        type="number"
+                        placeholder="#"
+                        value={(newMedication.timing?.[mealPopoverTimeKey] || 0) > 3 ? (newMedication.timing?.[mealPopoverTimeKey] || '') : ''}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value, 10) || 0;
+                          if (val >= 0) {
+                            const updated = recalcMedication({
+                              ...newMedication,
+                              timing: { ...newMedication.timing, [mealPopoverTimeKey]: val }
+                            });
+                            setNewMedication(updated);
+                          }
+                        }}
+                        sx={{ width: 52, '& input': { textAlign: 'center', fontWeight: 700, p: '8px' }, '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+                      />
+                    </Box>
+                  </Box>
+
+                  <Divider sx={{ my: 1 }} />
+
+                  <Typography variant="caption" sx={{ fontWeight: 700, color: '#428475', display: 'block', mb: 0.5, textAlign: 'center' }}>
+                    Meal relation (optional)
+                  </Typography>
 
                   {/* Row 1 */}
                   <Box sx={{ display: 'flex', gap: 0.8, mb: 0.8, justifyContent: 'center' }}>
@@ -1370,15 +1468,12 @@ const NewPrescription = () => {
                       const num = parseInt(e.target.value, 10) || 0;
                       const unit = newMedication.durationUnit || 'Days';
                       const durStr = `${num} ${unit}`;
-                      const calc = calculateQuantity(newMedication.dosage, num, unit, newMedication.type);
-                      setNewMedication({
+                      const updated = recalcMedication({
                         ...newMedication,
                         durationValue: num,
-                        duration: durStr,
-                        quantityValue: calc.qtyVal,
-                        quantityUnit: calc.qtyUnit,
-                        quantity: calc.qtyStr
+                        duration: durStr
                       });
+                      setNewMedication(updated);
                     }}
                     InputProps={{ sx: { borderRadius: '12px' } }}
                   />
@@ -1394,15 +1489,12 @@ const NewPrescription = () => {
                         const unit = e.target.value;
                         const num = newMedication.durationValue || 5;
                         const durStr = `${num} ${unit}`;
-                        const calc = calculateQuantity(newMedication.dosage, num, unit, newMedication.type);
-                        setNewMedication({
+                        const updated = recalcMedication({
                           ...newMedication,
                           durationUnit: unit,
-                          duration: durStr,
-                          quantityValue: calc.qtyVal,
-                          quantityUnit: calc.qtyUnit,
-                          quantity: calc.qtyStr
+                          duration: durStr
                         });
+                        setNewMedication(updated);
                       }}
                       sx={{ borderRadius: '12px' }}
                     >
@@ -1434,16 +1526,13 @@ const NewPrescription = () => {
                         size="small"
                         onClick={() => {
                           const durStr = `${p.num} ${p.unit}`;
-                          const calc = calculateQuantity(newMedication.dosage, p.num, p.unit, newMedication.type);
-                          setNewMedication({
+                          const updated = recalcMedication({
                             ...newMedication,
                             durationValue: p.num,
                             durationUnit: p.unit,
-                            duration: durStr,
-                            quantityValue: calc.qtyVal,
-                            quantityUnit: calc.qtyUnit,
-                            quantity: calc.qtyStr
+                            duration: durStr
                           });
+                          setNewMedication(updated);
                         }}
                         sx={{
                           fontWeight: 700,
@@ -1463,11 +1552,18 @@ const NewPrescription = () => {
                     fullWidth
                     size="small"
                     label="Total Quantity prescribed"
-                    placeholder="e.g. 10 Tablets / 1 Bottle"
+                    placeholder="Auto-calculated"
                     value={newMedication.quantity || ''}
                     onChange={(e) => setNewMedication({ ...newMedication, quantity: e.target.value })}
-                    helperText={newMedication.dosage && newMedication.durationValue ? `⚡ Auto-calculated based on ${newMedication.dosage} for ${newMedication.durationValue} ${newMedication.durationUnit || 'Days'}` : 'Total units to dispense at pharmacy'}
-                    InputProps={{ sx: { borderRadius: '12px' } }}
+                    helperText={(() => {
+                      const t = newMedication.timing || { morning: 0, afternoon: 0, evening: 0, night: 0 };
+                      const perDay = (t.morning || 0) + (t.afternoon || 0) + (t.evening || 0) + (t.night || 0);
+                      if (perDay > 0 && newMedication.durationValue) {
+                        return `⚡ ${perDay}/day × ${newMedication.durationValue} ${newMedication.durationUnit || 'Days'}`;
+                      }
+                      return 'Select time of day to auto-calculate';
+                    })()}
+                    InputProps={{ sx: { borderRadius: '12px', fontWeight: 700 } }}
                   />
                 </Grid>
                 <Grid item xs={12} sm={6}>
@@ -1580,33 +1676,33 @@ const NewPrescription = () => {
                           )}
                         </Box>
 
-                        {/* Per-time-of-day meal relation summary chips */}
-                        {med.timing && (med.timing.morning || med.timing.afternoon || med.timing.evening || med.timing.night) && (
+                        {/* Per-time-of-day dose & meal relation summary chips */}
+                        {med.timing && ((med.timing.morning || 0) > 0 || (med.timing.afternoon || 0) > 0 || (med.timing.evening || 0) > 0 || (med.timing.night || 0) > 0) && (
                           <Box sx={{ display: 'flex', gap: 0.6, flexWrap: 'wrap', mb: 0.8 }}>
-                            {med.timing.morning && (
+                            {(med.timing.morning || 0) > 0 && (
                               <Chip
-                                label={`🌅 Morning${med.mealRelations?.morning ? `: ${med.mealRelations.morning}` : ''}`}
+                                label={`🌅 ×${med.timing.morning} Morning${med.mealRelations?.morning ? ` · ${med.mealRelations.morning}` : ''}`}
                                 size="small"
                                 sx={{ fontWeight: 700, bgcolor: '#FFF3E0', color: '#F57C00', fontSize: '0.68rem', height: 22 }}
                               />
                             )}
-                            {med.timing.afternoon && (
+                            {(med.timing.afternoon || 0) > 0 && (
                               <Chip
-                                label={`☀️ Afternoon${med.mealRelations?.afternoon ? `: ${med.mealRelations.afternoon}` : ''}`}
+                                label={`☀️ ×${med.timing.afternoon} Afternoon${med.mealRelations?.afternoon ? ` · ${med.mealRelations.afternoon}` : ''}`}
                                 size="small"
                                 sx={{ fontWeight: 700, bgcolor: '#FFFDE7', color: '#F9A825', fontSize: '0.68rem', height: 22 }}
                               />
                             )}
-                            {med.timing.evening && (
+                            {(med.timing.evening || 0) > 0 && (
                               <Chip
-                                label={`🌆 Evening${med.mealRelations?.evening ? `: ${med.mealRelations.evening}` : ''}`}
+                                label={`🌆 ×${med.timing.evening} Evening${med.mealRelations?.evening ? ` · ${med.mealRelations.evening}` : ''}`}
                                 size="small"
                                 sx={{ fontWeight: 700, bgcolor: '#FBE9E7', color: '#E64A19', fontSize: '0.68rem', height: 22 }}
                               />
                             )}
-                            {med.timing.night && (
+                            {(med.timing.night || 0) > 0 && (
                               <Chip
-                                label={`🌙 Night${med.mealRelations?.night ? `: ${med.mealRelations.night}` : ''}`}
+                                label={`🌙 ×${med.timing.night} Night${med.mealRelations?.night ? ` · ${med.mealRelations.night}` : ''}`}
                                 size="small"
                                 sx={{ fontWeight: 700, bgcolor: '#E8EAF6', color: '#3949AB', fontSize: '0.68rem', height: 22 }}
                               />
