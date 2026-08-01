@@ -1168,7 +1168,7 @@ const NewPrescription = () => {
                     )}
                   />
                 </Grid>
-                <Grid item xs={6} sm={3}>
+                <Grid item xs={5} sm={3}>
                   <FormControl fullWidth size="small">
                     <InputLabel id="med-type-label">Form</InputLabel>
                     <Select
@@ -1187,7 +1187,7 @@ const NewPrescription = () => {
                     </Select>
                   </FormControl>
                 </Grid>
-                <Grid item xs={6} sm={3}>
+                <Grid item xs={7} sm={3}>
                   <TextField
                     fullWidth
                     size="small"
@@ -1211,11 +1211,11 @@ const NewPrescription = () => {
                   <Typography variant="caption" sx={{ fontWeight: 800, color: 'var(--color-forest)', display: 'block', mb: 0.8 }}>
                     Time of Day:
                   </Typography>
-                  <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+                  <Box sx={{ display: 'flex', gap: 1, width: '100%' }}>
                     {([
-                      { key: 'morning' as const, label: 'Morning', icon: <MorningIcon />, color: '#F57C00', bg: '#FFF3E0', activeBg: '#FFE0B2', border: '#F57C00' },
-                      { key: 'afternoon' as const, label: 'Afternoon', icon: <AfternoonIcon />, color: '#FBC02D', bg: '#FFFDE7', activeBg: '#FFF9C4', border: '#F9A825' },
-                      { key: 'evening' as const, label: 'Evening', icon: <EveningIcon />, color: '#E64A19', bg: '#FBE9E7', activeBg: '#FFCCBC', border: '#E64A19' },
+                      { key: 'morning' as const, label: 'Morn', icon: <MorningIcon />, color: '#F57C00', bg: '#FFF3E0', activeBg: '#FFE0B2', border: '#F57C00' },
+                      { key: 'afternoon' as const, label: 'Day', icon: <AfternoonIcon />, color: '#FBC02D', bg: '#FFFDE7', activeBg: '#FFF9C4', border: '#F9A825' },
+                      { key: 'evening' as const, label: 'Eve', icon: <EveningIcon />, color: '#E64A19', bg: '#FBE9E7', activeBg: '#FFCCBC', border: '#E64A19' },
                       { key: 'night' as const, label: 'Night', icon: <NightIcon />, color: '#3949AB', bg: '#E8EAF6', activeBg: '#C5CAE9', border: '#3949AB' }
                     ]).map((time) => {
                       const doseCount = newMedication.timing?.[time.key] || 0;
@@ -1226,7 +1226,6 @@ const NewPrescription = () => {
                           key={time.key}
                           onClick={(e) => {
                             if (isActive) {
-                              // Deselect: set to 0 and clear meal relation
                               const updated = recalcMedication({
                                 ...newMedication,
                                 timing: { ...newMedication.timing, [time.key]: 0 },
@@ -1234,7 +1233,6 @@ const NewPrescription = () => {
                               });
                               setNewMedication(updated);
                             } else {
-                              // Select: default to 1 dose, open popover for dose count + meal relation
                               const updated = recalcMedication({
                                 ...newMedication,
                                 timing: { ...newMedication.timing, [time.key]: 1 }
@@ -1245,38 +1243,35 @@ const NewPrescription = () => {
                             }
                           }}
                           sx={{
+                            flex: 1,
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center',
-                            px: 2,
-                            py: 1.2,
+                            py: 1,
                             borderRadius: '14px',
                             border: isActive ? `2.5px solid ${time.border}` : '2px solid #e0e0e0',
                             bgcolor: isActive ? time.activeBg : 'transparent',
                             cursor: 'pointer',
                             transition: 'all 0.2s ease',
-                            minWidth: 68,
-                            position: 'relative',
-                            '&:hover': {
-                              bgcolor: isActive ? time.activeBg : time.bg,
-                              borderColor: time.border,
-                              transform: 'translateY(-1px)',
-                              boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+                            WebkitTapHighlightColor: 'transparent',
+                            userSelect: 'none',
+                            '&:active': {
+                              transform: 'scale(0.95)'
                             },
                             '& .MuiSvgIcon-root': {
                               color: isActive ? time.color : '#9e9e9e',
-                              fontSize: 26,
+                              fontSize: 24,
                               transition: 'color 0.2s'
                             }
                           }}
                         >
                           {time.icon}
-                          <Typography variant="caption" sx={{ mt: 0.3, fontWeight: isActive ? 800 : 600, color: isActive ? time.color : '#757575', fontSize: '0.7rem' }}>
+                          <Typography variant="caption" sx={{ mt: 0.2, fontWeight: isActive ? 800 : 600, color: isActive ? time.color : '#757575', fontSize: '0.65rem', lineHeight: 1.2 }}>
                             {time.label}
                           </Typography>
                           {isActive && (
-                            <Typography variant="caption" sx={{ fontSize: '0.6rem', fontWeight: 800, color: '#fff', bgcolor: time.color, borderRadius: '8px', px: 0.8, mt: 0.3 }}>
-                              ×{doseCount}{mealRel ? ` · ${mealRel}` : ''}
+                            <Typography variant="caption" sx={{ fontSize: '0.55rem', fontWeight: 800, color: '#fff', bgcolor: time.color, borderRadius: '6px', px: 0.6, mt: 0.2, lineHeight: 1.4, whiteSpace: 'nowrap', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              ×{doseCount}{mealRel ? ` ${mealRel.split(' ')[0]}` : ''}
                             </Typography>
                           )}
                         </Box>
@@ -1296,12 +1291,13 @@ const NewPrescription = () => {
                     paper: {
                       sx: {
                         p: 2,
-                        borderRadius: '18px',
-                        boxShadow: '0 12px 36px rgba(26, 49, 44, 0.2)',
+                        borderRadius: '20px',
+                        boxShadow: '0 16px 48px rgba(26, 49, 44, 0.25)',
                         border: '1.5px solid rgba(137, 215, 183, 0.5)',
                         bgcolor: mode === 'dark' ? 'rgba(18, 38, 34, 0.98)' : 'rgba(255, 255, 255, 0.99)',
                         backdropFilter: 'blur(16px)',
-                        maxWidth: 340,
+                        width: 'calc(100vw - 32px)',
+                        maxWidth: 360,
                         mt: 1
                       }
                     }
@@ -1318,7 +1314,7 @@ const NewPrescription = () => {
                     <Typography variant="caption" sx={{ fontWeight: 700, color: '#428475', display: 'block', mb: 0.5, textAlign: 'center' }}>
                       How many {(getDefaultUnit(newMedication.type) || 'units').toLowerCase()}?
                     </Typography>
-                    <Box sx={{ display: 'flex', gap: 0.8, justifyContent: 'center' }}>
+                    <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
                       {[1, 2, 3].map((count) => {
                         const currentDose = newMedication.timing?.[mealPopoverTimeKey] || 0;
                         const isSelected = currentDose === count;
@@ -1333,27 +1329,27 @@ const NewPrescription = () => {
                               setNewMedication(updated);
                             }}
                             sx={{
-                              width: 44,
-                              height: 44,
+                              width: 50,
+                              height: 50,
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              borderRadius: '12px',
+                              borderRadius: '14px',
                               border: isSelected ? '2.5px solid var(--color-forest)' : '2px solid #e0e0e0',
                               bgcolor: isSelected ? 'var(--color-forest)' : 'transparent',
                               color: isSelected ? '#fff' : '#1A312C',
                               fontWeight: 800,
-                              fontSize: '1.1rem',
+                              fontSize: '1.2rem',
                               cursor: 'pointer',
                               transition: 'all 0.15s',
-                              '&:hover': { borderColor: 'var(--color-forest)', bgcolor: isSelected ? 'var(--color-forest)' : 'rgba(66,132,117,0.1)' }
+                              WebkitTapHighlightColor: 'transparent',
+                              '&:active': { transform: 'scale(0.92)' }
                             }}
                           >
                             {count}
                           </Box>
                         );
                       })}
-                      {/* Custom number input */}
                       <TextField
                         size="small"
                         type="number"
@@ -1369,7 +1365,7 @@ const NewPrescription = () => {
                             setNewMedication(updated);
                           }
                         }}
-                        sx={{ width: 52, '& input': { textAlign: 'center', fontWeight: 700, p: '8px' }, '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+                        sx={{ width: 56, '& input': { textAlign: 'center', fontWeight: 700, p: '10px', fontSize: '1.1rem' }, '& .MuiOutlinedInput-root': { borderRadius: '14px' } }}
                       />
                     </Box>
                   </Box>
@@ -1380,12 +1376,12 @@ const NewPrescription = () => {
                     Meal relation (optional)
                   </Typography>
 
-                  {/* Row 1 */}
-                  <Box sx={{ display: 'flex', gap: 0.8, mb: 0.8, justifyContent: 'center' }}>
+                  {/* Meal Relation Row 1 */}
+                  <Box sx={{ display: 'flex', gap: 0.6, mb: 0.6, justifyContent: 'center', flexWrap: 'wrap' }}>
                     {[
-                      { label: 'With Food', icon: <WithFoodIcon sx={{ fontSize: 15 }} />, color: '#1565c0', bg: '#e3f2fd' },
-                      { label: 'Before Food', icon: <BeforeFoodIcon sx={{ fontSize: 15 }} />, color: '#e65100', bg: '#fff3e0' },
-                      { label: 'After Food', icon: <AfterFoodIcon sx={{ fontSize: 15 }} />, color: '#6a1b9a', bg: '#f3e5f5' }
+                      { label: 'With Food', shortLabel: 'With', icon: <WithFoodIcon sx={{ fontSize: 14 }} />, color: '#1565c0', bg: '#e3f2fd' },
+                      { label: 'Before Food', shortLabel: 'Before', icon: <BeforeFoodIcon sx={{ fontSize: 14 }} />, color: '#e65100', bg: '#fff3e0' },
+                      { label: 'After Food', shortLabel: 'After', icon: <AfterFoodIcon sx={{ fontSize: 14 }} />, color: '#6a1b9a', bg: '#f3e5f5' }
                     ].map((opt) => {
                       const isSelected = newMedication.mealRelations?.[mealPopoverTimeKey] === opt.label;
                       return (
@@ -1405,24 +1401,25 @@ const NewPrescription = () => {
                           sx={{
                             fontWeight: 700,
                             fontSize: '0.72rem',
-                            py: 1.6,
+                            py: 2,
                             borderRadius: '14px',
+                            flex: '1 1 auto',
                             bgcolor: isSelected ? opt.color : opt.bg,
                             color: isSelected ? '#fff' : opt.color,
                             border: isSelected ? `2px solid ${opt.color}` : '1.5px solid rgba(0,0,0,0.06)',
                             '& .MuiChip-icon': { color: isSelected ? '#fff' : opt.color },
-                            '&:hover': { bgcolor: opt.color, color: '#fff', '& .MuiChip-icon': { color: '#fff' } }
+                            '&:active': { transform: 'scale(0.95)' }
                           }}
                         />
                       );
                     })}
                   </Box>
 
-                  {/* Row 2 */}
-                  <Box sx={{ display: 'flex', gap: 0.8, justifyContent: 'center' }}>
+                  {/* Meal Relation Row 2 */}
+                  <Box sx={{ display: 'flex', gap: 0.6, justifyContent: 'center', flexWrap: 'wrap' }}>
                     {[
-                      { label: 'Empty Stomach', icon: <EmptyStomachIcon sx={{ fontSize: 15 }} />, color: '#00695c', bg: '#e0f2f1' },
-                      { label: 'Any Time', icon: <AnyTimeIcon sx={{ fontSize: 15 }} />, color: '#37474f', bg: '#eceff1' }
+                      { label: 'Empty Stomach', icon: <EmptyStomachIcon sx={{ fontSize: 14 }} />, color: '#00695c', bg: '#e0f2f1' },
+                      { label: 'Any Time', icon: <AnyTimeIcon sx={{ fontSize: 14 }} />, color: '#37474f', bg: '#eceff1' }
                     ].map((opt) => {
                       const isSelected = newMedication.mealRelations?.[mealPopoverTimeKey] === opt.label;
                       return (
@@ -1442,13 +1439,14 @@ const NewPrescription = () => {
                           sx={{
                             fontWeight: 700,
                             fontSize: '0.72rem',
-                            py: 1.6,
+                            py: 2,
                             borderRadius: '14px',
+                            flex: '1 1 auto',
                             bgcolor: isSelected ? opt.color : opt.bg,
                             color: isSelected ? '#fff' : opt.color,
                             border: isSelected ? `2px solid ${opt.color}` : '1.5px solid rgba(0,0,0,0.06)',
                             '& .MuiChip-icon': { color: isSelected ? '#fff' : opt.color },
-                            '&:hover': { bgcolor: opt.color, color: '#fff', '& .MuiChip-icon': { color: '#fff' } }
+                            '&:active': { transform: 'scale(0.95)' }
                           }}
                         />
                       );
