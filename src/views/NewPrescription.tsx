@@ -870,19 +870,60 @@ const NewPrescription = () => {
           </AccordionSummary>
           <AccordionDetails sx={{ pt: 0 }}>
             <Grid container spacing={1.5}>
-              <Grid item xs={6} sm={3}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  label="Blood Pressure"
-                  placeholder="120/80 mmHg"
-                  value={formData.vitalSigns?.bloodPressure || ''}
-                  onChange={handleVitalChange('bloodPressure')}
-                  InputProps={{
-                    startAdornment: <InputAdornment position="start"><BpIcon sx={{ color: '#428475', fontSize: 18 }} /></InputAdornment>,
-                    sx: { borderRadius: '12px' }
-                  }}
-                />
+              <Grid item xs={12} sm={4}>
+                <Box sx={{ p: 1, px: 1.5, borderRadius: '14px', bgcolor: 'rgba(66, 132, 117, 0.06)', border: '1px solid rgba(66, 132, 117, 0.2)' }}>
+                  <Typography variant="caption" sx={{ fontWeight: 800, color: '#428475', display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+                    <BpIcon sx={{ fontSize: 16 }} /> Blood Pressure (Systolic / Diastolic)
+                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
+                    <TextField
+                      size="small"
+                      type="number"
+                      label="SYS"
+                      placeholder="120"
+                      value={(() => {
+                        const parts = (formData.vitalSigns?.bloodPressure || '').split('/');
+                        return parts[0]?.trim() || '';
+                      })()}
+                      onChange={(e) => {
+                        const sys = e.target.value;
+                        const currentParts = (formData.vitalSigns?.bloodPressure || '').split('/');
+                        const dia = currentParts[1] ? currentParts[1].replace('mmHg', '').trim() : '';
+                        const bpStr = (sys || dia) ? `${sys}/${dia}` : '';
+                        setFormData({
+                          ...formData,
+                          vitalSigns: { ...formData.vitalSigns, bloodPressure: bpStr }
+                        });
+                      }}
+                      sx={{ flex: 1, '& input': { textAlign: 'center', fontWeight: 800, p: '6px' }, '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+                    />
+                    <Typography variant="h6" sx={{ color: '#428475', fontWeight: 900, mx: 0.2 }}>/</Typography>
+                    <TextField
+                      size="small"
+                      type="number"
+                      label="DIA"
+                      placeholder="80"
+                      value={(() => {
+                        const parts = (formData.vitalSigns?.bloodPressure || '').split('/');
+                        return parts[1] ? parts[1].replace('mmHg', '').trim() : '';
+                      })()}
+                      onChange={(e) => {
+                        const dia = e.target.value;
+                        const currentParts = (formData.vitalSigns?.bloodPressure || '').split('/');
+                        const sys = currentParts[0]?.trim() || '';
+                        const bpStr = (sys || dia) ? `${sys}/${dia}` : '';
+                        setFormData({
+                          ...formData,
+                          vitalSigns: { ...formData.vitalSigns, bloodPressure: bpStr }
+                        });
+                      }}
+                      sx={{ flex: 1, '& input': { textAlign: 'center', fontWeight: 800, p: '6px' }, '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+                    />
+                    <Typography variant="caption" sx={{ fontWeight: 800, color: '#428475', ml: 0.2 }}>
+                      mmHg
+                    </Typography>
+                  </Box>
+                </Box>
               </Grid>
               <Grid item xs={6} sm={3}>
                 <TextField
