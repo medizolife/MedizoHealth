@@ -21,6 +21,8 @@ import DoctorPrescriptions from './views/DoctorPrescriptions';
 import PatientManagement from './views/PatientManagement';
 import NotFound from './views/NotFound';
 import Unauthorized from './views/Unauthorized';
+import PrivacyPolicy from './views/PrivacyPolicy';
+import TermsOfService from './views/TermsOfService';
 
 // Google OAuth Client ID
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '972944325297-fh67828kvguogf9coekjn6q07a2krv8o.apps.googleusercontent.com';
@@ -101,6 +103,8 @@ const App = () => {
                   } 
                 />
                 <Route path="/unauthorized" element={<Unauthorized />} />
+                <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                <Route path="/terms" element={<TermsOfService />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
               <MobileBottomNav />

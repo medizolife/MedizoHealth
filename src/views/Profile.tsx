@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { 
@@ -19,7 +20,11 @@ import {
   CardContent,
   Accordion,
   AccordionSummary,
-  AccordionDetails
+  AccordionDetails,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions
 } from '@mui/material';
 import { 
   PhotoCamera as PhotoCameraIcon,
@@ -30,16 +35,20 @@ import {
   Language as LanguageIcon,
   Create as CreateIcon,
   Delete as DeleteIcon,
-  CheckCircle as CheckCircleIcon
+  CheckCircle as CheckCircleIcon,
+  Warning as WarningIcon,
+  DeleteForever as DeleteForeverIcon
 } from '@mui/icons-material';
 import { updateDoctorProfile, uploadProfileImage, uploadClinicLogo, uploadSignature } from '../services/doctors';
 import { updatePatientProfile } from '../services/patients';
 import { Doctor, Patient } from '../types/auth';
+import { usersAPI } from '../services/api';
 import WallpaperCarouselHero from '../components/WallpaperCarouselHero';
 
 const Profile = () => {
-  const { authState } = useAuth();
+  const { authState, logout } = useAuth();
   const { user } = authState;
+  const navigate = useNavigate();
   
   const [loading, setLoading] = useState(false);
   const [uploadingProfile, setUploadingProfile] = useState(false);
@@ -47,6 +56,12 @@ const Profile = () => {
   const [uploadingSignature, setUploadingSignature] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  
+  // Delete account state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   
   const profileImageRef = useRef<HTMLInputElement>(null);
   const clinicLogoRef = useRef<HTMLInputElement>(null);
@@ -197,6 +212,26 @@ const Profile = () => {
       setError('Failed to upload signature');
     } finally {
       setUploadingSignature(false);
+    }
+  };
+  
+  // Handle account deletion
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText !== 'DELETE') return;
+    
+    try {
+      setDeletingAccount(true);
+      setDeleteError(null);
+      await usersAPI.deleteAccount();
+      logout();
+      navigate('/login');
+    } catch (err: any) {
+      console.error('Error deleting account:', err);
+      setDeleteError(
+        err.response?.data?.message || 'Failed to delete account. Please try again or contact support.'
+      );
+    } finally {
+      setDeletingAccount(false);
     }
   };
   
@@ -1001,6 +1036,120 @@ const Profile = () => {
           </Box>
         </Box>
       </Paper>
+
+      {/* Delete Account Section */}
+      <Paper
+        elevation={0}
+        sx={{
+          mt: 3,
+          p: { xs: 2.5, sm: 3 },
+          borderRadius: '20px',
+          bgcolor: 'rgba(220, 38, 38, 0.04)',
+          border: '1px solid rgba(220, 38, 38, 0.2)',
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
+          <WarningIcon sx={{ color: '#DC2626', fontSize: 28 }} />
+          <Typography variant="h6" sx={{ fontWeight: 700, color: '#DC2626', fontSize: '1.05rem' }}>
+            Danger Zone
+          </Typography>
+        </Box>
+        <Typography sx={{ fontSize: '0.85rem', color: 'rgba(0,0,0,0.6)', mb: 2, lineHeight: 1.6 }}>
+          Permanently delete your account and all associated data including prescriptions, medical records,
+          and profile information. This action cannot be undone.
+        </Typography>
+        <Button
+          variant="outlined"
+          color="error"
+          startIcon={<DeleteForeverIcon />}
+          onClick={() => setDeleteDialogOpen(true)}
+          sx={{
+            borderRadius: '12px',
+            fontWeight: 700,
+            borderWidth: '1.5px',
+            textTransform: 'none',
+            '&:hover': {
+              bgcolor: 'rgba(220, 38, 38, 0.08)',
+              borderWidth: '1.5px',
+            },
+          }}
+        >
+          Delete My Account
+        </Button>
+      </Paper>
+
+      {/* Delete Account Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => { setDeleteDialogOpen(false); setDeleteConfirmText(''); setDeleteError(null); }}
+        PaperProps={{
+          sx: {
+            borderRadius: '20px',
+            maxWidth: 440,
+            p: 1,
+          }
+        }}
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pb: 1 }}>
+          <WarningIcon sx={{ color: '#DC2626', fontSize: 28 }} />
+          <Typography variant="h6" sx={{ fontWeight: 800, color: '#DC2626' }}>
+            Delete Account
+          </Typography>
+        </DialogTitle>
+        <DialogContent>
+          <Typography sx={{ fontSize: '0.9rem', color: 'rgba(0,0,0,0.7)', mb: 2, lineHeight: 1.7 }}>
+            This will permanently delete your account and all associated data. This action is
+            <strong> irreversible</strong>.
+          </Typography>
+          <Typography sx={{ fontSize: '0.85rem', color: 'rgba(0,0,0,0.6)', mb: 1.5 }}>
+            To confirm, type <strong>DELETE</strong> below:
+          </Typography>
+          <TextField
+            fullWidth
+            size="small"
+            placeholder="Type DELETE to confirm"
+            value={deleteConfirmText}
+            onChange={(e) => setDeleteConfirmText(e.target.value)}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '12px',
+                '&.Mui-focused fieldset': {
+                  borderColor: '#DC2626',
+                },
+              },
+            }}
+          />
+          {deleteError && (
+            <Alert severity="error" sx={{ mt: 2, borderRadius: '10px' }}>
+              {deleteError}
+            </Alert>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5 }}>
+          <Button
+            onClick={() => { setDeleteDialogOpen(false); setDeleteConfirmText(''); setDeleteError(null); }}
+            sx={{ borderRadius: '10px', fontWeight: 600, textTransform: 'none' }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            disabled={deleteConfirmText !== 'DELETE' || deletingAccount}
+            onClick={handleDeleteAccount}
+            startIcon={deletingAccount ? <CircularProgress size={16} color="inherit" /> : <DeleteForeverIcon />}
+            sx={{
+              borderRadius: '10px',
+              fontWeight: 700,
+              textTransform: 'none',
+              boxShadow: 'none',
+              '&:hover': { boxShadow: 'none' },
+            }}
+          >
+            {deletingAccount ? 'Deleting...' : 'Delete Permanently'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };

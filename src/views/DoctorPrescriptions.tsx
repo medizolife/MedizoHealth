@@ -403,10 +403,10 @@ export default function DoctorPrescriptions() {
                 
                 {prescription.medications && prescription.medications.length > 0 && (
                   <Box sx={{ mt: 1, display: 'flex', gap: 0.8, flexWrap: 'wrap' }}>
-                    {prescription.medications.slice(0, 3).map((med, idx) => (
+                    {prescription.medications.slice(0, 3).map((med: any, idx: number) => (
                       <Chip
                         key={idx}
-                        label={`${med.name} (${med.dosage})`}
+                        label={`${med.name} — ${med.dosage}${med.duration ? ` (${med.duration})` : ''}${med.quantity ? ` | Qty: ${med.quantity}` : ''}`}
                         size="small"
                         sx={{ fontSize: '0.7rem', fontWeight: 700, bgcolor: 'rgba(137, 215, 183, 0.18)', color: '#1A312C' }}
                       />

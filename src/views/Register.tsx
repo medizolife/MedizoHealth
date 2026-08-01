@@ -16,7 +16,8 @@ import {
   Chip,
   Divider,
   IconButton,
-  InputAdornment
+  InputAdornment,
+  Link
 } from '@mui/material';
 import { 
   Person as PersonIcon, 
@@ -58,6 +59,7 @@ const Register = () => {
   const [passwordError, setPasswordError] = useState('');
   const [googleError, setGoogleError] = useState<string | null>(null);
   const [googleProcessing, setGoogleProcessing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   useEffect(() => {
     if (isAuthenticated) {
@@ -77,24 +79,27 @@ const Register = () => {
   
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setIsSubmitting(true);
     
-    if (isGoogleSignUp && googleData) {
-      // Google sign-up: complete registration by logging in with the token obtained earlier
-      googleCompleteRegistration(googleData.token, googleData.user);
-      return;
-    }
-    
-    // Normal registration
-    const { firstName, lastName, email, password, confirmPassword, role } = formData;
-    if (password !== confirmPassword) {
-      setPasswordError('Passwords do not match');
-      return;
-    }
     try {
+      if (isGoogleSignUp && googleData) {
+        googleCompleteRegistration(googleData.token, googleData.user);
+        return;
+      }
+      
+      const { firstName, lastName, email, password, confirmPassword, role } = formData;
+      if (password !== confirmPassword) {
+        setPasswordError('Passwords do not match');
+        setIsSubmitting(false);
+        return;
+      }
+
       await register({ firstName, lastName, email, password, role });
       navigate('/login');
     } catch (err) {
       console.error('Registration failed:', err);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -439,12 +444,41 @@ const Register = () => {
             )}
           </Grid>
 
+          {/* Legal Consent Text */}
+          <Typography
+            sx={{
+              mt: 2.5,
+              mb: 0.5,
+              fontSize: '0.72rem',
+              color: '#428475',
+              textAlign: 'center',
+              lineHeight: 1.6,
+              px: 1,
+            }}
+          >
+            By creating an account, you agree to our{' '}
+            <Link
+              component={RouterLink}
+              to="/privacy-policy"
+              sx={{ color: '#1A312C', fontWeight: 700, textDecoration: 'underline' }}
+            >
+              Privacy Policy
+            </Link>{' '}
+            and{' '}
+            <Link
+              component={RouterLink}
+              to="/terms"
+              sx={{ color: '#1A312C', fontWeight: 700, textDecoration: 'underline' }}
+            >
+              Terms of Service
+            </Link>.
+          </Typography>
           <Button
             type="submit"
             fullWidth
             variant="contained"
             size="large"
-            disabled={loading}
+            disabled={loading || isSubmitting}
             sx={{ 
               mt: 3, 
               mb: 2, 
@@ -454,17 +488,25 @@ const Register = () => {
               borderRadius: '16px',
               fontSize: '1rem',
               fontWeight: 800,
-              boxShadow: '0 8px 24px rgba(26, 49, 44, 0.25)',
+              boxShadow: (loading || isSubmitting) ? 'none' : '0 8px 24px rgba(26, 49, 44, 0.25)',
               border: '1px solid #89D7B7',
-              '&:hover': { bgcolor: '#0F1D1A' } 
+              '&:hover': { bgcolor: '#0F1D1A' },
+              '&.Mui-disabled': { bgcolor: '#1A312C', color: '#89D7B7', opacity: 0.85 },
+              transition: 'all 0.2s ease'
             }}
           >
-            {loading 
-              ? <CircularProgress size={24} sx={{ color: '#89D7B7' }} /> 
-              : isGoogleSignUp 
-                ? `Continue as ${formData.role === 'doctor' ? 'Doctor' : 'Patient'}`
-                : `Register as ${formData.role === 'doctor' ? 'Doctor' : 'Patient'}`
-            }
+            {(loading || isSubmitting) ? (
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1.2 }}>
+                <CircularProgress size={20} sx={{ color: '#89D7B7' }} />
+                <Typography variant="body1" sx={{ fontWeight: 800, color: '#89D7B7', fontSize: '0.95rem' }}>
+                  Creating Account...
+                </Typography>
+              </Box>
+            ) : isGoogleSignUp ? (
+              `Continue as ${formData.role === 'doctor' ? 'Doctor' : 'Patient'}`
+            ) : (
+              `Register as ${formData.role === 'doctor' ? 'Doctor' : 'Patient'}`
+            )}
           </Button>
 
           <Divider sx={{ my: 2, borderColor: 'rgba(137, 215, 183, 0.3)' }}>
@@ -491,6 +533,52 @@ const Register = () => {
           >
             Sign In to Existing Account
           </Button>
+
+          {/* Medical Disclaimer */}
+          <Typography
+            sx={{
+              mt: 2.5,
+              fontSize: '0.65rem',
+              color: '#428475',
+              textAlign: 'center',
+              lineHeight: 1.6,
+              px: 1,
+            }}
+          >
+            Medizo is a healthcare management tool. It does not provide medical diagnosis,
+            treatment advice, or replace professional healthcare consultation.
+          </Typography>
+
+          {/* Legal Links */}
+          <Box sx={{ mt: 1.5, display: 'flex', justifyContent: 'center', gap: 2 }}>
+            <Link
+              component={RouterLink}
+              to="/privacy-policy"
+              sx={{
+                fontSize: '0.68rem',
+                color: '#428475',
+                fontWeight: 600,
+                textDecoration: 'none',
+                '&:hover': { textDecoration: 'underline', color: '#1A312C' },
+              }}
+            >
+              Privacy Policy
+            </Link>
+            <Typography sx={{ fontSize: '0.68rem', color: 'rgba(66, 132, 117, 0.4)' }}>•</Typography>
+            <Link
+              component={RouterLink}
+              to="/terms"
+              sx={{
+                fontSize: '0.68rem',
+                color: '#428475',
+                fontWeight: 600,
+                textDecoration: 'none',
+                '&:hover': { textDecoration: 'underline', color: '#1A312C' },
+              }}
+            >
+              Terms of Service
+            </Link>
+          </Box>
         </Box>
       </Paper>
     </Container>

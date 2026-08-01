@@ -15,6 +15,11 @@ export interface MedicationItem {
   type?: string;
   dosage: string;
   duration: string;
+  durationValue?: number | string;
+  durationUnit?: string;
+  quantity?: string;
+  quantityValue?: number | string;
+  quantityUnit?: string;
   instructions: string;
 }
 

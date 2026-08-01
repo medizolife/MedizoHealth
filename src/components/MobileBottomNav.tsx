@@ -154,7 +154,7 @@ const MobileBottomNav = () => {
               label="Dispense" 
               value="dispense" 
               icon={
-                <Box sx={{ p: 0.45, borderRadius: '50%', bgcolor: '#F59E0B', color: '#0B1315', display: 'flex', boxShadow: '0 0 12px rgba(245, 158, 11, 0.5)' }}>
+                <Box sx={{ p: 0.45, borderRadius: '50%', bgcolor: '#0D9488', color: '#FFFFFF', display: 'flex', boxShadow: '0 0 12px rgba(13, 148, 136, 0.5)' }}>
                   <CreateIcon sx={{ fontSize: '1.4rem' }} />
                 </Box>
               } 

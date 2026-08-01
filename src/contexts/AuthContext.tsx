@@ -13,6 +13,7 @@ const initialState: AuthState = {
 
 // Auth reducer
 type AuthAction =
+  | { type: 'AUTH_START' }
   | { type: 'LOGIN_SUCCESS'; payload: { user: User; token: string } }
   | { type: 'REGISTER_SUCCESS'; payload: { user: User } }
   | { type: 'AUTH_ERROR'; payload: string }
@@ -22,6 +23,12 @@ type AuthAction =
 
 const authReducer = (state: AuthState, action: AuthAction): AuthState => {
   switch (action.type) {
+    case 'AUTH_START':
+      return {
+        ...state,
+        loading: true,
+        error: null
+      };
     case 'LOGIN_SUCCESS':
       localStorage.setItem('token', action.payload.token);
       localStorage.setItem('user', JSON.stringify(action.payload.user));
@@ -123,6 +130,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   // Login function
   const login = async (credentialsOrEmail: LoginCredentials | string, password?: string) => {
+    dispatch({ type: 'AUTH_START' });
     try {
       let email: string;
       let pwd: string;
@@ -149,6 +157,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   // Register function
   const register = async (data: RegisterData) => {
+    dispatch({ type: 'AUTH_START' });
     try {
       const response = await api.register(data);
       dispatch({ type: 'REGISTER_SUCCESS', payload: response });

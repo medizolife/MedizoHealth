@@ -133,6 +133,10 @@ export const usersAPI = {
     const response = await api.put('/users/password', { currentPassword, newPassword });
     return response.data;
   },
+  deleteAccount: async () => {
+    const response = await api.delete('/users/account');
+    return response.data;
+  },
 };
 
 // DigiLocker API
@@ -166,7 +170,15 @@ export const googleLogin = async (credential: string, role: string = 'patient'):
 
 export const getCurrentUser = async (): Promise<User> => {
   if (typeof window === 'undefined') return {} as User;
-  const role = JSON.parse(localStorage.getItem('user') || '{}')?.role;
+  let role = '';
+  try {
+    const rawUser = localStorage.getItem('user');
+    if (rawUser) {
+      role = JSON.parse(rawUser)?.role || '';
+    }
+  } catch (e) {
+    role = '';
+  }
   let endpoint = '';
   if (role === 'doctor') {
     endpoint = '/doctors/profile';

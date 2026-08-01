@@ -163,10 +163,58 @@ const NewPrescription = () => {
     name: '',
     type: 'Tablet',
     dosage: '',
-    duration: '',
+    duration: '5 Days',
+    durationValue: 5,
+    durationUnit: 'Days',
+    quantity: '10 Tablets',
+    quantityValue: 10,
+    quantityUnit: 'Tablets',
     instructions: ''
   });
   const [medSearchOpen, setMedSearchOpen] = useState(false);
+
+  const getDefaultUnit = (form?: string) => {
+    switch (form) {
+      case 'Capsule': return 'Capsules';
+      case 'Syrup': return 'Bottles';
+      case 'Injection': return 'Vials';
+      case 'Ointment': return 'Tubes';
+      case 'Drops': return 'Bottles';
+      default: return 'Tablets';
+    }
+  };
+
+  const calculateQuantity = (dosageStr: string, durVal: number | string, durUnit: string, medForm: string = 'Tablet') => {
+    const val = typeof durVal === 'number' ? durVal : parseInt(String(durVal), 10) || 0;
+    if (val <= 0) return { qtyVal: 0, qtyUnit: getDefaultUnit(medForm), qtyStr: '' };
+
+    let multiplierPerDay = 1;
+    if (/1-1-1-1/i.test(dosageStr) || /four times|4 times|qds/i.test(dosageStr)) {
+      multiplierPerDay = 4;
+    } else if (/1-1-1/i.test(dosageStr) || /thrice|3 times|tds/i.test(dosageStr)) {
+      multiplierPerDay = 3;
+    } else if (/1-0-1/i.test(dosageStr) || /twice|2 times|bd/i.test(dosageStr)) {
+      multiplierPerDay = 2;
+    } else if (/1-0-0|0-1-0|0-0-1/i.test(dosageStr) || /once|1 time|od/i.test(dosageStr)) {
+      multiplierPerDay = 1;
+    }
+
+    let days = val;
+    if (durUnit === 'Weeks') days = val * 7;
+    if (durUnit === 'Months') days = val * 30;
+
+    const totalUnits = multiplierPerDay * days;
+    const unit = getDefaultUnit(medForm);
+    
+    let qtyStr = `${totalUnits} ${unit}`;
+    if (medForm === 'Syrup' || medForm === 'Drops') {
+      qtyStr = totalUnits <= 14 ? '1 Bottle (100ml)' : '2 Bottles (100ml)';
+    } else if (medForm === 'Ointment') {
+      qtyStr = '1 Tube';
+    }
+
+    return { qtyVal: totalUnits, qtyUnit: unit, qtyStr };
+  };
 
   // Intelligent medicine search options: Requires at least 2 characters to trigger
   const filteredMedicineOptions = React.useMemo(() => {
@@ -284,11 +332,31 @@ const NewPrescription = () => {
   // Add medication
   const addMedication = () => {
     if (newMedication.name.trim()) {
+      const durVal = newMedication.durationValue || 5;
+      const durUnit = newMedication.durationUnit || 'Days';
+      const durStr = newMedication.duration || `${durVal} ${durUnit}`;
+      const qtyStr = newMedication.quantity || (newMedication.quantityValue ? `${newMedication.quantityValue} ${newMedication.quantityUnit || 'Tablets'}` : '');
+
       setFormData({
         ...formData,
-        medications: [...(formData.medications || []), { ...newMedication }]
+        medications: [...(formData.medications || []), {
+          ...newMedication,
+          duration: durStr,
+          quantity: qtyStr
+        }]
       });
-      setNewMedication({ name: '', type: 'Tablet', dosage: '', duration: '', instructions: '' });
+      setNewMedication({
+        name: '',
+        type: 'Tablet',
+        dosage: '',
+        duration: '5 Days',
+        durationValue: 5,
+        durationUnit: 'Days',
+        quantity: '10 Tablets',
+        quantityValue: 10,
+        quantityUnit: 'Tablets',
+        instructions: ''
+      });
     }
   };
 
@@ -1056,7 +1124,17 @@ const NewPrescription = () => {
                     label="Dosage"
                     placeholder="e.g., 1-0-1"
                     value={newMedication.dosage}
-                    onChange={(e) => setNewMedication({ ...newMedication, dosage: e.target.value })}
+                    onChange={(e) => {
+                      const newDosage = e.target.value;
+                      const calc = calculateQuantity(newDosage, newMedication.durationValue || 5, newMedication.durationUnit || 'Days', newMedication.type);
+                      setNewMedication({
+                        ...newMedication,
+                        dosage: newDosage,
+                        quantityValue: calc.qtyVal,
+                        quantityUnit: calc.qtyUnit,
+                        quantity: calc.qtyStr
+                      });
+                    }}
                     InputProps={{ sx: { borderRadius: '12px' } }}
                   />
                 </Grid>
@@ -1078,7 +1156,16 @@ const NewPrescription = () => {
                         key={preset.label}
                         label={preset.label}
                         size="small"
-                        onClick={() => setNewMedication({ ...newMedication, dosage: preset.val })}
+                        onClick={() => {
+                          const calc = calculateQuantity(preset.val, newMedication.durationValue || 5, newMedication.durationUnit || 'Days', newMedication.type);
+                          setNewMedication({
+                            ...newMedication,
+                            dosage: preset.val,
+                            quantityValue: calc.qtyVal,
+                            quantityUnit: calc.qtyUnit,
+                            quantity: calc.qtyStr
+                          });
+                        }}
                         sx={{ 
                           fontWeight: 700, 
                           fontSize: '0.7rem', 
@@ -1117,18 +1204,119 @@ const NewPrescription = () => {
                   </Box>
                 </Grid>
 
-                <Grid item xs={12} sm={4}>
+                {/* Duration Inputs & Presets */}
+                <Grid item xs={7} sm={4}>
                   <TextField
                     fullWidth
                     size="small"
-                    label="Duration"
-                    placeholder="e.g., 5 days / 2 weeks"
-                    value={newMedication.duration}
-                    onChange={(e) => setNewMedication({ ...newMedication, duration: e.target.value })}
+                    label="Duration Value"
+                    type="number"
+                    value={newMedication.durationValue || ''}
+                    onChange={(e) => {
+                      const num = parseInt(e.target.value, 10) || 0;
+                      const unit = newMedication.durationUnit || 'Days';
+                      const durStr = `${num} ${unit}`;
+                      const calc = calculateQuantity(newMedication.dosage, num, unit, newMedication.type);
+                      setNewMedication({
+                        ...newMedication,
+                        durationValue: num,
+                        duration: durStr,
+                        quantityValue: calc.qtyVal,
+                        quantityUnit: calc.qtyUnit,
+                        quantity: calc.qtyStr
+                      });
+                    }}
                     InputProps={{ sx: { borderRadius: '12px' } }}
                   />
                 </Grid>
-                <Grid item xs={12} sm={8}>
+                <Grid item xs={5} sm={2}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel id="dur-unit-label">Unit</InputLabel>
+                    <Select
+                      labelId="dur-unit-label"
+                      value={newMedication.durationUnit || 'Days'}
+                      label="Unit"
+                      onChange={(e) => {
+                        const unit = e.target.value;
+                        const num = newMedication.durationValue || 5;
+                        const durStr = `${num} ${unit}`;
+                        const calc = calculateQuantity(newMedication.dosage, num, unit, newMedication.type);
+                        setNewMedication({
+                          ...newMedication,
+                          durationUnit: unit,
+                          duration: durStr,
+                          quantityValue: calc.qtyVal,
+                          quantityUnit: calc.qtyUnit,
+                          quantity: calc.qtyStr
+                        });
+                      }}
+                      sx={{ borderRadius: '12px' }}
+                    >
+                      <MenuItem value="Days">Days</MenuItem>
+                      <MenuItem value="Weeks">Weeks</MenuItem>
+                      <MenuItem value="Months">Months</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                {/* Duration Presets */}
+                <Grid item xs={12}>
+                  <Typography variant="caption" sx={{ fontWeight: 800, color: 'var(--color-forest)', display: 'block', mb: 0.5 }}>
+                    Quick Duration Presets:
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 0.8, flexWrap: 'wrap' }}>
+                    {[
+                      { num: 3, unit: 'Days', label: '3 Days' },
+                      { num: 5, unit: 'Days', label: '5 Days' },
+                      { num: 7, unit: 'Days', label: '7 Days' },
+                      { num: 10, unit: 'Days', label: '10 Days' },
+                      { num: 14, unit: 'Days', label: '14 Days' },
+                      { num: 1, unit: 'Months', label: '1 Month' },
+                      { num: 3, unit: 'Months', label: '3 Months' }
+                    ].map(p => (
+                      <Chip
+                        key={p.label}
+                        label={p.label}
+                        size="small"
+                        onClick={() => {
+                          const durStr = `${p.num} ${p.unit}`;
+                          const calc = calculateQuantity(newMedication.dosage, p.num, p.unit, newMedication.type);
+                          setNewMedication({
+                            ...newMedication,
+                            durationValue: p.num,
+                            durationUnit: p.unit,
+                            duration: durStr,
+                            quantityValue: calc.qtyVal,
+                            quantityUnit: calc.qtyUnit,
+                            quantity: calc.qtyStr
+                          });
+                        }}
+                        sx={{
+                          fontWeight: 700,
+                          fontSize: '0.7rem',
+                          cursor: 'pointer',
+                          bgcolor: (newMedication.durationValue === p.num && newMedication.durationUnit === p.unit) ? 'var(--color-forest)' : 'rgba(0,0,0,0.06)',
+                          color: (newMedication.durationValue === p.num && newMedication.durationUnit === p.unit) ? '#ffffff' : 'inherit'
+                        }}
+                      />
+                    ))}
+                  </Box>
+                </Grid>
+
+                {/* Quantity Field & Presets */}
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Total Quantity prescribed"
+                    placeholder="e.g. 10 Tablets / 1 Bottle"
+                    value={newMedication.quantity || ''}
+                    onChange={(e) => setNewMedication({ ...newMedication, quantity: e.target.value })}
+                    helperText={newMedication.dosage && newMedication.durationValue ? `⚡ Auto-calculated based on ${newMedication.dosage} for ${newMedication.durationValue} ${newMedication.durationUnit || 'Days'}` : 'Total units to dispense at pharmacy'}
+                    InputProps={{ sx: { borderRadius: '12px' } }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
                   <TextField
                     fullWidth
                     size="small"
@@ -1139,6 +1327,34 @@ const NewPrescription = () => {
                     InputProps={{ sx: { borderRadius: '12px' } }}
                   />
                 </Grid>
+
+                {/* Quick Quantity Presets */}
+                <Grid item xs={12}>
+                  <Typography variant="caption" sx={{ fontWeight: 800, color: 'var(--color-forest)', display: 'block', mb: 0.5 }}>
+                    Quick Quantity Presets:
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 0.8, flexWrap: 'wrap' }}>
+                    {[
+                      '10 Tablets', '14 Tablets', '20 Tablets', '30 Tablets',
+                      '10 Capsules', '14 Capsules', '1 Bottle (100ml)', '1 Strip', '2 Vials', '1 Tube'
+                    ].map(q => (
+                      <Chip
+                        key={q}
+                        label={q}
+                        size="small"
+                        onClick={() => setNewMedication({ ...newMedication, quantity: q })}
+                        sx={{
+                          fontWeight: 700,
+                          fontSize: '0.7rem',
+                          cursor: 'pointer',
+                          bgcolor: newMedication.quantity === q ? 'var(--color-forest)' : 'rgba(0,100,0,0.06)',
+                          color: newMedication.quantity === q ? '#ffffff' : 'inherit'
+                        }}
+                      />
+                    ))}
+                  </Box>
+                </Grid>
+
                 <Grid item xs={12}>
                   <Button 
                     variant="contained" 
@@ -1164,7 +1380,7 @@ const NewPrescription = () => {
             {formData.medications && formData.medications.length > 0 && (
               <Box sx={{ mb: 2 }}>
                 <Typography variant="caption" sx={{ fontWeight: 800, color: '#428475', textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', mb: 1 }}>
-                  Prescribed Items List
+                  Prescribed Items List ({formData.medications.length})
                 </Typography>
                 {formData.medications.map((med, idx) => (
                   <Card 
@@ -1181,8 +1397,8 @@ const NewPrescription = () => {
                     }}
                   >
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                      <Box sx={{ width: '100%' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 1 }}>
                           <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#1A312C' }}>
                             {idx + 1}. {med.name}
                           </Typography>
@@ -1190,13 +1406,24 @@ const NewPrescription = () => {
                             <Chip label={med.type} size="small" sx={{ height: 20, fontSize: '0.65rem', fontWeight: 800, bgcolor: 'rgba(66, 132, 117, 0.15)', color: '#428475' }} />
                           )}
                         </Box>
-                        <Box sx={{ display: 'flex', gap: 1.5, mt: 0.8, flexWrap: 'wrap' }}>
-                          <Typography variant="caption" sx={{ fontWeight: 700, color: '#428475' }}>
-                            Dosage: <strong>{med.dosage || 'As directed'}</strong>
-                          </Typography>
-                          <Typography variant="caption" sx={{ fontWeight: 700, color: '#428475' }}>
-                            Duration: <strong>{med.duration || 'N/A'}</strong>
-                          </Typography>
+                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 0.8 }}>
+                          <Chip 
+                            label={`Dosage: ${med.dosage || 'As directed'}`} 
+                            size="small" 
+                            sx={{ fontWeight: 700, bgcolor: 'rgba(19, 79, 77, 0.08)', color: '#134F4D', fontSize: '0.72rem' }} 
+                          />
+                          <Chip 
+                            label={`⏱️ Duration: ${med.duration || 'N/A'}`} 
+                            size="small" 
+                            sx={{ fontWeight: 700, bgcolor: 'rgba(59, 130, 246, 0.1)', color: '#1d4ed8', fontSize: '0.72rem' }} 
+                          />
+                          {med.quantity && (
+                            <Chip 
+                              label={`📦 Quantity: ${med.quantity}`} 
+                              size="small" 
+                              sx={{ fontWeight: 800, bgcolor: 'rgba(16, 185, 129, 0.12)', color: '#047857', fontSize: '0.72rem' }} 
+                            />
+                          )}
                         </Box>
                         {med.instructions && (
                           <Typography variant="caption" sx={{ display: 'block', color: '#64748b', fontStyle: 'italic', mt: 0.5 }}>
@@ -1204,7 +1431,7 @@ const NewPrescription = () => {
                           </Typography>
                         )}
                       </Box>
-                      <IconButton size="small" onClick={() => removeMedication(idx)} sx={{ color: '#ef4444', bgcolor: 'rgba(239, 68, 68, 0.08)' }}>
+                      <IconButton size="small" onClick={() => removeMedication(idx)} sx={{ color: '#ef4444', bgcolor: 'rgba(239, 68, 68, 0.08)', ml: 1 }}>
                         <DeleteIcon fontSize="small" />
                       </IconButton>
                     </Box>

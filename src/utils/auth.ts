@@ -10,8 +10,13 @@ export const findUserById = (id: string): User | null => {
   const storedUser = localStorage.getItem('user');
   if (!storedUser) return null;
   
-  const user = JSON.parse(storedUser) as User;
-  if (user.id === id) return user;
+  try {
+    const user = JSON.parse(storedUser) as User;
+    if (user && user.id === id) return user;
+  } catch (e) {
+    console.error('Failed to parse stored user from localStorage:', e);
+    localStorage.removeItem('user');
+  }
   
   return null;
 };
@@ -38,5 +43,11 @@ export const getStoredUser = (): User | null => {
   if (typeof window === 'undefined') return null;
   const storedUser = localStorage.getItem('user');
   if (!storedUser) return null;
-  return JSON.parse(storedUser);
+  try {
+    return JSON.parse(storedUser);
+  } catch (e) {
+    console.error('Failed to parse stored user in getStoredUser:', e);
+    localStorage.removeItem('user');
+    return null;
+  }
 };

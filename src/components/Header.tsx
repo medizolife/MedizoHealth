@@ -525,22 +525,22 @@ export default function Header() {
               {user?.role === 'pharmacist' ? (
                 <>
                   <ListItemButton onClick={() => handleNavigation('/dashboard')} sx={{ borderRadius: '14px', mb: 0.8, py: 1.2 }}>
-                    <ListItemIcon><LocalPharmacyIcon sx={{ color: '#F59E0B' }} /></ListItemIcon>
+                    <ListItemIcon><LocalPharmacyIcon sx={{ color: '#0D9488' }} /></ListItemIcon>
                     <ListItemText primary="Pharmacy Portal" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }} />
                   </ListItemButton>
                   
                   <ListItemButton onClick={() => { handleNavigation('/dashboard'); setTimeout(() => window.dispatchEvent(new CustomEvent('open-qr-scanner')), 300); }} sx={{ borderRadius: '14px', mb: 0.8, py: 1.2 }}>
-                    <ListItemIcon><QrCodeScannerIcon sx={{ color: '#F59E0B' }} /></ListItemIcon>
+                    <ListItemIcon><QrCodeScannerIcon sx={{ color: '#0D9488' }} /></ListItemIcon>
                     <ListItemText primary="Scan & Dispense Rx" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }} />
                   </ListItemButton>
 
                   <ListItemButton onClick={() => handleNavigation('/prescriptions/all')} sx={{ borderRadius: '14px', mb: 0.8, py: 1.2 }}>
-                    <ListItemIcon><HistoryIcon sx={{ color: '#F59E0B' }} /></ListItemIcon>
+                    <ListItemIcon><HistoryIcon sx={{ color: '#0D9488' }} /></ListItemIcon>
                     <ListItemText primary="Dispense History Log" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }} />
                   </ListItemButton>
 
                   <ListItemButton onClick={() => handleNavigation('/profile')} sx={{ borderRadius: '14px', mb: 0.8, py: 1.2 }}>
-                    <ListItemIcon><PersonIcon sx={{ color: '#F59E0B' }} /></ListItemIcon>
+                    <ListItemIcon><PersonIcon sx={{ color: '#0D9488' }} /></ListItemIcon>
                     <ListItemText primary="Pharmacy Profile" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }} />
                   </ListItemButton>
                 </>

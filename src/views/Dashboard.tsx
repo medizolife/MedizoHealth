@@ -44,7 +44,9 @@ import {
   PersonAdd as PersonAddIcon,
   QrCodeScanner as QrIcon,
   FilterList as FilterIcon,
-  Security as SecurityIcon
+  Security as SecurityIcon,
+  Close as CloseIcon,
+  MedicalInformation as MedicalInfoIcon
 } from '@mui/icons-material';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -72,6 +74,19 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Medical disclaimer banner state (dismissed once via localStorage)
+  const [showDisclaimer, setShowDisclaimer] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('medizo_disclaimer_dismissed') !== 'true';
+    }
+    return true;
+  });
+  
+  const handleDismissDisclaimer = () => {
+    setShowDisclaimer(false);
+    localStorage.setItem('medizo_disclaimer_dismissed', 'true');
+  };
   
   // DigiLocker state
   const [digilockerVerified, setDigilockerVerified] = useState(null as boolean | null);
@@ -159,6 +174,32 @@ const Dashboard = () => {
       
       {/* ─── Wallpaper Carousel Hero Greeting Header ─── */}
       <WallpaperCarouselHero searchQuery={searchQuery} onSearchChange={setSearchQuery} />
+
+      {/* ─── Medical Disclaimer Banner (One-time, dismissible) ─── */}
+      {showDisclaimer && (
+        <Alert
+          severity="info"
+          icon={<MedicalInfoIcon />}
+          onClose={handleDismissDisclaimer}
+          sx={{
+            mb: 2.5,
+            borderRadius: '16px',
+            bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.08)' : 'rgba(26, 49, 44, 0.04)',
+            border: `1px solid ${mode === 'dark' ? 'rgba(137, 215, 183, 0.2)' : 'rgba(26, 49, 44, 0.12)'}`,
+            '& .MuiAlert-icon': { color: mode === 'dark' ? '#89D7B7' : '#1A312C' },
+            '& .MuiAlert-message': { color: mode === 'dark' ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.75)' },
+            '& .MuiAlert-action': { color: mode === 'dark' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)' },
+          }}
+        >
+          <Typography sx={{ fontWeight: 700, fontSize: '0.82rem', mb: 0.3 }}>
+            Medical Disclaimer
+          </Typography>
+          <Typography sx={{ fontSize: '0.75rem', lineHeight: 1.6 }}>
+            Medizo is a healthcare management tool for organizing prescriptions and medical records.
+            It does not provide medical diagnosis, treatment advice, or replace professional healthcare consultation.
+          </Typography>
+        </Alert>
+      )}
 
       {/* ─── DigiLocker Verification Banner for Unverified Doctors ─── */}
       {user?.role === 'doctor' && digilockerVerified === false && (

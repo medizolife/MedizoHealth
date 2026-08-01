@@ -156,22 +156,52 @@ const PrescriptionDetail = () => {
         
         {/* Medication Details Card */}
         <Box sx={{ bgcolor: '#f8fafc', p: 2, borderRadius: '16px', mb: 2, border: '1px solid #e2e8f0' }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#134F4D', mb: 1 }}>
-            💊 {prescription.medication || 'Prescribed Medication'}
+          <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#134F4D', mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+            💊 Prescribed Medications
           </Typography>
-          <Typography variant="body2" sx={{ mb: 0.5, color: '#334155' }}>
-            <strong>Dosage:</strong> {prescription.dosage || 'As directed'}
-          </Typography>
-          <Typography variant="body2" sx={{ mb: 0.5, color: '#334155' }}>
-            <strong>Frequency:</strong> {prescription.frequency || 'Once daily'}
-          </Typography>
-          <Typography variant="body2" sx={{ mb: 0.5, color: '#334155' }}>
-            <strong>Duration:</strong> {prescription.duration || 'As needed'}
-          </Typography>
-          {prescription.instructions && (
-            <Typography variant="body2" sx={{ mt: 1, color: '#475569', fontStyle: 'italic' }}>
-              Instructions: "{prescription.instructions}"
-            </Typography>
+
+          {prescription.medications && prescription.medications.length > 0 ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+              {prescription.medications.map((med, idx) => (
+                <Paper key={idx} variant="outlined" sx={{ p: 1.5, borderRadius: '12px', bgcolor: '#ffffff' }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#0f172a' }}>
+                      {idx + 1}. {med.name}
+                    </Typography>
+                    {med.type && (
+                      <Chip label={med.type} size="small" sx={{ height: 20, fontSize: '0.65rem', fontWeight: 800, bgcolor: 'rgba(19, 79, 77, 0.1)', color: '#134F4D' }} />
+                    )}
+                  </Box>
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', my: 0.5 }}>
+                    <Chip label={`Dosage: ${med.dosage || 'As directed'}`} size="small" sx={{ fontWeight: 700, bgcolor: '#f1f5f9', fontSize: '0.72rem' }} />
+                    <Chip label={`⏱️ Duration: ${med.duration || 'As needed'}`} size="small" sx={{ fontWeight: 700, bgcolor: 'rgba(59, 130, 246, 0.1)', color: '#1d4ed8', fontSize: '0.72rem' }} />
+                    {med.quantity && (
+                      <Chip label={`📦 Quantity: ${med.quantity}`} size="small" sx={{ fontWeight: 800, bgcolor: 'rgba(16, 185, 129, 0.12)', color: '#047857', fontSize: '0.72rem' }} />
+                    )}
+                  </Box>
+                  {med.instructions && (
+                    <Typography variant="caption" sx={{ display: 'block', color: '#475569', fontStyle: 'italic', mt: 0.5 }}>
+                      Instructions: "{med.instructions}"
+                    </Typography>
+                  )}
+                </Paper>
+              ))}
+            </Box>
+          ) : (
+            <Box>
+              <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#334155', mb: 0.5 }}>
+                {prescription.medication || 'Prescribed Medication'}
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
+                <Chip label={`Dosage: ${prescription.dosage || 'As directed'}`} size="small" sx={{ fontWeight: 700 }} />
+                <Chip label={`⏱️ Duration: ${prescription.duration || 'As needed'}`} size="small" sx={{ fontWeight: 700, bgcolor: 'rgba(59, 130, 246, 0.1)', color: '#1d4ed8' }} />
+              </Box>
+              {prescription.instructions && (
+                <Typography variant="body2" sx={{ mt: 1, color: '#475569', fontStyle: 'italic' }}>
+                  Instructions: "{prescription.instructions}"
+                </Typography>
+              )}
+            </Box>
           )}
         </Box>
         
