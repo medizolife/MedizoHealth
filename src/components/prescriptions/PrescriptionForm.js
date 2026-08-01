@@ -29,7 +29,8 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  Chip
+  Chip,
+  Popover
 } from '@mui/material';
 import { 
   Add as AddIcon, 
@@ -73,6 +74,11 @@ const PrescriptionForm = ({ onCreatePrescription }) => {
   const [success, setSuccess] = useState(false);
   const [patientsList, setPatientsList] = useState([]);
   const [loadingPatients, setLoadingPatients] = useState(true);
+  
+  // Popover state for 2-row meal relation popup when clicking Time of Day
+  const [mealPopoverAnchor, setMealPopoverAnchor] = useState(null);
+  const [mealPopoverMedIndex, setMealPopoverMedIndex] = useState(null);
+  const [mealPopoverTimeLabel, setMealPopoverTimeLabel] = useState('');
   
   // New patient dialog state
   const [newPatientDialogOpen, setNewPatientDialogOpen] = useState(false);
@@ -1359,7 +1365,7 @@ const PrescriptionForm = ({ onCreatePrescription }) => {
                         return (
                           <Tooltip key={time.key} title={time.label}>
                             <Box
-                              onClick={() => {
+                              onClick={(e) => {
                                 let newTimings;
                                 if (isSelected) {
                                   newTimings = timings.filter(t => t !== time.label);
@@ -1367,6 +1373,9 @@ const PrescriptionForm = ({ onCreatePrescription }) => {
                                   newTimings = [...timings, time.label];
                                 }
                                 handleMedicationChange(index, 'timing', newTimings.join(', '));
+                                setMealPopoverAnchor(e.currentTarget);
+                                setMealPopoverMedIndex(index);
+                                setMealPopoverTimeLabel(time.label);
                               }}
                               sx={{
                                 display: 'flex',
@@ -1392,6 +1401,116 @@ const PrescriptionForm = ({ onCreatePrescription }) => {
                       })}
                     </Box>
                   </Grid>
+
+                  {/* 2-Row Meal Timing Relation Popup */}
+                  <Popover
+                    open={Boolean(mealPopoverAnchor)}
+                    anchorEl={mealPopoverAnchor}
+                    onClose={() => setMealPopoverAnchor(null)}
+                    anchorOrigin={{
+                      vertical: 'bottom',
+                      horizontal: 'center',
+                    }}
+                    transformOrigin={{
+                      vertical: 'top',
+                      horizontal: 'center',
+                    }}
+                    PaperProps={{
+                      sx: {
+                        p: 2,
+                        borderRadius: '18px',
+                        boxShadow: '0 12px 32px rgba(26, 49, 44, 0.18)',
+                        border: '1.5px solid rgba(137, 215, 183, 0.6)',
+                        bgcolor: 'rgba(255, 255, 255, 0.98)',
+                        backdropFilter: 'blur(16px)',
+                        maxWidth: 360,
+                      }
+                    }}
+                  >
+                    <Box sx={{ mb: 1.5, textAlign: 'center' }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#1A312C', fontSize: '0.85rem' }}>
+                        Meal Timing Relation ({mealPopoverTimeLabel})
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: '#428475', fontSize: '0.72rem' }}>
+                        Select when to take this medicine relative to meals
+                      </Typography>
+                    </Box>
+
+                    {/* Row 1: With Food, Before Food, After Food */}
+                    <Box sx={{ display: 'flex', gap: 1, mb: 1, justifyContent: 'center' }}>
+                      {[
+                        { label: 'With Food', icon: <WithFoodIcon sx={{ fontSize: 16 }} />, color: '#1565c0', bg: '#e3f2fd', border: '#1565c0' },
+                        { label: 'Before Food', icon: <BeforeFoodIcon sx={{ fontSize: 16 }} />, color: '#e65100', bg: '#fff3e0', border: '#e65100' },
+                        { label: 'After Food', icon: <AfterFoodIcon sx={{ fontSize: 16 }} />, color: '#6a1b9a', bg: '#f3e5f5', border: '#6a1b9a' }
+                      ].map((option) => {
+                        const currentMed = mealPopoverMedIndex !== null ? prescription.medications[mealPopoverMedIndex] : null;
+                        const isSelected = currentMed && currentMed.mealRelation === option.label;
+                        return (
+                          <Chip
+                            key={option.label}
+                            icon={option.icon}
+                            label={option.label}
+                            clickable
+                            onClick={() => {
+                              if (mealPopoverMedIndex !== null) {
+                                handleMedicationChange(mealPopoverMedIndex, 'mealRelation', isSelected ? '' : option.label);
+                              }
+                              setMealPopoverAnchor(null);
+                            }}
+                            sx={{
+                              fontWeight: 700,
+                              fontSize: '0.75rem',
+                              px: 0.5,
+                              py: 1.8,
+                              borderRadius: '16px',
+                              bgcolor: isSelected ? option.color : option.bg,
+                              color: isSelected ? '#ffffff' : option.color,
+                              border: isSelected ? `2px solid ${option.border}` : '1.5px solid rgba(0,0,0,0.08)',
+                              '& .MuiChip-icon': { color: isSelected ? '#ffffff' : option.color },
+                              '&:hover': { bgcolor: option.color, color: '#ffffff', '& .MuiChip-icon': { color: '#ffffff' } }
+                            }}
+                          />
+                        );
+                      })}
+                    </Box>
+
+                    {/* Row 2: Empty Stomach, Any Time */}
+                    <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+                      {[
+                        { label: 'Empty Stomach', icon: <EmptyStomachIcon sx={{ fontSize: 16 }} />, color: '#00695c', bg: '#e0f2f1', border: '#00695c' },
+                        { label: 'Any Time', icon: <AnyTimeIcon sx={{ fontSize: 16 }} />, color: '#37474f', bg: '#eceff1', border: '#37474f' }
+                      ].map((option) => {
+                        const currentMed = mealPopoverMedIndex !== null ? prescription.medications[mealPopoverMedIndex] : null;
+                        const isSelected = currentMed && currentMed.mealRelation === option.label;
+                        return (
+                          <Chip
+                            key={option.label}
+                            icon={option.icon}
+                            label={option.label}
+                            clickable
+                            onClick={() => {
+                              if (mealPopoverMedIndex !== null) {
+                                handleMedicationChange(mealPopoverMedIndex, 'mealRelation', isSelected ? '' : option.label);
+                              }
+                              setMealPopoverAnchor(null);
+                            }}
+                            sx={{
+                              fontWeight: 700,
+                              fontSize: '0.75rem',
+                              px: 0.8,
+                              py: 1.8,
+                              borderRadius: '16px',
+                              bgcolor: isSelected ? option.color : option.bg,
+                              color: isSelected ? '#ffffff' : option.color,
+                              border: isSelected ? `2px solid ${option.border}` : '1.5px solid rgba(0,0,0,0.08)',
+                              '& .MuiChip-icon': { color: isSelected ? '#ffffff' : option.color },
+                              '&:hover': { bgcolor: option.color, color: '#ffffff', '& .MuiChip-icon': { color: '#ffffff' } }
+                            }}
+                          />
+                        );
+                      })}
+                    </Box>
+                  </Popover>
                   
                   <Grid item xs={12} sm={5}>
                     <Box sx={{ display: 'flex', gap: 1 }}>
