@@ -2,7 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { getPatients } from '../services/patients';
+import { getMyPatients } from '../services/patients';
+import { usersAPI } from '../services/api';
 import { createPrescription } from '../services/prescriptions';
 import { digilockerAPI } from '../services/api';
 import { Patient } from '../types/auth';
@@ -400,19 +401,26 @@ const NewPrescription = () => {
     fasting: ''
   });
 
-  // Fetch patients on component mount
+  // Fetch only doctor's linked patients on mount
+  const fetchMyPatients = async () => {
+    try {
+      const data = await usersAPI.getMyPatients();
+      const list = Array.isArray(data?.patients) ? data.patients : (Array.isArray(data) ? data : []);
+      // Sort by lastActivity descending (most recent first)
+      list.sort((a: any, b: any) => {
+        const dateA = new Date(a.lastActivity || a.updatedAt || a.createdAt || 0).getTime();
+        const dateB = new Date(b.lastActivity || b.updatedAt || b.createdAt || 0).getTime();
+        return dateB - dateA;
+      });
+      setPatients(list);
+    } catch (err) {
+      console.error('Error fetching my patients:', err);
+      setError('Failed to load your linked patients');
+    }
+  };
+
   useEffect(() => {
-    const fetchPatients = async () => {
-      try {
-        const data = await getPatients();
-        setPatients(Array.isArray(data) ? data : []);
-      } catch (err) {
-        console.error('Error fetching patients:', err);
-        setError('Failed to load patients list');
-      }
-    };
-    
-    fetchPatients();
+    fetchMyPatients();
   }, []);
 
   // Check DigiLocker verification status
@@ -785,6 +793,17 @@ const NewPrescription = () => {
                   value={formData.patientId}
                   label="Select Patient *"
                   onChange={handleSelectChange}
+                  MenuProps={{
+                    PaperProps: {
+                      sx: {
+                        maxHeight: 260,
+                        overflowY: 'auto',
+                        borderRadius: '14px',
+                        '&::-webkit-scrollbar': { width: 6 },
+                        '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(66,132,117,0.3)', borderRadius: 3 }
+                      }
+                    }
+                  }}
                   sx={{ 
                     borderRadius: '16px',
                     bgcolor: mode === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(255, 255, 255, 0.9)',
@@ -793,6 +812,11 @@ const NewPrescription = () => {
                     '& fieldset': { borderColor: 'var(--glass-border)' }
                   }}
                 >
+                  {patients.length === 0 && (
+                    <MenuItem disabled value="" sx={{ fontStyle: 'italic', color: '#999' }}>
+                      No linked patients yet — use + NEW or + ADD EXISTING
+                    </MenuItem>
+                  )}
                   {patients.map(patient => (
                     <MenuItem key={patient.id} value={patient.id} sx={{ fontWeight: 600 }}>
                       {patient.firstName} {patient.lastName} ({patient.email})
@@ -800,7 +824,9 @@ const NewPrescription = () => {
                   ))}
                 </Select>
                 <Typography variant="caption" sx={{ color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-teal)', mt: 0.8, display: 'block', fontWeight: 600 }}>
-                  Only showing patients you have prescribed to before
+                  {patients.length > 0 
+                    ? `Showing ${patients.length} linked patient${patients.length > 1 ? 's' : ''} (latest activity first)`
+                    : 'Add patients using + NEW PATIENT or + ADD EXISTING above'}
                 </Typography>
               </FormControl>
             </Grid>
@@ -2540,6 +2566,11 @@ const NewPrescription = () => {
               />
             </Grid>
           </Grid>
+          {newPatientError && (
+            <Typography variant="caption" sx={{ color: '#dc2626', fontWeight: 700, mt: 1, display: 'block', px: 1 }}>
+              ⚠️ {newPatientError}
+            </Typography>
+          )}
         </DialogContent>
         <DialogActions sx={{ p: 2, gap: 1 }}>
           <Button onClick={() => setNewPatientDialogOpen(false)} sx={{ borderRadius: '12px' }}>
@@ -2551,23 +2582,26 @@ const NewPrescription = () => {
             onClick={async () => {
               try {
                 setCreatingPatient(true);
-                // Create patient logic
-                const newP: Patient = {
-                  id: 'pat-' + Date.now(),
+                setNewPatientError('');
+                // Create patient via real API (auto-links to doctor on backend)
+                const result = await usersAPI.createPatient({
                   firstName: newPatientData.firstName,
                   lastName: newPatientData.lastName,
                   email: newPatientData.email,
-                  role: 'patient',
-                  contactNumber: newPatientData.phone,
-                  createdAt: new Date().toISOString()
-                };
-                setPatients(prev => [newP, ...prev]);
+                  phone: newPatientData.phone,
+                  gender: newPatientData.gender,
+                  address: newPatientData.address
+                });
+                const newP = result.patient || result;
+                // Refresh the full linked patient list from backend
+                await fetchMyPatients();
                 setSelectedPatient(newP);
                 setFormData(prev => ({ ...prev, patientId: newP.id }));
                 setNewPatientDialogOpen(false);
                 setNewPatientData({ firstName: '', lastName: '', email: '', phone: '', gender: 'male', address: '' });
-              } catch (err) {
-                console.error(err);
+              } catch (err: any) {
+                console.error('Create patient error:', err);
+                setNewPatientError(err?.response?.data?.message || err?.message || 'Failed to create patient');
               } finally {
                 setCreatingPatient(false);
               }
@@ -2830,16 +2864,22 @@ const NewPrescription = () => {
           <Button
             variant="contained"
             disabled={!foundPatient}
-            onClick={() => {
+            onClick={async () => {
               if (foundPatient) {
-                if (!patients.some(p => p.id === foundPatient.id)) {
-                  setPatients(prev => [foundPatient, ...prev]);
+                try {
+                  // Link patient to doctor via API
+                  await usersAPI.linkPatient(foundPatient.id);
+                  // Refresh the linked patients list from backend
+                  await fetchMyPatients();
+                  setSelectedPatient(foundPatient);
+                  setFormData(prev => ({ ...prev, patientId: foundPatient.id }));
+                  setAddExistingPatientDialogOpen(false);
+                  setFoundPatient(null);
+                  setPatientIdToLookup('');
+                } catch (err: any) {
+                  console.error('Link patient error:', err);
+                  setLookupError(err?.response?.data?.message || 'Failed to link patient');
                 }
-                setSelectedPatient(foundPatient);
-                setFormData(prev => ({ ...prev, patientId: foundPatient.id }));
-                setAddExistingPatientDialogOpen(false);
-                setFoundPatient(null);
-                setPatientIdToLookup('');
               }
             }}
             startIcon={<PersonAddIcon />}

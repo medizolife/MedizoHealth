@@ -1,10 +1,16 @@
 import api from './api';
 import { Patient } from '../types/auth';
 
-// Patient service functions
+// Patient service functions — gets ALL patients (admin use)
 export const getPatients = async (): Promise<Patient[]> => {
   const response = await api.get<{ patients: Patient[] }>('/users/patients');
   return response.data.patients;
+};
+
+// Gets only patients linked to the current doctor (via linkedPatients or prescriptions)
+export const getMyPatients = async (): Promise<Patient[]> => {
+  const response = await api.get<{ patients: Patient[] }>('/users/patients/my-patients');
+  return response.data.patients || response.data as any;
 };
 
 export const getPatientById = async (id: string): Promise<Patient> => {
