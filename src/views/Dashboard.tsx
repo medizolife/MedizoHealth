@@ -290,14 +290,18 @@ const Dashboard = () => {
 
   return (
     <>
-    <Container maxWidth="md" sx={{ pt: 2, pb: 6, px: { xs: 2, sm: 3 } }}>
+    <Container maxWidth="xl" sx={{ pt: { xs: 2, md: 3 }, pb: 6, px: { xs: 2, sm: 3, md: 4 } }}>
       
-      {/* ─── Wallpaper Carousel Hero Greeting Header ─── */}
-      <WallpaperCarouselHero 
-        searchQuery={searchQuery} 
-        onSearchChange={setSearchQuery} 
-        onQrScanClick={user?.role === 'doctor' ? () => setQrScannerOpen(true) : undefined}
-      />
+      {/* ─── Responsive Desktop & Mobile Grid Layout ─── */}
+      <Grid container spacing={3}>
+        {/* ─── Left Main Column (Feed & Actions) ─── */}
+        <Grid item xs={12} md={7} lg={8}>
+          {/* ─── Wallpaper Carousel Hero Greeting Header ─── */}
+          <WallpaperCarouselHero 
+            searchQuery={searchQuery} 
+            onSearchChange={setSearchQuery} 
+            onQrScanClick={user?.role === 'doctor' ? () => setQrScannerOpen(true) : undefined}
+          />
 
       {/* ─── Medical Disclaimer Banner (One-time, dismissible) ─── */}
       {showDisclaimer && (
@@ -905,6 +909,234 @@ const Dashboard = () => {
         )}
       </Paper>
 
+        </Grid>
+        {/* End Left Main Column */}
+
+        {/* ─── Right Sidebar Column (Desktop Widescreen Panel) ─── */}
+        <Grid item xs={12} md={5} lg={4}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, position: { md: 'sticky' }, top: { md: 84 } }}>
+            
+            {/* 📅 Sidebar Widget 1: Upcoming Appointments & Follow-ups */}
+            {user?.role === 'doctor' && (
+              <Card 
+                className="glass-panel animate-slide-up" 
+                sx={{ 
+                  p: 2.5, 
+                  borderRadius: '24px !important',
+                  bgcolor: mode === 'dark' ? 'rgba(20, 38, 34, 0.94) !important' : 'rgba(255, 255, 255, 0.94) !important',
+                  border: '1px solid var(--glass-border) !important',
+                  boxShadow: '0 10px 30px rgba(0, 0, 0, 0.06)'
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
+                    <Box sx={{ p: 1, borderRadius: '12px', bgcolor: 'rgba(2, 132, 199, 0.12)', display: 'flex' }}>
+                      <CalendarIcon sx={{ color: '#0284c7', fontSize: 22 }} />
+                    </Box>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C' }}>
+                      Upcoming Appointments
+                    </Typography>
+                  </Box>
+                  <Chip 
+                    label={`${upcomingAppointments.length}`} 
+                    size="small" 
+                    sx={{ bgcolor: '#0284c7', color: '#ffffff', fontWeight: 800, fontSize: '0.7rem' }} 
+                  />
+                </Box>
+
+                {upcomingAppointments.length === 0 ? (
+                  <Box sx={{ p: 3, textAlign: 'center', bgcolor: mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)', borderRadius: '16px' }}>
+                    <Typography variant="body2" sx={{ color: mode === 'dark' ? 'rgba(255,255,255,0.6)' : '#64748b', fontWeight: 600 }}>
+                      No follow-up appointments scheduled.
+                    </Typography>
+                  </Box>
+                ) : (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.2 }}>
+                    {upcomingAppointments.map((apt) => (
+                      <Card
+                        key={apt.id}
+                        onClick={() => navigate(`/prescriptions/${apt.id}`)}
+                        className="touch-active"
+                        sx={{
+                          p: 1.5,
+                          borderRadius: '16px',
+                          bgcolor: mode === 'dark' ? 'rgba(15, 23, 42, 0.8)' : '#ffffff',
+                          border: apt.isToday ? '1.5px solid #ef4444' : '1px solid rgba(2, 132, 199, 0.2)',
+                          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.04)',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          transition: 'all 0.2s ease',
+                          '&:hover': {
+                            transform: 'translateY(-2px)',
+                            borderColor: '#0284c7'
+                          }
+                        }}
+                      >
+                        <Box sx={{ minWidth: 0, flex: 1, mr: 1 }}>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#0f172a', fontSize: '0.85rem' }} noWrap>
+                            {apt.patientName}
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: '#0369a1', fontWeight: 700, display: 'block' }} noWrap>
+                            🩺 {apt.purpose}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ textAlign: 'right', flexShrink: 0 }}>
+                          <Chip
+                            label={apt.dateStr}
+                            size="small"
+                            sx={{
+                              fontWeight: 800,
+                              fontSize: '0.65rem',
+                              bgcolor: apt.isToday ? '#fee2e2' : '#e0f2fe',
+                              color: apt.isToday ? '#dc2626' : '#0369a1',
+                              height: 22
+                            }}
+                          />
+                        </Box>
+                      </Card>
+                    ))}
+                  </Box>
+                )}
+              </Card>
+            )}
+
+            {/* 🛠️ Sidebar Widget 2: Quick Practice Actions & Clinical Tools */}
+            <Card 
+              className="glass-panel animate-slide-up" 
+              sx={{ 
+                p: 2.5, 
+                borderRadius: '24px !important',
+                bgcolor: mode === 'dark' ? 'rgba(20, 38, 34, 0.94) !important' : 'rgba(255, 255, 255, 0.94) !important',
+                border: '1px solid var(--glass-border) !important'
+              }}
+            >
+              <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <StethoscopeIcon sx={{ color: 'var(--color-mint)' }} /> Clinical Quick Tools
+              </Typography>
+
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                {user?.role === 'doctor' && (
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    startIcon={<AddIcon />}
+                    onClick={() => navigate('/prescriptions/new')}
+                    sx={{
+                      py: 1.2,
+                      borderRadius: '16px',
+                      fontWeight: 800,
+                      fontSize: '0.85rem',
+                      bgcolor: 'var(--color-forest)',
+                      color: '#ffffff',
+                      boxShadow: '0 6px 20px rgba(42, 107, 93, 0.3)',
+                      '&:hover': { bgcolor: '#1d4b41' }
+                    }}
+                  >
+                    + Issue Digital Prescription
+                  </Button>
+                )}
+
+                {user?.role === 'doctor' && (
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    startIcon={<QrIcon />}
+                    onClick={() => setQrScannerOpen(true)}
+                    sx={{
+                      py: 1.2,
+                      borderRadius: '16px',
+                      fontWeight: 800,
+                      fontSize: '0.85rem',
+                      borderColor: 'var(--color-mint)',
+                      color: mode === 'dark' ? '#FAF2F5' : '#123029',
+                      '&:hover': { bgcolor: 'rgba(102, 205, 170, 0.12)' }
+                    }}
+                  >
+                    Scan Patient Rx QR Code
+                  </Button>
+                )}
+
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  startIcon={<HospitalIcon />}
+                  onClick={() => navigate('/prescriptions/all')}
+                  sx={{
+                    py: 1.2,
+                    borderRadius: '16px',
+                    fontWeight: 800,
+                    fontSize: '0.85rem',
+                    borderColor: 'rgba(0, 0, 0, 0.15)',
+                    color: mode === 'dark' ? '#FAF2F5' : '#123029',
+                    '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.05)' }
+                  }}
+                >
+                  Browse Medical Records
+                </Button>
+              </Box>
+            </Card>
+
+            {/* 📊 Sidebar Widget 3: Practice Insights & Summary Stats */}
+            <Card 
+              className="glass-panel animate-slide-up" 
+              sx={{ 
+                p: 2.5, 
+                borderRadius: '24px !important',
+                background: mode === 'dark'
+                  ? 'linear-gradient(135deg, rgba(30, 45, 40, 0.95) 0%, rgba(15, 25, 22, 0.98) 100%) !important'
+                  : 'linear-gradient(135deg, rgba(242, 248, 246, 0.95) 0%, rgba(225, 240, 235, 0.98) 100%) !important',
+                border: '1px solid var(--glass-border) !important'
+              }}
+            >
+              <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'var(--color-teal)', textTransform: 'uppercase', letterSpacing: 0.8, mb: 1.5, fontSize: '0.72rem' }}>
+                Practice Insights Overview
+              </Typography>
+
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="body2" sx={{ fontWeight: 700, color: mode === 'dark' ? '#FAF2F5' : '#123029' }}>
+                    Active Prescriptions
+                  </Typography>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 900, color: '#428475' }}>
+                    {activePrescriptions.length}
+                  </Typography>
+                </Box>
+                <Divider sx={{ borderColor: 'rgba(102, 205, 170, 0.2)' }} />
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="body2" sx={{ fontWeight: 700, color: mode === 'dark' ? '#FAF2F5' : '#123029' }}>
+                    Completed Records
+                  </Typography>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 900, color: '#2563eb' }}>
+                    {completedPrescriptions.length}
+                  </Typography>
+                </Box>
+                <Divider sx={{ borderColor: 'rgba(102, 205, 170, 0.2)' }} />
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="body2" sx={{ fontWeight: 700, color: mode === 'dark' ? '#FAF2F5' : '#123029' }}>
+                    DigiLocker Status
+                  </Typography>
+                  <Chip
+                    label={user?.role === 'doctor' ? (digilockerVerified ? 'VERIFIED ✓' : 'UNVERIFIED') : 'VERIFIED'}
+                    size="small"
+                    sx={{
+                      fontWeight: 800,
+                      fontSize: '0.65rem',
+                      bgcolor: digilockerVerified ? 'rgba(76, 175, 80, 0.2)' : 'rgba(255, 152, 0, 0.2)',
+                      color: digilockerVerified ? '#2e7d32' : '#e65100'
+                    }}
+                  />
+                </Box>
+              </Box>
+            </Card>
+
+          </Box>
+        </Grid>
+        {/* End Right Sidebar Column */}
+      </Grid>
+      {/* End Responsive Desktop & Mobile Grid Layout */}
+
       {/* Floating Action Button for Doctor */}
       {user?.role === 'doctor' && (
         <Fab 
@@ -912,6 +1144,7 @@ const Dashboard = () => {
           aria-label="add prescription"
           onClick={() => navigate('/prescriptions/new')}
           sx={{ 
+            display: { xs: 'flex', md: 'none' },
             position: 'fixed', 
             bottom: 86, 
             right: 24, 

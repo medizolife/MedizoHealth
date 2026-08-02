@@ -747,7 +747,7 @@ const NewPrescription = () => {
   };
   
   return (
-    <Container maxWidth="md" sx={{ pt: { xs: 2, sm: 3 }, pb: 10, px: { xs: 1.5, sm: 3 } }} className="animate-slide-up">
+    <Container maxWidth="xl" sx={{ pt: { xs: 2, sm: 3 }, pb: 10, px: { xs: 1.5, sm: 3, md: 4 } }} className="animate-slide-up">
       
       {/* ─── Hero Glass Header ─── */}
       <Paper 

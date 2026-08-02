@@ -74,6 +74,7 @@ const MobileBottomNav = () => {
       elevation={0} 
       className="specular-sheen"
       sx={{ 
+        display: { xs: 'block', md: 'none' },
         position: 'fixed', 
         bottom: { xs: 12, sm: 24 }, 
         left: '50% !important', 

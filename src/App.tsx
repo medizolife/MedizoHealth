@@ -33,7 +33,7 @@ const App = () => {
       <CustomThemeProvider>
         <AuthProvider>
           <Router>
-            <Box sx={{ minHeight: '100dvh', pb: '72px', boxSizing: 'border-box' }}>
+            <Box sx={{ minHeight: '100dvh', pb: { xs: '84px', md: '32px' }, boxSizing: 'border-box' }}>
               <Header />
               <Routes>
                 <Route 

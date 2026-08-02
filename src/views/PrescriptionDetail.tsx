@@ -139,24 +139,27 @@ const PrescriptionDetail = () => {
   const isDoctor = user?.role === 'doctor';
   
   return (
-    <Container maxWidth="xs" sx={{ pt: 2, pb: 4, px: 2 }}>
-      <Paper elevation={0} sx={{ p: 2.5, borderRadius: '24px', border: '1px solid rgba(19, 79, 77, 0.15)', bgcolor: '#ffffff' }}>
-        {/* Mobile Header Bar */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Box>
-            <Typography variant="caption" sx={{ color: '#134F4D', fontWeight: 700, letterSpacing: 1 }}>
-              DIGITAL PRESCRIPTION
-            </Typography>
-            <Typography variant="h6" sx={{ fontWeight: 800, color: '#0f172a' }}>
-              #{prescription.id?.substring(0, 8) || 'RX-001'}
-            </Typography>
-          </Box>
-          <Chip 
-            label={prescription.status ? prescription.status.toUpperCase() : 'ACTIVE'} 
-            color={prescription.status === 'completed' ? 'success' : 'primary'}
-            sx={{ fontWeight: 700, borderRadius: '8px', height: 26, fontSize: '0.75rem' }}
-          />
-        </Box>
+    <Container maxWidth="lg" sx={{ pt: { xs: 2, md: 3 }, pb: 6, px: { xs: 2, sm: 3, md: 4 } }}>
+      <Grid container spacing={3}>
+        {/* Left Column: Digital Prescription Paper Document */}
+        <Grid item xs={12} md={7} lg={8}>
+          <Paper elevation={0} sx={{ p: { xs: 2.5, sm: 3.5 }, borderRadius: '24px', border: '1px solid rgba(19, 79, 77, 0.15)', bgcolor: '#ffffff' }}>
+            {/* Header Bar */}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Box>
+                <Typography variant="caption" sx={{ color: '#134F4D', fontWeight: 700, letterSpacing: 1 }}>
+                  DIGITAL PRESCRIPTION
+                </Typography>
+                <Typography variant="h6" sx={{ fontWeight: 800, color: '#0f172a' }}>
+                  #{prescription.id?.substring(0, 8) || 'RX-001'}
+                </Typography>
+              </Box>
+              <Chip 
+                label={prescription.status ? prescription.status.toUpperCase() : 'ACTIVE'} 
+                color={prescription.status === 'completed' ? 'success' : 'primary'}
+                sx={{ fontWeight: 700, borderRadius: '8px', height: 26, fontSize: '0.75rem' }}
+              />
+            </Box>
         
         <Divider sx={{ mb: 2 }} />
         
@@ -335,97 +338,124 @@ const PrescriptionDetail = () => {
             </Paper>
           </Grid>
         </Grid>
+          </Paper>
+        </Grid>
+        {/* End Left Column */}
 
-        {/* QR Verification trigger */}
-        <Paper 
-          onClick={() => setQrModalOpen(true)}
-          sx={{ 
-            p: 2, 
-            textAlign: 'center', 
-            borderRadius: '16px', 
-            bgcolor: '#e6f4f1', 
-            border: '1px dashed #134F4D',
-            cursor: 'pointer',
-            mb: 2
-          }}
-        >
-          <QrIcon sx={{ fontSize: 32, color: '#134F4D', mb: 0.5 }} />
-          <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#134F4D' }}>
-            Tap to View Verification QR Code
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            Authenticity token for pharmacy verification
-          </Typography>
-        </Paper>
+        {/* Right Column: Widescreen Actions & Verification QR Panel */}
+        <Grid item xs={12} md={5} lg={4}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, position: { md: 'sticky' }, top: { md: 84 } }}>
+            {/* Widescreen Inline Verification QR Card */}
+            <Paper 
+              elevation={0}
+              sx={{ 
+                p: 3, 
+                textAlign: 'center', 
+                borderRadius: '24px', 
+                bgcolor: '#ffffff',
+                border: '1px solid rgba(19, 79, 77, 0.15)',
+                boxShadow: '0 10px 30px rgba(0,0,0,0.04)'
+              }}
+            >
+              <Typography variant="caption" sx={{ color: '#134F4D', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', mb: 1.5 }}>
+                Authenticity Token & QR Code
+              </Typography>
+              <Box sx={{ p: 2, bgcolor: '#f8fafc', borderRadius: '20px', display: 'inline-block', border: '1px solid #e2e8f0', mb: 1.5 }}>
+                <QRCode value={prescription.id || 'VALID-RX'} size={180} />
+              </Box>
+              <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#134F4D' }}>
+                #{prescription.id?.substring(0, 8) || 'RX-MEDIZO'}
+              </Typography>
+              <Typography variant="caption" color="text.secondary" display="block">
+                Scan with Medizo App to verify prescription authenticity & dispense
+              </Typography>
+            </Paper>
 
-        {/* Mobile Actions Stack */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.2 }}>
-          {/* Download Full PDF */}
-          <Button
-            fullWidth
-            variant="contained"
-            startIcon={downloadingPdf ? <CircularProgress size={20} color="inherit" /> : <DownloadIcon />}
-            onClick={handleDownloadPdf}
-            disabled={downloadingPdf}
-            sx={{ 
-              height: 48, 
-              borderRadius: '16px',
-              bgcolor: '#134F4D', 
-              color: '#ffffff',
-              fontWeight: 800, 
-              boxShadow: '0 4px 16px rgba(19, 79, 77, 0.25)',
-              '&:hover': { bgcolor: '#0e3b3a' } 
-            }}
-          >
-            {downloadingPdf ? 'Generating PDF...' : 'Download Full PDF'}
-          </Button>
+            {/* Actions Card */}
+            <Paper 
+              elevation={0}
+              sx={{ 
+                p: 3, 
+                borderRadius: '24px', 
+                bgcolor: '#ffffff',
+                border: '1px solid rgba(19, 79, 77, 0.15)',
+                boxShadow: '0 10px 30px rgba(0,0,0,0.04)'
+              }}
+            >
+              <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#134F4D', mb: 2 }}>
+                Prescription Actions
+              </Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                {/* Download Full PDF */}
+                <Button
+                  fullWidth
+                  variant="contained"
+                  startIcon={downloadingPdf ? <CircularProgress size={20} color="inherit" /> : <DownloadIcon />}
+                  onClick={handleDownloadPdf}
+                  disabled={downloadingPdf}
+                  sx={{ 
+                    height: 48, 
+                    borderRadius: '16px',
+                    bgcolor: '#134F4D', 
+                    color: '#ffffff',
+                    fontWeight: 800, 
+                    boxShadow: '0 4px 16px rgba(19, 79, 77, 0.25)',
+                    '&:hover': { bgcolor: '#0e3b3a' } 
+                  }}
+                >
+                  {downloadingPdf ? 'Generating PDF...' : 'Download Full PDF'}
+                </Button>
 
-          {/* Print Prescription */}
-          <Button
-            fullWidth
-            variant="outlined"
-            startIcon={<PrintIcon />}
-            onClick={handlePrint}
-            sx={{ 
-              height: 44, 
-              borderRadius: '16px',
-              borderColor: 'rgba(19, 79, 77, 0.4)', 
-              color: '#134F4D',
-              fontWeight: 800,
-              '&:hover': { bgcolor: 'rgba(19, 79, 77, 0.06)', borderColor: '#134F4D' }
-            }}
-          >
-            Print Prescription
-          </Button>
+                {/* Print Prescription */}
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  startIcon={<PrintIcon />}
+                  onClick={handlePrint}
+                  sx={{ 
+                    height: 44, 
+                    borderRadius: '16px',
+                    borderColor: 'rgba(19, 79, 77, 0.4)', 
+                    color: '#134F4D',
+                    fontWeight: 800,
+                    '&:hover': { bgcolor: 'rgba(19, 79, 77, 0.06)', borderColor: '#134F4D' }
+                  }}
+                >
+                  Print Prescription
+                </Button>
 
-          {/* Share Link */}
-          <Button
-            fullWidth
-            variant="outlined"
-            startIcon={<ShareIcon />}
-            onClick={handleShare}
-            sx={{ 
-              height: 44, 
-              borderRadius: '16px',
-              borderColor: 'rgba(19, 79, 77, 0.4)', 
-              color: '#134F4D',
-              fontWeight: 800,
-              '&:hover': { bgcolor: 'rgba(19, 79, 77, 0.06)', borderColor: '#134F4D' }
-            }}
-          >
-            Share Prescription
-          </Button>
+                {/* Share Link */}
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  startIcon={<ShareIcon />}
+                  onClick={handleShare}
+                  sx={{ 
+                    height: 44, 
+                    borderRadius: '16px',
+                    borderColor: 'rgba(19, 79, 77, 0.4)', 
+                    color: '#134F4D',
+                    fontWeight: 800,
+                    '&:hover': { bgcolor: 'rgba(19, 79, 77, 0.06)', borderColor: '#134F4D' }
+                  }}
+                >
+                  Share Prescription
+                </Button>
 
-          <Button 
-            fullWidth
-            variant="text" 
-            onClick={() => navigate('/dashboard')}
-            sx={{ color: '#64748b', mt: 0.5, fontWeight: 700 }}
-          >
-            Back to Dashboard
-          </Button>
-        </Box>
-      </Paper>
+                <Button 
+                  fullWidth
+                  variant="text" 
+                  onClick={() => navigate('/dashboard')}
+                  sx={{ color: '#64748b', mt: 0.5, fontWeight: 700 }}
+                >
+                  Back to Dashboard
+                </Button>
+              </Box>
+            </Paper>
+          </Box>
+        </Grid>
+        {/* End Right Column */}
+      </Grid>
 
       {/* QR Code Full Screen Modal */}
       <Dialog 

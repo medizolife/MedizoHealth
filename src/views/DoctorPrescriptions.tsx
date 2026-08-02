@@ -176,7 +176,7 @@ export default function DoctorPrescriptions() {
   };
 
   return (
-    <Container maxWidth="md" sx={{ pt: { xs: 2, sm: 3 }, pb: 6, px: { xs: 2, sm: 3 } }} className="animate-slide-up">
+    <Container maxWidth="xl" sx={{ pt: { xs: 2, sm: 3 }, pb: 6, px: { xs: 2, sm: 3, md: 4 } }} className="animate-slide-up">
       
       {/* Hero Title & Create New Action Header */}
       <Paper 
@@ -346,92 +346,99 @@ export default function DoctorPrescriptions() {
           </Button>
         </Paper>
       ) : (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <Grid container spacing={2.5}>
           {filteredPrescriptions.map((prescription) => (
-            <Paper
-              key={prescription.id}
-              className="glass-card animate-slide-up"
-              onClick={() => navigate(`/prescriptions/${prescription.id}`)}
-              sx={{
-                p: 2.5,
-                borderRadius: '22px !important',
-                cursor: 'pointer',
-                transition: 'all 0.25 ease-in-out',
-                border: '1px solid rgba(137, 215, 183, 0.3)',
-                '&:hover': {
-                  transform: 'translateY(-3px)',
-                  boxShadow: '0 12px 32px rgba(26, 49, 44, 0.15)',
-                  borderColor: '#89D7B7'
-                }
-              }}
-            >
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                  <Avatar sx={{ width: 44, height: 44, bgcolor: 'rgba(137, 215, 183, 0.25)', color: '#428475', fontWeight: 800 }}>
-                    {prescription.patientName?.[0] || 'P'}
-                  </Avatar>
-                  <Box>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', lineHeight: 1.2 }}>
-                      {prescription.patientName}
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: '#428475', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                      <CalendarIcon sx={{ fontSize: 13 }} /> {formatDate(prescription.createdAt)}
-                    </Typography>
+            <Grid item xs={12} sm={6} lg={4} key={prescription.id}>
+              <Paper
+                className="glass-card animate-slide-up"
+                onClick={() => navigate(`/prescriptions/${prescription.id}`)}
+                sx={{
+                  p: 2.5,
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  borderRadius: '22px !important',
+                  cursor: 'pointer',
+                  transition: 'all 0.25 ease-in-out',
+                  border: '1px solid rgba(137, 215, 183, 0.3)',
+                  '&:hover': {
+                    transform: 'translateY(-3px)',
+                    boxShadow: '0 12px 32px rgba(26, 49, 44, 0.15)',
+                    borderColor: '#89D7B7'
+                  }
+                }}
+              >
+                <Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <Avatar sx={{ width: 44, height: 44, bgcolor: 'rgba(137, 215, 183, 0.25)', color: '#428475', fontWeight: 800 }}>
+                        {prescription.patientName?.[0] || 'P'}
+                      </Avatar>
+                      <Box>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', lineHeight: 1.2 }}>
+                          {prescription.patientName}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: '#428475', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <CalendarIcon sx={{ fontSize: 13 }} /> {formatDate(prescription.createdAt)}
+                        </Typography>
+                      </Box>
+                    </Box>
+                    {getStatusChip(prescription.status)}
                   </Box>
-                </Box>
-                {getStatusChip(prescription.status)}
-              </Box>
 
-              <Box sx={{ p: 1.5, borderRadius: '14px', bgcolor: mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(26, 49, 44, 0.04)', mb: 2 }}>
-                <Typography variant="caption" sx={{ fontWeight: 800, color: '#428475', textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', mb: 0.5 }}>
-                  Diagnosis / Condition
-                </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 700, color: mode === 'dark' ? '#FAF2F5' : '#1A312C' }}>
-                  {(prescription as any).diagnosis || (Array.isArray(prescription.provisionalDiagnosis) && prescription.provisionalDiagnosis.length > 0 ? prescription.provisionalDiagnosis.join(', ') : 'General Medical Consultation')}
-                </Typography>
-                
-                {prescription.medications && prescription.medications.length > 0 && (
-                  <Box sx={{ mt: 1, display: 'flex', gap: 0.8, flexWrap: 'wrap' }}>
-                    {prescription.medications.slice(0, 3).map((med: any, idx: number) => (
-                      <Chip
-                        key={idx}
-                        label={`${med.name} — ${med.dosage}${med.duration ? ` (${med.duration})` : ''}${med.quantity ? ` | Qty: ${med.quantity}` : ''}`}
-                        size="small"
-                        sx={{ fontSize: '0.7rem', fontWeight: 700, bgcolor: 'rgba(137, 215, 183, 0.18)', color: '#1A312C' }}
-                      />
-                    ))}
-                    {prescription.medications.length > 3 && (
-                      <Chip
-                        label={`+${prescription.medications.length - 3} more`}
-                        size="small"
-                        sx={{ fontSize: '0.7rem', fontWeight: 800, bgcolor: 'rgba(0,0,0,0.06)' }}
-                      />
+                  <Box sx={{ p: 1.5, borderRadius: '14px', bgcolor: mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(26, 49, 44, 0.04)', mb: 2 }}>
+                    <Typography variant="caption" sx={{ fontWeight: 800, color: '#428475', textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', mb: 0.5 }}>
+                      Diagnosis / Condition
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 700, color: mode === 'dark' ? '#FAF2F5' : '#1A312C' }}>
+                      {(prescription as any).diagnosis || (Array.isArray(prescription.provisionalDiagnosis) && prescription.provisionalDiagnosis.length > 0 ? prescription.provisionalDiagnosis.join(', ') : 'General Medical Consultation')}
+                    </Typography>
+                    
+                    {prescription.medications && prescription.medications.length > 0 && (
+                      <Box sx={{ mt: 1, display: 'flex', gap: 0.8, flexWrap: 'wrap' }}>
+                        {prescription.medications.slice(0, 3).map((med: any, idx: number) => (
+                          <Chip
+                            key={idx}
+                            label={`${med.name} — ${med.dosage}${med.duration ? ` (${med.duration})` : ''}${med.quantity ? ` | Qty: ${med.quantity}` : ''}`}
+                            size="small"
+                            sx={{ fontSize: '0.7rem', fontWeight: 700, bgcolor: 'rgba(137, 215, 183, 0.18)', color: '#1A312C' }}
+                          />
+                        ))}
+                        {prescription.medications.length > 3 && (
+                          <Chip
+                            label={`+${prescription.medications.length - 3} more`}
+                            size="small"
+                            sx={{ fontSize: '0.7rem', fontWeight: 800, bgcolor: 'rgba(0,0,0,0.06)' }}
+                          />
+                        )}
+                      </Box>
                     )}
                   </Box>
-                )}
-              </Box>
-
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pt: 0.5 }}>
-                <Button
-                  size="small"
-                  variant="text"
-                  startIcon={<DownloadIcon sx={{ fontSize: 16 }} />}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDownloadPDF(prescription.id);
-                  }}
-                  sx={{ color: '#428475', fontWeight: 800, fontSize: '0.75rem', '&:hover': { color: '#1A312C' } }}
-                >
-                  Download PDF
-                </Button>
-
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: '#428475', fontWeight: 800, fontSize: '0.75rem' }}>
-                  View Details <ChevronRightIcon fontSize="small" />
                 </Box>
-              </Box>
-            </Paper>
+
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pt: 0.5 }}>
+                  <Button
+                    size="small"
+                    variant="text"
+                    startIcon={<DownloadIcon sx={{ fontSize: 16 }} />}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDownloadPDF(prescription.id);
+                    }}
+                    sx={{ color: '#428475', fontWeight: 800, fontSize: '0.75rem', '&:hover': { color: '#1A312C' } }}
+                  >
+                    Download PDF
+                  </Button>
+
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: '#428475', fontWeight: 800, fontSize: '0.75rem' }}>
+                    View Details <ChevronRightIcon fontSize="small" />
+                  </Box>
+                </Box>
+              </Paper>
+            </Grid>
           ))}
-        </Box>
+        </Grid>
       )}
     </Container>
   );

@@ -6,7 +6,7 @@ import EnhancedPatientManagement from '../components/EnhancedPatientManagement';
 
 const PatientManagement: React.FC = () => {
   return (
-    <Container maxWidth="md" sx={{ pt: { xs: 2, sm: 3 }, pb: 6, px: { xs: 2, sm: 3 } }} className="animate-slide-up">
+    <Container maxWidth="xl" sx={{ pt: { xs: 2, sm: 3 }, pb: 6, px: { xs: 2, sm: 3, md: 4 } }} className="animate-slide-up">
       <Paper 
         className="glass-card-dark"
         sx={{ 

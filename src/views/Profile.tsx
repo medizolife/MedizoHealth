@@ -293,7 +293,7 @@ const Profile = () => {
   const { palette, mode, setPalette, toggleMode } = useThemeContext();
 
   return (
-    <Container maxWidth="md" sx={{ pt: { xs: 2, sm: 3 }, pb: 6, px: { xs: 2, sm: 3 } }} className="animate-slide-up">
+    <Container maxWidth="lg" sx={{ pt: { xs: 2, sm: 3 }, pb: 6, px: { xs: 2, sm: 3, md: 4 } }} className="animate-slide-up">
       
       {/* ─── Dynamic Wallpaper Carousel Hero Header ─── */}
       <WallpaperCarouselHero showSearch={false} />

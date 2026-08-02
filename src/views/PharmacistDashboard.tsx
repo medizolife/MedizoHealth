@@ -178,7 +178,7 @@ export default function PharmacistDashboard() {
   };
 
   return (
-    <Container maxWidth="md" sx={{ py: 3, px: { xs: 2, sm: 3 }, pb: 14, fontFamily: "'Outfit', 'Plus Jakarta Sans', sans-serif" }}>
+    <Container maxWidth="xl" sx={{ py: 3, px: { xs: 2, sm: 3, md: 4 }, pb: 14, fontFamily: "'Outfit', 'Plus Jakarta Sans', sans-serif" }}>
       {/* Header Profile Glass Card */}
       <Paper
         elevation={0}

@@ -41,7 +41,7 @@ import LocalPharmacyIcon from '@mui/icons-material/LocalPharmacy';
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 import HistoryIcon from '@mui/icons-material/History';
 
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { digilockerAPI } from '../services/api';
@@ -51,6 +51,7 @@ export default function Header() {
   const { isAuthenticated, user } = authState;
   const { palette, mode, setPalette, toggleMode } = useThemeContext();
   const navigate = useNavigate();
+  const location = useLocation();
   
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [profileMenuAnchor, setProfileMenuAnchor] = useState(null as any);
@@ -151,6 +152,100 @@ export default function Header() {
               Medizo <Typography component="span" variant="caption" sx={{ color: 'var(--color-teal)', fontWeight: 800, ml: 0.5, fontSize: '0.75rem', letterSpacing: 1 }}>MOBILE</Typography>
             </Typography>
           </Box>
+
+          {/* Desktop Navigation Links (Visible on md & larger screens) */}
+          {isAuthenticated && (
+            <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 1.5, mx: 2 }}>
+              <Button
+                component={RouterLink}
+                to="/dashboard"
+                size="small"
+                startIcon={<LocalHospitalIcon sx={{ fontSize: 18 }} />}
+                sx={{
+                  fontWeight: 800,
+                  fontSize: '0.82rem',
+                  textTransform: 'none',
+                  borderRadius: '14px',
+                  px: 2,
+                  py: 0.7,
+                  color: location.pathname === '/' || location.pathname === '/dashboard' ? (mode === 'dark' ? '#66CDAA' : 'var(--color-forest)') : (mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(18, 48, 41, 0.7)'),
+                  bgcolor: location.pathname === '/' || location.pathname === '/dashboard' ? (mode === 'dark' ? 'rgba(102, 205, 170, 0.15)' : 'rgba(42, 107, 93, 0.12)') : 'transparent',
+                  border: location.pathname === '/' || location.pathname === '/dashboard' ? '1px solid var(--color-mint)' : '1px solid transparent',
+                  '&:hover': { bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.2)' : 'rgba(42, 107, 93, 0.15)' }
+                }}
+              >
+                Dashboard
+              </Button>
+
+              <Button
+                component={RouterLink}
+                to="/prescriptions/all"
+                size="small"
+                startIcon={<MedicationIcon sx={{ fontSize: 18 }} />}
+                sx={{
+                  fontWeight: 800,
+                  fontSize: '0.82rem',
+                  textTransform: 'none',
+                  borderRadius: '14px',
+                  px: 2,
+                  py: 0.7,
+                  color: location.pathname.startsWith('/prescriptions') && !location.pathname.includes('/new') ? (mode === 'dark' ? '#66CDAA' : 'var(--color-forest)') : (mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(18, 48, 41, 0.7)'),
+                  bgcolor: location.pathname.startsWith('/prescriptions') && !location.pathname.includes('/new') ? (mode === 'dark' ? 'rgba(102, 205, 170, 0.15)' : 'rgba(42, 107, 93, 0.12)') : 'transparent',
+                  border: location.pathname.startsWith('/prescriptions') && !location.pathname.includes('/new') ? '1px solid var(--color-mint)' : '1px solid transparent',
+                  '&:hover': { bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.2)' : 'rgba(42, 107, 93, 0.15)' }
+                }}
+              >
+                {user?.role === 'doctor' ? 'All Prescriptions' : 'My Prescriptions'}
+              </Button>
+
+              {user?.role === 'doctor' && (
+                <Button
+                  component={RouterLink}
+                  to="/patients"
+                  size="small"
+                  startIcon={<VerifiedUserIcon sx={{ fontSize: 18 }} />}
+                  sx={{
+                    fontWeight: 800,
+                    fontSize: '0.82rem',
+                    textTransform: 'none',
+                    borderRadius: '14px',
+                    px: 2,
+                    py: 0.7,
+                    color: location.pathname.startsWith('/patients') ? (mode === 'dark' ? '#66CDAA' : 'var(--color-forest)') : (mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(18, 48, 41, 0.7)'),
+                    bgcolor: location.pathname.startsWith('/patients') ? (mode === 'dark' ? 'rgba(102, 205, 170, 0.15)' : 'rgba(42, 107, 93, 0.12)') : 'transparent',
+                    border: location.pathname.startsWith('/patients') ? '1px solid var(--color-mint)' : '1px solid transparent',
+                    '&:hover': { bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.2)' : 'rgba(42, 107, 93, 0.15)' }
+                  }}
+                >
+                  Patient Management
+                </Button>
+              )}
+
+              {user?.role === 'doctor' && (
+                <Button
+                  component={RouterLink}
+                  to="/prescriptions/new"
+                  size="small"
+                  variant="contained"
+                  startIcon={<LocalPharmacyIcon sx={{ fontSize: 18 }} />}
+                  sx={{
+                    fontWeight: 800,
+                    fontSize: '0.82rem',
+                    textTransform: 'none',
+                    borderRadius: '14px',
+                    px: 2.2,
+                    py: 0.7,
+                    bgcolor: 'var(--color-forest)',
+                    color: '#ffffff',
+                    boxShadow: '0 4px 14px rgba(42, 107, 93, 0.3)',
+                    '&:hover': { bgcolor: '#1d4b41' }
+                  }}
+                >
+                  + New Prescription
+                </Button>
+              )}
+            </Box>
+          )}
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
             {isAuthenticated && user ? (
