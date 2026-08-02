@@ -225,7 +225,7 @@ const Login = () => {
                       DigiLocker Identity Protection
                     </Typography>
                     <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.78rem' }}>
-                      Instant verification for healthcare practitioners & patients.
+                      Instant verification for healthcare practitioners.
                     </Typography>
                   </Box>
                 </Box>
