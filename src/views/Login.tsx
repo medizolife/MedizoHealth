@@ -14,6 +14,7 @@ import {
   LinearProgress, 
   Divider,
   Chip,
+  Grid,
   IconButton,
   InputAdornment,
   Link
@@ -130,109 +131,211 @@ const Login = () => {
     <Box 
       component="main" 
       sx={{ 
-        minHeight: 'calc(100dvh - 136px)',
+        minHeight: 'calc(100dvh - 120px)',
         display: 'flex',
-        flexDirection: 'column',
-        justify: 'center',
         alignItems: 'center',
-        px: 2,
-        py: 1,
+        justifyContent: 'center',
+        px: { xs: 2, sm: 4, md: 6 },
+        py: { xs: 3, md: 5 },
         boxSizing: 'border-box'
       }} 
       className="animate-slide-up"
     >
-      {verifyingLogin ? (
-        <Paper 
-          elevation={0} 
-          className="glass-panel animate-slide-up"
-          sx={{ 
-            width: '100%',
-            maxWidth: 380,
-            p: { xs: 3, sm: 4 }, 
-            borderRadius: '28px !important', 
-            bgcolor: 'rgba(255, 255, 255, 0.95) !important',
-            border: '1.5px solid rgba(137, 215, 183, 0.6) !important',
-            boxShadow: '0 20px 48px rgba(26, 49, 44, 0.15) !important',
-            textAlign: 'center'
-          }}
-        >
-          <Box sx={{ position: 'relative', display: 'inline-flex', mb: 2 }}>
-            <Box
-              component="img"
-              src="/LOGO.png"
-              alt="Medizo Logo"
-              sx={{ 
-                width: 58, 
-                height: 58, 
-                borderRadius: '16px', 
-                border: '2px solid #89D7B7',
-                boxShadow: '0 6px 20px rgba(66, 132, 117, 0.3)',
-                animation: 'pulse 1.5s infinite ease-in-out'
-              }}
-            />
-          </Box>
-
-          <Typography variant="h6" sx={{ fontWeight: 900, color: '#1A312C', fontSize: '1.15rem', mb: 0.5, fontFamily: "'Outfit', sans-serif" }}>
-            Verifying Login, Please Wait...
-          </Typography>
-
-          <Typography variant="body2" sx={{ color: '#428475', fontWeight: 700, fontSize: '0.82rem', mb: 2.5, minHeight: 38, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {verifyStepText}
-          </Typography>
-
-          {/* Progress bar */}
-          <Box sx={{ width: '100%', mb: 2.5 }}>
-            <LinearProgress
-              variant="determinate"
-              value={verifyProgress}
+      {/* ─── Responsive Desktop 2-Column Container ─── */}
+      <Box sx={{ width: '100%', maxWidth: { xs: 440, md: 1060 }, mx: 'auto' }}>
+        <Grid container spacing={{ xs: 0, md: 4 }} alignItems="stretch">
+          
+          {/* ─── Left Column: Widescreen Healthcare Feature Showcase (Desktop Only) ─── */}
+          <Grid item xs={12} md={6} lg={6.5} sx={{ display: { xs: 'none', md: 'flex' } }}>
+            <Paper
+              elevation={0}
+              className="glass-card-dark specular-sheen"
               sx={{
-                height: 8,
-                borderRadius: 4,
-                bgcolor: 'rgba(137, 215, 183, 0.25)',
-                '& .MuiLinearProgress-bar': {
-                  borderRadius: 4,
-                  background: 'linear-gradient(90deg, #2A6B5D 0%, #10B981 100%)',
-                  transition: 'transform 0.4s ease-out'
-                }
+                width: '100%',
+                p: { md: 4, lg: 5 },
+                borderRadius: '32px !important',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                background: 'linear-gradient(135deg, rgba(20, 38, 34, 0.96) 0%, rgba(10, 24, 21, 0.98) 100%) !important',
+                border: '1px solid rgba(102, 205, 170, 0.4) !important',
+                boxShadow: '0 24px 60px rgba(0, 0, 0, 0.25) !important'
               }}
-            />
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.8 }}>
-              <Typography variant="caption" sx={{ color: '#428475', fontWeight: 800, fontSize: '0.68rem' }}>
-                Database Sync
-              </Typography>
-              <Typography variant="caption" sx={{ color: '#1A312C', fontWeight: 900, fontSize: '0.68rem' }}>
-                {verifyProgress}%
-              </Typography>
-            </Box>
-          </Box>
+            >
+              {/* Header Branding */}
+              <Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
+                  <Box
+                    component="img"
+                    src="/LOGO.png"
+                    alt="Medizo Logo"
+                    sx={{ 
+                      width: 48, 
+                      height: 48, 
+                      borderRadius: '14px', 
+                      border: '2px solid #66CDAA',
+                      boxShadow: '0 0 20px rgba(102, 205, 170, 0.3)'
+                    }}
+                  />
+                  <Box>
+                    <Typography variant="h5" sx={{ fontWeight: 900, color: '#ffffff', letterSpacing: 0.5 }}>
+                      Medizo <Typography component="span" variant="caption" sx={{ color: 'var(--color-mint)', fontWeight: 800, fontSize: '0.8rem', letterSpacing: 1 }}>HEALTH</Typography>
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)', fontWeight: 700 }}>
+                      Next-Gen Digital Healthcare Platform
+                    </Typography>
+                  </Box>
+                </Box>
 
-          <Chip
-            label="🔒 256-Bit Encrypted Session Sync"
-            size="small"
-            sx={{
-              bgcolor: 'rgba(16, 185, 129, 0.12)',
-              color: '#059669',
-              fontWeight: 800,
-              fontSize: '0.68rem',
-              border: '1px solid rgba(16, 185, 129, 0.3)',
-              py: 0.2
-            }}
-          />
-        </Paper>
-      ) : (
-        <Paper 
-          elevation={0} 
-          className="glass-panel"
-          sx={{ 
-            width: '100%',
-            maxWidth: 380,
-            p: { xs: 2.25, sm: 3 }, 
-            borderRadius: '24px !important', 
-            bgcolor: 'rgba(255, 255, 255, 0.92) !important',
-            border: '1px solid rgba(137, 215, 183, 0.4) !important',
-            boxShadow: '0 12px 32px rgba(26, 49, 44, 0.08) !important'
-          }}
-        >
+                <Typography variant="h4" sx={{ fontWeight: 900, color: '#ffffff', lineHeight: 1.2, letterSpacing: '-0.02em', mb: 2 }}>
+                  Secure Digital Prescriptions & Smart Medical Records 💊
+                </Typography>
+
+                <Typography variant="body1" sx={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: '0.95rem', lineHeight: 1.6, mb: 4 }}>
+                  Connect seamlessly with certified practitioners, issue instant QR-verified digital prescriptions, and manage medical histories in real time.
+                </Typography>
+              </Box>
+
+              {/* Widescreen Feature Pills */}
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, my: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2, borderRadius: '20px', bgcolor: 'rgba(255, 255, 255, 0.06)', border: '1px solid rgba(102, 205, 170, 0.25)' }}>
+                  <Box sx={{ p: 1.2, borderRadius: '14px', bgcolor: 'rgba(102, 205, 170, 0.2)', color: '#66CDAA', display: 'flex' }}>
+                    <LockIcon sx={{ fontSize: 24 }} />
+                  </Box>
+                  <Box>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#ffffff', fontSize: '0.9rem' }}>
+                      256-Bit Encrypted Sessions
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.78rem' }}>
+                      Bank-grade security stamp on all medical transactions.
+                    </Typography>
+                  </Box>
+                </Box>
+
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2, borderRadius: '20px', bgcolor: 'rgba(255, 255, 255, 0.06)', border: '1px solid rgba(102, 205, 170, 0.25)' }}>
+                  <Box sx={{ p: 1.2, borderRadius: '14px', bgcolor: 'rgba(255, 152, 0, 0.2)', color: '#ffb74d', display: 'flex' }}>
+                    <EmailIcon sx={{ fontSize: 24 }} />
+                  </Box>
+                  <Box>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#ffffff', fontSize: '0.9rem' }}>
+                      DigiLocker Identity Protection
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.78rem' }}>
+                      Instant verification for healthcare practitioners & patients.
+                    </Typography>
+                  </Box>
+                </Box>
+              </Box>
+
+              {/* Footer Trust Badge */}
+              <Box sx={{ pt: 2, borderTop: '1px solid rgba(255, 255, 255, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Chip
+                  label="Verified Practitioner Portal"
+                  size="small"
+                  sx={{ bgcolor: 'rgba(102, 205, 170, 0.2)', color: '#66CDAA', fontWeight: 800, fontSize: '0.72rem' }}
+                />
+                <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontWeight: 600 }}>
+                  v2.4 Widescreen Edition
+                </Typography>
+              </Box>
+            </Paper>
+          </Grid>
+
+          {/* ─── Right Column: Login Form ─── */}
+          <Grid item xs={12} md={6} lg={5.5}>
+            {verifyingLogin ? (
+              <Paper 
+                elevation={0} 
+                className="glass-panel animate-slide-up"
+                sx={{ 
+                  width: '100%',
+                  p: { xs: 3, sm: 4, md: 5 }, 
+                  borderRadius: '32px !important', 
+                  bgcolor: 'rgba(255, 255, 255, 0.95) !important',
+                  border: '1.5px solid rgba(137, 215, 183, 0.6) !important',
+                  boxShadow: '0 24px 60px rgba(26, 49, 44, 0.15) !important',
+                  textAlign: 'center',
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center'
+                }}
+              >
+                <Box sx={{ position: 'relative', display: 'inline-flex', mb: 2.5, mx: 'auto' }}>
+                  <Box
+                    component="img"
+                    src="/LOGO.png"
+                    alt="Medizo Logo"
+                    sx={{ 
+                      width: 64, 
+                      height: 64, 
+                      borderRadius: '18px', 
+                      border: '2px solid #89D7B7',
+                      boxShadow: '0 6px 20px rgba(66, 132, 117, 0.3)'
+                    }}
+                  />
+                </Box>
+
+                <Typography variant="h6" sx={{ fontWeight: 900, color: '#1A312C', fontSize: '1.25rem', mb: 0.5, fontFamily: "'Outfit', sans-serif" }}>
+                  Verifying Login, Please Wait...
+                </Typography>
+
+                <Typography variant="body2" sx={{ color: '#428475', fontWeight: 700, fontSize: '0.88rem', mb: 3, minHeight: 38, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {verifyStepText}
+                </Typography>
+
+                {/* Progress bar */}
+                <Box sx={{ width: '100%', mb: 3 }}>
+                  <LinearProgress
+                    variant="determinate"
+                    value={verifyProgress}
+                    sx={{
+                      height: 10,
+                      borderRadius: 5,
+                      bgcolor: 'rgba(137, 215, 183, 0.25)',
+                      '& .MuiLinearProgress-bar': {
+                        borderRadius: 5,
+                        background: 'linear-gradient(90deg, #2A6B5D 0%, #10B981 100%)'
+                      }
+                    }}
+                  />
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
+                    <Typography variant="caption" sx={{ color: '#428475', fontWeight: 800, fontSize: '0.72rem' }}>
+                      Database Sync
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: '#1A312C', fontWeight: 900, fontSize: '0.72rem' }}>
+                      {verifyProgress}%
+                    </Typography>
+                  </Box>
+                </Box>
+
+                <Chip
+                  label="🔒 256-Bit Encrypted Session Sync"
+                  size="small"
+                  sx={{
+                    bgcolor: 'rgba(16, 185, 129, 0.12)',
+                    color: '#059669',
+                    fontWeight: 800,
+                    fontSize: '0.72rem',
+                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                    py: 0.4,
+                    mx: 'auto'
+                  }}
+                />
+              </Paper>
+            ) : (
+              <Paper 
+                elevation={0} 
+                className="glass-panel"
+                sx={{ 
+                  width: '100%',
+                  p: { xs: 3, sm: 4, md: 4.5 }, 
+                  borderRadius: '32px !important', 
+                  bgcolor: 'rgba(255, 255, 255, 0.94) !important',
+                  border: '1px solid rgba(137, 215, 183, 0.45) !important',
+                  boxShadow: '0 20px 50px rgba(26, 49, 44, 0.1) !important'
+                }}
+              >
           <Box sx={{ textAlign: 'center', mb: 1.5 }}>
             <Box
               component="img"
@@ -508,6 +611,9 @@ const Login = () => {
           </Box>
         </Paper>
       )}
+          </Grid>
+        </Grid>
+      </Box>
     </Box>
   );
 };

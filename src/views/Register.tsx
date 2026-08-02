@@ -14,6 +14,7 @@ import {
   CircularProgress, 
   Container, 
   Grid,
+  Chip,
   Divider,
   IconButton,
   InputAdornment,
@@ -171,18 +172,133 @@ const Register = () => {
   };
   
   return (
-    <Container component="main" maxWidth="xs" sx={{ pt: { xs: 2, sm: 3 }, pb: 6, px: 2 }} className="animate-slide-up">
-      <Paper 
-        elevation={0} 
-        className="glass-panel"
-        sx={{ 
-          p: { xs: 3, sm: 4 }, 
-          borderRadius: '28px !important', 
-          bgcolor: 'rgba(255, 255, 255, 0.88) !important',
-          border: '1px solid rgba(137, 215, 183, 0.4) !important',
-          boxShadow: '0 16px 40px rgba(26, 49, 44, 0.08) !important'
-        }}
-      >
+    <Box 
+      component="main" 
+      sx={{ 
+        minHeight: 'calc(100dvh - 120px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        px: { xs: 2, sm: 4, md: 6 },
+        py: { xs: 3, md: 5 },
+        boxSizing: 'border-box'
+      }} 
+      className="animate-slide-up"
+    >
+      {/* ─── Responsive Desktop 2-Column Container ─── */}
+      <Box sx={{ width: '100%', maxWidth: { xs: 460, md: 1060 }, mx: 'auto' }}>
+        <Grid container spacing={{ xs: 0, md: 4 }} alignItems="stretch">
+          
+          {/* ─── Left Column: Widescreen Healthcare Feature Showcase (Desktop Only) ─── */}
+          <Grid item xs={12} md={6} lg={6.5} sx={{ display: { xs: 'none', md: 'flex' } }}>
+            <Paper
+              elevation={0}
+              className="glass-card-dark specular-sheen"
+              sx={{
+                width: '100%',
+                p: { md: 4, lg: 5 },
+                borderRadius: '32px !important',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                background: 'linear-gradient(135deg, rgba(20, 38, 34, 0.96) 0%, rgba(10, 24, 21, 0.98) 100%) !important',
+                border: '1px solid rgba(102, 205, 170, 0.4) !important',
+                boxShadow: '0 24px 60px rgba(0, 0, 0, 0.25) !important'
+              }}
+            >
+              {/* Header Branding */}
+              <Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
+                  <Box
+                    component="img"
+                    src="/LOGO.png"
+                    alt="Medizo Logo"
+                    sx={{ 
+                      width: 48, 
+                      height: 48, 
+                      borderRadius: '14px', 
+                      border: '2px solid #66CDAA',
+                      boxShadow: '0 0 20px rgba(102, 205, 170, 0.3)'
+                    }}
+                  />
+                  <Box>
+                    <Typography variant="h5" sx={{ fontWeight: 900, color: '#ffffff', letterSpacing: 0.5 }}>
+                      Medizo <Typography component="span" variant="caption" sx={{ color: 'var(--color-mint)', fontWeight: 800, fontSize: '0.8rem', letterSpacing: 1 }}>HEALTH</Typography>
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)', fontWeight: 700 }}>
+                      Next-Gen Digital Healthcare Platform
+                    </Typography>
+                  </Box>
+                </Box>
+
+                <Typography variant="h4" sx={{ fontWeight: 900, color: '#ffffff', lineHeight: 1.2, letterSpacing: '-0.02em', mb: 2 }}>
+                  Join Thousands of Doctors & Patients on Medizo 🩺
+                </Typography>
+
+                <Typography variant="body1" sx={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: '0.95rem', lineHeight: 1.6, mb: 4 }}>
+                  Create your practitioner or patient account to manage digital prescriptions, schedule follow-ups, and store medical records securely.
+                </Typography>
+              </Box>
+
+              {/* Widescreen Feature Pills */}
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, my: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2, borderRadius: '20px', bgcolor: 'rgba(255, 255, 255, 0.06)', border: '1px solid rgba(102, 205, 170, 0.25)' }}>
+                  <Box sx={{ p: 1.2, borderRadius: '14px', bgcolor: 'rgba(102, 205, 170, 0.2)', color: '#66CDAA', display: 'flex' }}>
+                    <GoogleIcon sx={{ fontSize: 24 }} />
+                  </Box>
+                  <Box>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#ffffff', fontSize: '0.9rem' }}>
+                      One-Tap Google Registration
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.78rem' }}>
+                      Sign up instantly with your Google Account.
+                    </Typography>
+                  </Box>
+                </Box>
+
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2, borderRadius: '20px', bgcolor: 'rgba(255, 255, 255, 0.06)', border: '1px solid rgba(102, 205, 170, 0.25)' }}>
+                  <Box sx={{ p: 1.2, borderRadius: '14px', bgcolor: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa', display: 'flex' }}>
+                    <Typography sx={{ fontWeight: 900, fontSize: '1.1rem' }}>👨‍⚕️</Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#ffffff', fontSize: '0.9rem' }}>
+                      Role-Based Access Control
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.78rem' }}>
+                      Dedicated interfaces tailored for Doctors & Patients.
+                    </Typography>
+                  </Box>
+                </Box>
+              </Box>
+
+              {/* Footer Trust Badge */}
+              <Box sx={{ pt: 2, borderTop: '1px solid rgba(255, 255, 255, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Chip
+                  label="HIPAA & DigiLocker Ready"
+                  size="small"
+                  sx={{ bgcolor: 'rgba(102, 205, 170, 0.2)', color: '#66CDAA', fontWeight: 800, fontSize: '0.72rem' }}
+                />
+                <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.6)', fontWeight: 600 }}>
+                  Fast & Secure Onboarding
+                </Typography>
+              </Box>
+            </Paper>
+          </Grid>
+
+          {/* ─── Right Column: Registration Form ─── */}
+          <Grid item xs={12} md={6} lg={5.5}>
+            <Paper 
+              elevation={0} 
+              className="glass-panel"
+              sx={{ 
+                width: '100%',
+                p: { xs: 3, sm: 4, md: 4.5 }, 
+                borderRadius: '32px !important', 
+                bgcolor: 'rgba(255, 255, 255, 0.94) !important',
+                border: '1px solid rgba(137, 215, 183, 0.45) !important',
+                boxShadow: '0 20px 50px rgba(26, 49, 44, 0.1) !important'
+              }}
+            >
         <Box sx={{ textAlign: 'center', mb: 2.5 }}>
           <Box
             component="img"
@@ -643,7 +759,10 @@ const Register = () => {
           </Box>
         </Box>
       </Paper>
-    </Container>
+    </Grid>
+  </Grid>
+</Box>
+</Box>
   );
 };
 
