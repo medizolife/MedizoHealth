@@ -157,9 +157,13 @@ const Login = () => {
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
-                background: 'linear-gradient(135deg, rgba(20, 38, 34, 0.96) 0%, rgba(10, 24, 21, 0.98) 100%) !important',
-                border: '1px solid rgba(102, 205, 170, 0.4) !important',
-                boxShadow: '0 24px 60px rgba(0, 0, 0, 0.25) !important'
+                backgroundImage: 'linear-gradient(135deg, rgba(10, 26, 23, 0.86) 0%, rgba(15, 38, 33, 0.92) 100%), url("/medical_login_bg.png") !important',
+                backgroundSize: 'cover !important',
+                backgroundPosition: 'center !important',
+                border: '1px solid rgba(102, 205, 170, 0.45) !important',
+                boxShadow: '0 24px 60px rgba(0, 0, 0, 0.3) !important',
+                position: 'relative',
+                overflow: 'hidden'
               }}
             >
               {/* Header Branding */}
