@@ -142,11 +142,17 @@ export default function Header() {
               src="/LOGO.png"
               alt="Medizo Logo"
               sx={{ 
-                width: 34, 
-                height: 34, 
-                borderRadius: '8px',
-                border: '1px solid var(--color-mint)',
-                boxShadow: '0 0 12px var(--glass-glow)'
+                width: 36, 
+                height: 36, 
+                minWidth: 36,
+                minHeight: 36,
+                flexShrink: 0,
+                objectFit: 'contain',
+                p: '3px',
+                bgcolor: mode === 'dark' ? '#0f172a' : '#ffffff',
+                borderRadius: '10px',
+                border: '1.5px solid var(--color-mint)',
+                boxShadow: '0 0 10px rgba(42, 107, 93, 0.25)'
               }}
             />
             <Typography variant="h6" sx={{ fontWeight: 800, letterSpacing: 0.5, fontSize: '1.15rem', color: mode === 'dark' ? '#ffffff' : 'var(--color-forest)' }}>

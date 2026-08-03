@@ -50,7 +50,7 @@ const Register = () => {
     email: googleData?.email || '',
     password: '',
     confirmPassword: '',
-    role: '' as 'doctor' | 'patient' | ''
+    role: '' as 'doctor' | 'patient' | 'pharmacist' | ''
   });
   
   const [showPassword, setShowPassword] = useState(false);
@@ -374,7 +374,7 @@ const Register = () => {
             value={formData.role}
             onChange={handleChange}
             error={!!roleError}
-            helperText={roleError || 'Select whether you are registering as a Patient or Doctor'}
+            helperText={roleError || 'Select whether you are registering as a Patient, Doctor, or Pharmacist'}
             InputLabelProps={{ shrink: true, sx: { color: '#2A6B5D', fontWeight: 700 } }}
             SelectProps={{
               displayEmpty: true,
@@ -398,6 +398,9 @@ const Register = () => {
             </MenuItem>
             <MenuItem value="doctor" sx={{ fontWeight: 600, py: 1.2 }}>
               Doctor
+            </MenuItem>
+            <MenuItem value="pharmacist" sx={{ fontWeight: 600, py: 1.2 }}>
+              Pharmacist
             </MenuItem>
           </TextField>
         </Box>
@@ -425,7 +428,7 @@ const Register = () => {
                 <Box
                   onClick={() => {
                     if (!formData.role) {
-                      setRoleError('Please select your role (Patient or Doctor) above first before signing up with Google');
+                      setRoleError('Please select your role (Patient, Doctor, or Pharmacist) above first before signing up with Google');
                     }
                   }}
                   sx={{ width: '100%', display: 'flex', justifyContent: 'center', cursor: !formData.role ? 'pointer' : 'default' }}
@@ -682,11 +685,11 @@ const Register = () => {
               </Box>
             ) : isGoogleSignUp ? (
               formData.role 
-                ? `Continue as ${formData.role === 'doctor' ? 'Doctor' : 'Patient'}`
+                ? `Continue as ${formData.role === 'doctor' ? 'Doctor' : formData.role === 'pharmacist' ? 'Pharmacist' : 'Patient'}`
                 : 'Continue Registration'
             ) : (
               formData.role 
-                ? `Register as ${formData.role === 'doctor' ? 'Doctor' : 'Patient'}`
+                ? `Register as ${formData.role === 'doctor' ? 'Doctor' : formData.role === 'pharmacist' ? 'Pharmacist' : 'Patient'}`
                 : 'Register Account'
             )}
           </Button>

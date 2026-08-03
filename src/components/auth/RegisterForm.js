@@ -170,6 +170,7 @@ const RegisterForm = ({ onClose }) => {
                 <RadioGroup row name="role" value={formData.role} onChange={handleChange}>
                   <FormControlLabel value="patient" control={<Radio />} label="Patient" />
                   <FormControlLabel value="doctor" control={<Radio />} label="Doctor" />
+                  <FormControlLabel value="pharmacist" control={<Radio />} label="Pharmacist" />
                 </RadioGroup>
               </FormControl>
             </Grid>
