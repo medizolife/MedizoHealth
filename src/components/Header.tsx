@@ -149,7 +149,7 @@ export default function Header() {
               }}
             />
             <Typography variant="h6" sx={{ fontWeight: 800, letterSpacing: 0.5, fontSize: '1.15rem', color: mode === 'dark' ? '#ffffff' : 'var(--color-forest)' }}>
-              Medizo <Typography component="span" variant="caption" sx={{ color: 'var(--color-teal)', fontWeight: 800, ml: 0.5, fontSize: '0.75rem', letterSpacing: 1 }}>MOBILE</Typography>
+              Medizo
             </Typography>
           </Box>
 
