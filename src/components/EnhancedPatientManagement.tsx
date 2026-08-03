@@ -110,6 +110,7 @@ interface EnhancedPatientManagementProps {
 const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ maxPatients, searchQuery = '' }) => {
   const navigate = useNavigate();
   const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
   const [patients, setPatients] = useState<EnhancedPatient[]>([]);
   const [loading, setLoading] = useState(true);
@@ -449,11 +450,20 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
         </Paper>
       ) : isDesktop ? (
         /* 💻 Desktop Widescreen Modern List Layout */
-        <Paper elevation={0} sx={{ borderRadius: '20px', overflow: 'hidden', border: '1px solid rgba(137, 215, 183, 0.4)', bgcolor: 'rgba(255, 255, 255, 0.95)' }}>
+        <Paper 
+          elevation={0} 
+          sx={{ 
+            borderRadius: '20px', 
+            overflow: 'hidden', 
+            border: isDark ? '1px solid rgba(102, 205, 170, 0.3)' : '1px solid rgba(137, 215, 183, 0.4)', 
+            bgcolor: isDark ? 'rgba(20, 38, 34, 0.94)' : 'rgba(255, 255, 255, 0.95)',
+            color: isDark ? '#FAF2F5' : '#1A312C'
+          }}
+        >
           <List disablePadding>
             {(maxPatients ? filteredPatients.slice(0, maxPatients) : filteredPatients).map((patient, idx) => (
               <React.Fragment key={patient.id}>
-                {idx > 0 && <Divider sx={{ borderColor: 'rgba(137, 215, 183, 0.2)' }} />}
+                {idx > 0 && <Divider sx={{ borderColor: isDark ? 'rgba(102, 205, 170, 0.15)' : 'rgba(137, 215, 183, 0.2)' }} />}
                 <ListItem
                   button
                   onClick={() => handleViewMedicalDetails(patient)}
@@ -461,20 +471,20 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
                     py: 2,
                     px: 3,
                     transition: 'all 0.2s ease',
-                    '&:hover': { bgcolor: 'rgba(255, 244, 225, 0.7)' }
+                    '&:hover': { bgcolor: isDark ? 'rgba(102, 205, 170, 0.15)' : 'rgba(255, 244, 225, 0.7)' }
                   }}
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 3 }}>
                     {/* Column 1: Patient Name & Email */}
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '28%' }}>
-                      <Avatar sx={{ bgcolor: '#1A312C', color: '#89D7B7', width: 44, height: 44, fontWeight: 800 }}>
+                      <Avatar sx={{ bgcolor: isDark ? 'rgba(102, 205, 170, 0.25)' : '#1A312C', color: isDark ? '#66CDAA' : '#89D7B7', width: 44, height: 44, fontWeight: 800 }}>
                         {patient.firstName ? patient.firstName[0].toUpperCase() : 'P'}
                       </Avatar>
                       <Box sx={{ minWidth: 0 }}>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#1A312C' }} noWrap>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 800, color: isDark ? '#FAF2F5' : '#1A312C' }} noWrap>
                           {patient.firstName} {patient.lastName}
                         </Typography>
-                        <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600 }} noWrap display="block">
+                        <Typography variant="caption" sx={{ color: isDark ? 'rgba(255, 255, 255, 0.65)' : '#64748b', fontWeight: 600 }} noWrap display="block">
                           {patient.email}
                         </Typography>
                       </Box>
@@ -482,22 +492,22 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
 
                     {/* Column 2: Latest Treatment */}
                     <Box sx={{ width: '32%' }}>
-                      <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 700, display: 'block', textTransform: 'uppercase', fontSize: '0.65rem', mb: 0.3 }}>
+                      <Typography variant="caption" sx={{ color: isDark ? 'rgba(255, 255, 255, 0.65)' : '#64748b', fontWeight: 700, display: 'block', textTransform: 'uppercase', fontSize: '0.65rem', mb: 0.3 }}>
                         Latest Treatment / Diagnosis
                       </Typography>
                       <Chip
                         label={patient.latestPrescription?.medication || (patient.diagnoses && patient.diagnoses[0]) || 'General Checkup'}
                         size="small"
-                        sx={{ bgcolor: 'rgba(66, 132, 117, 0.12)', color: '#428475', fontWeight: 800 }}
+                        sx={{ bgcolor: isDark ? 'rgba(102, 205, 170, 0.2)' : 'rgba(66, 132, 117, 0.12)', color: isDark ? '#66CDAA' : '#428475', fontWeight: 800 }}
                       />
                     </Box>
 
                     {/* Column 3: Patient Since / First Visit */}
                     <Box sx={{ width: '24%' }}>
-                      <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 700, display: 'block', textTransform: 'uppercase', fontSize: '0.65rem', mb: 0.3 }}>
+                      <Typography variant="caption" sx={{ color: isDark ? 'rgba(255, 255, 255, 0.65)' : '#64748b', fontWeight: 700, display: 'block', textTransform: 'uppercase', fontSize: '0.65rem', mb: 0.3 }}>
                         Patient Since / First Visit
                       </Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 700, color: '#1A312C' }}>
+                      <Typography variant="body2" sx={{ fontWeight: 700, color: isDark ? '#FAF2F5' : '#1A312C' }}>
                         {patient.createdAt ? new Date(patient.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Aug 1, 2026'}
                       </Typography>
                     </Box>
@@ -512,7 +522,7 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
                           e.stopPropagation();
                           handleViewMedicalDetails(patient);
                         }}
-                        sx={{ borderRadius: '12px', fontWeight: 800, borderColor: '#1A312C', color: '#1A312C' }}
+                        sx={{ borderRadius: '12px', fontWeight: 800, borderColor: isDark ? '#66CDAA' : '#1A312C', color: isDark ? '#66CDAA' : '#1A312C' }}
                       >
                         Details
                       </Button>
@@ -534,33 +544,33 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
               sx={{
                 p: 2,
                 borderRadius: '18px',
-                bgcolor: 'rgba(255, 255, 255, 0.9)',
-                border: '1px solid rgba(137, 215, 183, 0.4)',
-                boxShadow: '0 4px 16px rgba(26, 49, 44, 0.04)',
+                bgcolor: isDark ? 'rgba(20, 38, 34, 0.94)' : 'rgba(255, 255, 255, 0.9)',
+                border: isDark ? '1px solid rgba(102, 205, 170, 0.3)' : '1px solid rgba(137, 215, 183, 0.4)',
+                boxShadow: isDark ? '0 4px 16px rgba(0, 0, 0, 0.3)' : '0 4px 16px rgba(26, 49, 44, 0.04)',
                 display: 'flex',
                 alignItems: 'center',
                 justify: 'space-between',
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
                 '&:hover': {
-                  bgcolor: 'rgba(255, 244, 225, 0.95)',
+                  bgcolor: isDark ? 'rgba(102, 205, 170, 0.15)' : 'rgba(255, 244, 225, 0.95)',
                   transform: 'translateY(-2px)'
                 }
               }}
             >
               {/* Left Info Block */}
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1, minWidth: 0, mr: 1 }}>
-                <Avatar sx={{ bgcolor: 'rgba(66, 132, 117, 0.15)', color: '#428475', width: 44, height: 44, fontWeight: 800, flexShrink: 0 }}>
+                <Avatar sx={{ bgcolor: isDark ? 'rgba(102, 205, 170, 0.25)' : 'rgba(66, 132, 117, 0.15)', color: isDark ? '#66CDAA' : '#428475', width: 44, height: 44, fontWeight: 800, flexShrink: 0 }}>
                   {patient.firstName ? patient.firstName[0].toUpperCase() : <PersonIcon />}
                 </Avatar>
                 <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#1A312C', lineHeight: 1.2 }} noWrap>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 800, color: isDark ? '#FAF2F5' : '#1A312C', lineHeight: 1.2 }} noWrap>
                     {patient.firstName} {patient.lastName}
                   </Typography>
-                  <Typography variant="caption" sx={{ color: '#428475', fontWeight: 700, display: 'block', mt: 0.3 }} noWrap>
+                  <Typography variant="caption" sx={{ color: isDark ? '#66CDAA' : '#428475', fontWeight: 700, display: 'block', mt: 0.3 }} noWrap>
                     🩺 {patient.latestPrescription?.medication || (patient.diagnoses && patient.diagnoses[0]) || 'General Checkup'}
                   </Typography>
-                  <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600, fontSize: '0.7rem', display: 'block', mt: 0.2 }}>
+                  <Typography variant="caption" sx={{ color: isDark ? 'rgba(255, 255, 255, 0.65)' : '#64748b', fontWeight: 600, fontSize: '0.7rem', display: 'block', mt: 0.2 }}>
                     📅 Since: {patient.createdAt ? new Date(patient.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Aug 1, 2026'}
                   </Typography>
                 </Box>
@@ -571,9 +581,9 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
                 <Chip 
                   label="View Details" 
                   size="small" 
-                  sx={{ bgcolor: '#1A312C', color: '#89D7B7', fontWeight: 800, fontSize: '0.68rem', cursor: 'pointer', height: 24 }} 
+                  sx={{ bgcolor: isDark ? '#66CDAA' : '#1A312C', color: isDark ? '#123029' : '#89D7B7', fontWeight: 800, fontSize: '0.68rem', cursor: 'pointer', height: 24 }} 
                 />
-                <ChevronRightIcon sx={{ color: '#428475', fontSize: 20 }} />
+                <ChevronRightIcon sx={{ color: isDark ? '#66CDAA' : '#428475', fontSize: 20 }} />
               </Box>
             </Card>
           ))}

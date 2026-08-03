@@ -289,12 +289,30 @@ export default function WallpaperCarouselHero({
                   </InputAdornment>
                 ),
                 sx: {
-                  bgcolor: 'rgba(0, 0, 0, 0.32)',
+                  bgcolor: 'rgba(0, 0, 0, 0.45)',
                   backdropFilter: 'blur(16px)',
                   borderRadius: '18px',
-                  color: '#ffffff',
-                  border: '1px solid rgba(255, 255, 255, 0.35)',
-                  '& input::placeholder': { color: 'rgba(255, 255, 255, 0.8)', opacity: 1 },
+                  color: '#ffffff !important',
+                  border: '1px solid rgba(255, 255, 255, 0.4)',
+                  '& .MuiInputBase-input': {
+                    color: '#ffffff !important',
+                    WebkitTextFillColor: '#ffffff !important',
+                  },
+                  '& input': {
+                    color: '#ffffff !important',
+                    WebkitTextFillColor: '#ffffff !important',
+                    caretColor: '#ffffff !important',
+                  },
+                  '& input::placeholder': { 
+                    color: '#ffffff !important', 
+                    opacity: '0.95 !important',
+                    WebkitTextFillColor: '#ffffff !important',
+                  },
+                  '& .MuiInputBase-input::placeholder': {
+                    color: '#ffffff !important',
+                    opacity: '0.95 !important',
+                    WebkitTextFillColor: '#ffffff !important',
+                  },
                   '&:hover fieldset': { borderColor: '#ffffff !important' },
                   '&.Mui-focused fieldset': { borderColor: '#ffffff !important', borderWidth: '1.5px' }
                 }

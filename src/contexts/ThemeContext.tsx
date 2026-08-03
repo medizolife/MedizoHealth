@@ -156,6 +156,9 @@ export const CustomThemeProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const root = document.documentElement;
+    root.setAttribute('data-theme', mode);
+    document.body.setAttribute('data-theme', mode);
+
     root.style.setProperty('--color-forest', currentTokens.primary);
     root.style.setProperty('--color-teal', currentTokens.secondary);
     root.style.setProperty('--color-mint', currentTokens.accent);

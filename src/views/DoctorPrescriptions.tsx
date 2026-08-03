@@ -292,10 +292,28 @@ export default function DoctorPrescriptions() {
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <SearchIcon sx={{ color: '#428475' }} />
+                    <SearchIcon sx={{ color: mode === 'dark' ? '#66CDAA' : '#428475' }} />
                   </InputAdornment>
                 ),
-                sx: { borderRadius: '16px', bgcolor: 'rgba(255,255,255,0.7)', fontWeight: 600 }
+                sx: { 
+                  borderRadius: '16px', 
+                  bgcolor: mode === 'dark' ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.85)', 
+                  fontWeight: 600,
+                  '& .MuiInputBase-input': {
+                    color: mode === 'dark' ? '#ffffff !important' : 'inherit',
+                    WebkitTextFillColor: mode === 'dark' ? '#ffffff !important' : 'inherit',
+                  },
+                  '& input::placeholder': {
+                    color: mode === 'dark' ? '#ffffff !important' : 'inherit',
+                    opacity: mode === 'dark' ? '0.9 !important' : 0.7,
+                    WebkitTextFillColor: mode === 'dark' ? '#ffffff !important' : 'inherit',
+                  },
+                  '& .MuiInputBase-input::placeholder': {
+                    color: mode === 'dark' ? '#ffffff !important' : 'inherit',
+                    opacity: mode === 'dark' ? '0.9 !important' : 0.7,
+                    WebkitTextFillColor: mode === 'dark' ? '#ffffff !important' : 'inherit',
+                  }
+                }
               }}
             />
           </Grid>

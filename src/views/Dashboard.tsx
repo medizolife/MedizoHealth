@@ -590,27 +590,34 @@ const Dashboard = () => {
       )}
 
       {/* ─── Segmented Glass Tabs & Content List ─── */}
-      <Paper className="glass-panel animate-slide-up" sx={{ overflow: 'hidden' }}>
+      <Paper 
+        className="glass-panel animate-slide-up" 
+        sx={{ 
+          overflow: 'hidden',
+          bgcolor: mode === 'dark' ? 'rgba(20, 38, 34, 0.94) !important' : 'rgba(255, 255, 255, 0.94) !important',
+          color: mode === 'dark' ? '#FAF2F5 !important' : '#1A312C !important'
+        }}
+      >
         <Tabs
           value={tabValue}
           onChange={(_e, v) => setTabValue(v)}
           variant="fullWidth"
           sx={{
-            borderBottom: '1px solid rgba(137, 215, 183, 0.3)',
-            bgcolor: 'rgba(26, 49, 44, 0.04)',
+            borderBottom: mode === 'dark' ? '1px solid rgba(102, 205, 170, 0.25)' : '1px solid rgba(137, 215, 183, 0.3)',
+            bgcolor: mode === 'dark' ? 'rgba(0, 0, 0, 0.2)' : 'rgba(26, 49, 44, 0.04)',
             '& .MuiTab-root': { 
               fontWeight: 800, 
               fontSize: '0.875rem',
-              color: '#428475',
+              color: mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : '#428475',
               py: 2,
               transition: 'all 0.2s ease',
               '&.Mui-selected': { 
-                color: '#1A312C',
-                bgcolor: 'rgba(255, 255, 255, 0.9)'
+                color: mode === 'dark' ? '#66CDAA !important' : '#1A312C !important',
+                bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.15)' : 'rgba(255, 255, 255, 0.9)'
               } 
             },
             '& .MuiTabs-indicator': {
-              backgroundColor: '#1A312C',
+              backgroundColor: mode === 'dark' ? '#66CDAA' : '#1A312C',
               height: 3,
               borderRadius: '3px 3px 0 0'
             }
@@ -621,7 +628,7 @@ const Dashboard = () => {
           {user?.role === 'doctor' && (
             <Tab 
               label="Patients" 
-              icon={<PeopleIcon sx={{ fontSize: 18, color: tabValue === 2 ? '#1A312C' : '#428475' }} />} 
+              icon={<PeopleIcon sx={{ fontSize: 18, color: tabValue === 2 ? (mode === 'dark' ? '#66CDAA' : '#1A312C') : (mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : '#428475') }} />} 
               iconPosition="start" 
             />
           )}

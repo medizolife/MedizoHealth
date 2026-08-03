@@ -89,7 +89,16 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.8) !important;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05) !important;
   border-radius: 24px !important;
+  color: #123029 !important;
   transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+[data-theme='dark'] .glass-panel, 
+[data-theme='dark'] .apple-glass-card {
+  background: rgba(20, 38, 34, 0.94) !important;
+  border: 1px solid rgba(102, 205, 170, 0.3) !important;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35) !important;
+  color: #FAF2F5 !important;
 }
 
 .apple-glass-card:hover {
@@ -144,7 +153,15 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.8) !important;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05) !important;
   border-radius: 50px !important;
+  color: #123029 !important;
   transition: transform 0.2s ease !important;
+}
+
+[data-theme='dark'] .glass-pill, 
+[data-theme='dark'] .apple-glass-pill {
+  background: rgba(20, 38, 34, 0.85) !important;
+  border: 1px solid rgba(102, 205, 170, 0.3) !important;
+  color: #FAF2F5 !important;
 }
 
 .glass-pill:hover, .apple-glass-pill:hover {
