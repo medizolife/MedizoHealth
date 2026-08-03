@@ -100,8 +100,10 @@ import {
   Visibility as ViewIcon,
   Bloodtype as BloodIcon,
   ExpandLess as ExpandLessIcon,
-  ChevronRight as ChevronRightIcon
+  ChevronRight as ChevronRightIcon,
+  Download as DownloadIcon
 } from '@mui/icons-material';
+import api from '../services/api';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { CreatePrescriptionData, MedicationItem, Investigation, VitalSigns, FollowUpInfo } from '../types/prescription';
 
@@ -148,9 +150,37 @@ const NewPrescription = () => {
   const [externalLookupLoading, setExternalLookupLoading] = useState(false);
   const [externalLookupCode, setExternalLookupCode] = useState('');
   const [patientContextExpanded, setPatientContextExpanded] = useState(true);
-  const [pastRxExpanded, setPastRxExpanded] = useState(true);
-  const [rxSnackbar, setRxSnackbar] = useState({ open: false, message: '', severity: 'info' as 'info' | 'success' | 'error' | 'warning' });
   const [loadingPastRx, setLoadingPastRx] = useState(false);
+  const [expandedPastRxId, setExpandedPastRxId] = useState<string | null>(null);
+  const [downloadingPdfRxId, setDownloadingPdfRxId] = useState<string | null>(null);
+
+  const handleDownloadPastRxPdf = async (rxId: string) => {
+    try {
+      setDownloadingPdfRxId(rxId);
+      let response;
+      try {
+        response = await api.get(`/prescriptions/${rxId}/download`, { responseType: 'blob' });
+      } catch (e) {
+        response = await api.get(`/prescriptions/${rxId}/pdf`, { responseType: 'blob' });
+      }
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `prescription_${rxId.substring(0, 8)}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(() => {
+        link.remove();
+        window.URL.revokeObjectURL(url);
+      }, 100);
+    } catch (err) {
+      console.error('Error downloading PDF:', err);
+      setRxSnackbar({ open: true, message: 'Failed to download prescription PDF', severity: 'error' });
+    } finally {
+      setDownloadingPdfRxId(null);
+    }
+  };
   
   // Form data state
   const [formData, setFormData] = useState<CreatePrescriptionData>({
@@ -1134,6 +1164,7 @@ const NewPrescription = () => {
                         ) : (
                           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, maxHeight: 260, overflowY: 'auto', pr: 0.5, '&::-webkit-scrollbar': { width: 4 }, '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(66,132,117,0.3)', borderRadius: 2 } }}>
                             {pastDoctorPrescriptions.slice(0, 5).map((rx) => {
+                              const isExpanded = expandedPastRxId === rx.id;
                               const diagnosisText = typeof rx.provisionalDiagnosis?.[0] === 'object'
                                 ? ((rx.provisionalDiagnosis[0] as any).name || (rx.provisionalDiagnosis[0] as any).diagnosis || JSON.stringify(rx.provisionalDiagnosis[0]))
                                 : String(rx.provisionalDiagnosis?.[0] || rx.medication || 'Prescription');
@@ -1147,18 +1178,29 @@ const NewPrescription = () => {
                                   key={rx.id}
                                   variant="outlined"
                                   sx={{
-                                    p: 1.5,
                                     borderRadius: '14px',
-                                    bgcolor: mode === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(244, 248, 246, 0.8)',
-                                    borderColor: mode === 'dark' ? 'rgba(137, 215, 183, 0.15)' : 'rgba(18, 48, 41, 0.08)',
+                                    bgcolor: mode === 'dark' ? 'rgba(0,0,0,0.25)' : 'rgba(244, 248, 246, 0.9)',
+                                    borderColor: isExpanded ? '#428475' : (mode === 'dark' ? 'rgba(137, 215, 183, 0.15)' : 'rgba(18, 48, 41, 0.08)'),
                                     transition: 'all 0.2s',
-                                    '&:hover': { borderColor: '#428475' }
+                                    overflow: 'hidden'
                                   }}
                                 >
-                                  <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1 }}>
+                                  {/* Clickable Card Header */}
+                                  <Box 
+                                    onClick={() => setExpandedPastRxId(isExpanded ? null : rx.id)}
+                                    sx={{ 
+                                      p: 1.5, 
+                                      display: 'flex', 
+                                      alignItems: 'flex-start', 
+                                      justifyContent: 'space-between', 
+                                      gap: 1,
+                                      cursor: 'pointer',
+                                      '&:hover': { bgcolor: mode === 'dark' ? 'rgba(66, 132, 117, 0.08)' : 'rgba(66, 132, 117, 0.05)' }
+                                    }}
+                                  >
                                     <Box sx={{ flex: 1, minWidth: 0 }}>
                                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, mb: 0.5, flexWrap: 'wrap' }}>
-                                        <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.78rem' }} noWrap>
+                                        <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.82rem' }} noWrap>
                                           {diagnosisText}
                                         </Typography>
                                         <Chip
@@ -1173,34 +1215,112 @@ const NewPrescription = () => {
                                           }}
                                         />
                                       </Box>
-                                      <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600, display: 'block', fontSize: '0.7rem' }}>
+                                      <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600, display: 'block', fontSize: '0.72rem' }}>
                                         📅 {new Date(rx.createdAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                                         {medicationNames.length > 0 && ` • 💊 ${medicationNames.slice(0, 2).join(', ')}${medicationNames.length > 2 ? ` +${medicationNames.length - 2}` : ''}`}
                                       </Typography>
                                     </Box>
-                                    <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0 }}>
+
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
                                       <Tooltip title="Copy to current Rx">
                                         <IconButton
                                           size="small"
-                                          onClick={() => handleCopyPastRx(rx)}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleCopyPastRx(rx);
+                                          }}
                                           sx={{ bgcolor: 'rgba(66, 132, 117, 0.1)', '&:hover': { bgcolor: 'rgba(66, 132, 117, 0.2)' } }}
                                         >
-                                        <CopyIcon sx={{ fontSize: 16, color: '#428475' }} />
-                                      </IconButton>
-                                    </Tooltip>
-                                    <Tooltip title="View full prescription">
-                                      <IconButton
-                                        size="small"
-                                        onClick={() => window.open(`/prescriptions/${rx.id}`, '_blank')}
-                                        sx={{ bgcolor: 'rgba(66, 132, 117, 0.1)', '&:hover': { bgcolor: 'rgba(66, 132, 117, 0.2)' } }}
-                                      >
-                                        <ViewIcon sx={{ fontSize: 16, color: '#428475' }} />
-                                      </IconButton>
-                                    </Tooltip>
+                                          <CopyIcon sx={{ fontSize: 16, color: '#428475' }} />
+                                        </IconButton>
+                                      </Tooltip>
+                                      <Tooltip title={isExpanded ? "Hide Details" : "View Details Inline"}>
+                                        <IconButton
+                                          size="small"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setExpandedPastRxId(isExpanded ? null : rx.id);
+                                          }}
+                                          sx={{ bgcolor: isExpanded ? '#428475' : 'rgba(66, 132, 117, 0.1)', color: isExpanded ? '#ffffff' : '#428475', '&:hover': { bgcolor: '#428475', color: '#ffffff' } }}
+                                        >
+                                          {isExpanded ? <ExpandLessIcon sx={{ fontSize: 18 }} /> : <ViewIcon sx={{ fontSize: 16 }} />}
+                                        </IconButton>
+                                      </Tooltip>
+                                    </Box>
                                   </Box>
-                                </Box>
-                              </Card>
-                            )})}
+
+                                  {/* Inline Collapsible Prescription Details */}
+                                  <Collapse in={isExpanded}>
+                                    <Box sx={{ p: 2, pt: 1, borderTop: '1px dashed rgba(66, 132, 117, 0.2)', bgcolor: mode === 'dark' ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.7)' }}>
+                                      {/* Medications Detailed List */}
+                                      {rx.medications && rx.medications.length > 0 && (
+                                        <Box sx={{ mb: 1.5 }}>
+                                          <Typography variant="caption" sx={{ fontWeight: 800, color: '#428475', textTransform: 'uppercase', letterSpacing: 0.5, fontSize: '0.65rem', display: 'block', mb: 0.8 }}>
+                                            💊 Prescribed Medications ({rx.medications.length})
+                                          </Typography>
+                                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.8 }}>
+                                            {rx.medications.map((m: any, idx: number) => (
+                                              <Box key={idx} sx={{ p: 1, borderRadius: '8px', bgcolor: mode === 'dark' ? 'rgba(255,255,255,0.04)' : '#ffffff', border: '1px solid rgba(66,132,117,0.12)' }}>
+                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.3 }}>
+                                                  <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.78rem' }}>
+                                                    {m.name || m.medicationName || 'Medication'}
+                                                  </Typography>
+                                                  {m.dosage && (
+                                                    <Chip label={m.dosage} size="small" sx={{ height: 18, fontSize: '0.62rem', fontWeight: 700, bgcolor: 'rgba(66,132,117,0.1)', color: '#428475' }} />
+                                                  )}
+                                                </Box>
+                                                <Typography variant="caption" sx={{ color: '#64748b', fontSize: '0.7rem', display: 'block' }}>
+                                                  {[
+                                                    m.frequency ? `Freq: ${m.frequency}` : null,
+                                                    m.duration ? `Duration: ${m.duration}` : null,
+                                                    m.instructions || m.timing || m.foodRelation ? `Note: ${m.instructions || m.timing || m.foodRelation}` : null
+                                                  ].filter(Boolean).join(' • ') || 'Standard Dosage'}
+                                                </Typography>
+                                              </Box>
+                                            ))}
+                                          </Box>
+                                        </Box>
+                                      )}
+
+                                      {/* Advice / Notes */}
+                                      {(rx.advice || rx.notes) && (
+                                        <Box sx={{ mb: 1.5 }}>
+                                          <Typography variant="caption" sx={{ fontWeight: 800, color: '#428475', textTransform: 'uppercase', letterSpacing: 0.5, fontSize: '0.65rem', display: 'block', mb: 0.3 }}>
+                                            📝 Doctor Notes & Advice
+                                          </Typography>
+                                          <Typography variant="caption" sx={{ color: mode === 'dark' ? '#cbd5e1' : '#475569', fontSize: '0.73rem', display: 'block', fontStyle: 'italic' }}>
+                                            {rx.advice || rx.notes}
+                                          </Typography>
+                                        </Box>
+                                      )}
+
+                                      {/* Action Toolbar */}
+                                      <Box sx={{ display: 'flex', gap: 1, mt: 1.5, pt: 1, borderTop: '1px solid rgba(66,132,117,0.1)', flexWrap: 'wrap' }}>
+                                        <Button
+                                          size="small"
+                                          variant="contained"
+                                          startIcon={<CopyIcon sx={{ fontSize: 14 }} />}
+                                          onClick={() => handleCopyPastRx(rx)}
+                                          sx={{ bgcolor: '#428475', '&:hover': { bgcolor: '#2e5e53' }, fontSize: '0.7rem', textTransform: 'none', py: 0.4, px: 1.5, borderRadius: '8px' }}
+                                        >
+                                          Copy to Current Rx
+                                        </Button>
+                                        <Button
+                                          size="small"
+                                          variant="outlined"
+                                          startIcon={downloadingPdfRxId === rx.id ? <CircularProgress size={14} color="inherit" /> : <DownloadIcon sx={{ fontSize: 14 }} />}
+                                          onClick={() => handleDownloadPastRxPdf(rx.id)}
+                                          disabled={downloadingPdfRxId === rx.id}
+                                          sx={{ borderColor: '#428475', color: '#428475', '&:hover': { borderColor: '#2e5e53', bgcolor: 'rgba(66,132,117,0.08)' }, fontSize: '0.7rem', textTransform: 'none', py: 0.4, px: 1.5, borderRadius: '8px' }}
+                                        >
+                                          {downloadingPdfRxId === rx.id ? 'Generating PDF...' : 'Download PDF'}
+                                        </Button>
+                                      </Box>
+                                    </Box>
+                                  </Collapse>
+                                </Card>
+                              );
+                            })}
                           </Box>
                         )}
                       </Collapse>
