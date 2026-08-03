@@ -1177,10 +1177,14 @@ const NewPrescription = () => {
                                         📅 {new Date(rx.createdAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                                         {medicationNames.length > 0 && ` • 💊 ${medicationNames.slice(0, 2).join(', ')}${medicationNames.length > 2 ? ` +${medicationNames.length - 2}` : ''}`}
                                       </Typography>
-                                        size="small"
-                                        onClick={() => handleCopyPastRx(rx)}
-                                        sx={{ bgcolor: 'rgba(66, 132, 117, 0.1)', '&:hover': { bgcolor: 'rgba(66, 132, 117, 0.2)' } }}
-                                      >
+                                    </Box>
+                                    <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0 }}>
+                                      <Tooltip title="Copy to current Rx">
+                                        <IconButton
+                                          size="small"
+                                          onClick={() => handleCopyPastRx(rx)}
+                                          sx={{ bgcolor: 'rgba(66, 132, 117, 0.1)', '&:hover': { bgcolor: 'rgba(66, 132, 117, 0.2)' } }}
+                                        >
                                         <CopyIcon sx={{ fontSize: 16, color: '#428475' }} />
                                       </IconButton>
                                     </Tooltip>
@@ -1196,7 +1200,7 @@ const NewPrescription = () => {
                                   </Box>
                                 </Box>
                               </Card>
-                            ))}
+                            )})}
                           </Box>
                         )}
                       </Collapse>
