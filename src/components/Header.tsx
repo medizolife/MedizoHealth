@@ -121,7 +121,8 @@ export default function Header() {
           borderBottom: '1px solid var(--glass-border)',
           backdropFilter: 'blur(20px) saturate(180%)',
           WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.06)'
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.06)',
+          pt: 'env(safe-area-inset-top, 0px)'
         }}
       >
         <Toolbar sx={{ justifyContent: 'space-between', px: { xs: 1.8, sm: 3 }, minHeight: { xs: '52px !important', sm: '60px !important' } }}>
