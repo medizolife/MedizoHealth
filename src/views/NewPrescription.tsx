@@ -1045,20 +1045,24 @@ const NewPrescription = () => {
                         {(selectedPatient as any).address && (
                           <Grid item xs={12} sm={4}>
                             <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.62rem', display: 'block' }}>📍 Address</Typography>
-                            <Typography variant="body2" sx={{ fontWeight: 700, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.82rem' }} noWrap>{(selectedPatient as any).address}</Typography>
+                            <Typography variant="body2" sx={{ fontWeight: 700, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.82rem' }} noWrap>
+                              {typeof (selectedPatient as any).address === 'object' && (selectedPatient as any).address !== null
+                                ? [(selectedPatient as any).address.street, (selectedPatient as any).address.city, (selectedPatient as any).address.state].filter(Boolean).join(', ')
+                                : String((selectedPatient as any).address)}
+                            </Typography>
                           </Grid>
                         )}
                         {(selectedPatient as any).bloodType && (
                           <Grid item xs={6} sm={4}>
                             <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.62rem', display: 'block' }}>🩸 Blood Group</Typography>
-                            <Chip label={(selectedPatient as any).bloodType} size="small" icon={<BloodIcon sx={{ fontSize: 14 }} />} sx={{ bgcolor: '#fee2e2', color: '#dc2626', fontWeight: 800, fontSize: '0.72rem', height: 22 }} />
+                            <Chip label={typeof (selectedPatient as any).bloodType === 'object' ? JSON.stringify((selectedPatient as any).bloodType) : String((selectedPatient as any).bloodType)} size="small" icon={<BloodIcon sx={{ fontSize: 14 }} />} sx={{ bgcolor: '#fee2e2', color: '#dc2626', fontWeight: 800, fontSize: '0.72rem', height: 22 }} />
                           </Grid>
                         )}
                         {(selectedPatient as any).emergencyContact && (
                           <Grid item xs={6} sm={4}>
                             <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.62rem', display: 'block' }}>🚨 Emergency</Typography>
                             <Typography variant="body2" sx={{ fontWeight: 700, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.82rem' }}>
-                              {typeof (selectedPatient as any).emergencyContact === 'object'
+                              {typeof (selectedPatient as any).emergencyContact === 'object' && (selectedPatient as any).emergencyContact !== null
                                 ? [
                                     (selectedPatient as any).emergencyContact.name,
                                     (selectedPatient as any).emergencyContact.relationship ? `(${(selectedPatient as any).emergencyContact.relationship})` : '',
@@ -1077,9 +1081,12 @@ const NewPrescription = () => {
                             <Box sx={{ mb: 1 }}>
                               <Typography variant="caption" sx={{ color: '#dc2626', fontWeight: 800, textTransform: 'uppercase', fontSize: '0.62rem', display: 'block', mb: 0.5 }}>⚠️ Allergies</Typography>
                               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                {((selectedPatient as any).allergies || []).map((allergy: string, i: number) => (
-                                  <Chip key={i} label={allergy} size="small" sx={{ bgcolor: '#fef2f2', color: '#dc2626', fontWeight: 800, fontSize: '0.68rem', height: 22, border: '1px solid #fecaca' }} />
-                                ))}
+                                {((selectedPatient as any).allergies || []).map((allergy: any, i: number) => {
+                                  const labelText = typeof allergy === 'object' && allergy !== null ? (allergy.name || allergy.allergy || JSON.stringify(allergy)) : String(allergy);
+                                  return (
+                                    <Chip key={i} label={labelText} size="small" sx={{ bgcolor: '#fef2f2', color: '#dc2626', fontWeight: 800, fontSize: '0.68rem', height: 22, border: '1px solid #fecaca' }} />
+                                  );
+                                })}
                               </Box>
                             </Box>
                           )}
@@ -1090,8 +1097,10 @@ const NewPrescription = () => {
                                 {typeof (selectedPatient as any).medicalHistory === 'string'
                                   ? (selectedPatient as any).medicalHistory
                                   : Array.isArray((selectedPatient as any).medicalHistory)
-                                    ? ((selectedPatient as any).medicalHistory as string[]).join(', ')
-                                    : ''}
+                                    ? ((selectedPatient as any).medicalHistory as any[]).map(m => typeof m === 'object' && m !== null ? (m.name || m.condition || JSON.stringify(m)) : String(m)).join(', ')
+                                    : typeof (selectedPatient as any).medicalHistory === 'object'
+                                      ? JSON.stringify((selectedPatient as any).medicalHistory)
+                                      : ''}
                               </Typography>
                             </Box>
                           )}
@@ -1124,45 +1133,50 @@ const NewPrescription = () => {
                           </Typography>
                         ) : (
                           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, maxHeight: 260, overflowY: 'auto', pr: 0.5, '&::-webkit-scrollbar': { width: 4 }, '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(66,132,117,0.3)', borderRadius: 2 } }}>
-                            {pastDoctorPrescriptions.slice(0, 5).map((rx) => (
-                              <Card
-                                key={rx.id}
-                                variant="outlined"
-                                sx={{
-                                  p: 1.5,
-                                  borderRadius: '14px',
-                                  bgcolor: mode === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(244, 248, 246, 0.8)',
-                                  borderColor: mode === 'dark' ? 'rgba(137, 215, 183, 0.15)' : 'rgba(18, 48, 41, 0.08)',
-                                  transition: 'all 0.2s',
-                                  '&:hover': { borderColor: '#428475' }
-                                }}
-                              >
-                                <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1 }}>
-                                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, mb: 0.5, flexWrap: 'wrap' }}>
-                                      <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.78rem' }} noWrap>
-                                        {rx.provisionalDiagnosis?.[0] || rx.medication || 'Prescription'}
+                            {pastDoctorPrescriptions.slice(0, 5).map((rx) => {
+                              const diagnosisText = typeof rx.provisionalDiagnosis?.[0] === 'object'
+                                ? ((rx.provisionalDiagnosis[0] as any).name || (rx.provisionalDiagnosis[0] as any).diagnosis || JSON.stringify(rx.provisionalDiagnosis[0]))
+                                : String(rx.provisionalDiagnosis?.[0] || rx.medication || 'Prescription');
+
+                              const medicationNames = rx.medications && Array.isArray(rx.medications)
+                                ? rx.medications.map(m => typeof m === 'object' && m !== null ? (m.name || (m as any).medicationName || '') : String(m)).filter(Boolean)
+                                : [];
+
+                              return (
+                                <Card
+                                  key={rx.id}
+                                  variant="outlined"
+                                  sx={{
+                                    p: 1.5,
+                                    borderRadius: '14px',
+                                    bgcolor: mode === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(244, 248, 246, 0.8)',
+                                    borderColor: mode === 'dark' ? 'rgba(137, 215, 183, 0.15)' : 'rgba(18, 48, 41, 0.08)',
+                                    transition: 'all 0.2s',
+                                    '&:hover': { borderColor: '#428475' }
+                                  }}
+                                >
+                                  <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1 }}>
+                                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, mb: 0.5, flexWrap: 'wrap' }}>
+                                        <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.78rem' }} noWrap>
+                                          {diagnosisText}
+                                        </Typography>
+                                        <Chip
+                                          label={typeof rx.status === 'string' ? rx.status : 'active'}
+                                          size="small"
+                                          sx={{
+                                            height: 18,
+                                            fontSize: '0.6rem',
+                                            fontWeight: 800,
+                                            bgcolor: rx.status === 'active' ? '#dcfce7' : rx.status === 'completed' ? '#e0f2fe' : '#fef2f2',
+                                            color: rx.status === 'active' ? '#16a34a' : rx.status === 'completed' ? '#0284c7' : '#dc2626'
+                                          }}
+                                        />
+                                      </Box>
+                                      <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600, display: 'block', fontSize: '0.7rem' }}>
+                                        📅 {new Date(rx.createdAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                        {medicationNames.length > 0 && ` • 💊 ${medicationNames.slice(0, 2).join(', ')}${medicationNames.length > 2 ? ` +${medicationNames.length - 2}` : ''}`}
                                       </Typography>
-                                      <Chip
-                                        label={rx.status}
-                                        size="small"
-                                        sx={{
-                                          height: 18,
-                                          fontSize: '0.6rem',
-                                          fontWeight: 800,
-                                          bgcolor: rx.status === 'active' ? '#dcfce7' : rx.status === 'completed' ? '#e0f2fe' : '#fef2f2',
-                                          color: rx.status === 'active' ? '#16a34a' : rx.status === 'completed' ? '#0284c7' : '#dc2626'
-                                        }}
-                                      />
-                                    </Box>
-                                    <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600, display: 'block', fontSize: '0.7rem' }}>
-                                      📅 {new Date(rx.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                                      {rx.medications && rx.medications.length > 0 && ` • 💊 ${rx.medications.map(m => m.name).slice(0, 2).join(', ')}${rx.medications.length > 2 ? ` +${rx.medications.length - 2}` : ''}`}
-                                    </Typography>
-                                  </Box>
-                                  <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0 }}>
-                                    <Tooltip title="Copy to current Rx">
-                                      <IconButton
                                         size="small"
                                         onClick={() => handleCopyPastRx(rx)}
                                         sx={{ bgcolor: 'rgba(66, 132, 117, 0.1)', '&:hover': { bgcolor: 'rgba(66, 132, 117, 0.2)' } }}
