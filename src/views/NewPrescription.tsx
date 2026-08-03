@@ -150,6 +150,8 @@ const NewPrescription = () => {
   const [externalLookupLoading, setExternalLookupLoading] = useState(false);
   const [externalLookupCode, setExternalLookupCode] = useState('');
   const [patientContextExpanded, setPatientContextExpanded] = useState(true);
+  const [pastRxExpanded, setPastRxExpanded] = useState(true);
+  const [rxSnackbar, setRxSnackbar] = useState({ open: false, message: '', severity: 'info' as 'info' | 'success' | 'error' | 'warning' });
   const [loadingPastRx, setLoadingPastRx] = useState(false);
   const [expandedPastRxId, setExpandedPastRxId] = useState<string | null>(null);
   const [downloadingPdfRxId, setDownloadingPdfRxId] = useState<string | null>(null);
@@ -1283,13 +1285,13 @@ const NewPrescription = () => {
                                       )}
 
                                       {/* Advice / Notes */}
-                                      {(rx.advice || rx.notes) && (
+                                      {((rx as any).advice || rx.notes) && (
                                         <Box sx={{ mb: 1.5 }}>
                                           <Typography variant="caption" sx={{ fontWeight: 800, color: '#428475', textTransform: 'uppercase', letterSpacing: 0.5, fontSize: '0.65rem', display: 'block', mb: 0.3 }}>
                                             📝 Doctor Notes & Advice
                                           </Typography>
                                           <Typography variant="caption" sx={{ color: mode === 'dark' ? '#cbd5e1' : '#475569', fontSize: '0.73rem', display: 'block', fontStyle: 'italic' }}>
-                                            {rx.advice || rx.notes}
+                                            {(rx as any).advice || rx.notes}
                                           </Typography>
                                         </Box>
                                       )}
