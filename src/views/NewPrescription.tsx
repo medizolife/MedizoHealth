@@ -1057,7 +1057,15 @@ const NewPrescription = () => {
                         {(selectedPatient as any).emergencyContact && (
                           <Grid item xs={6} sm={4}>
                             <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.62rem', display: 'block' }}>🚨 Emergency</Typography>
-                            <Typography variant="body2" sx={{ fontWeight: 700, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.82rem' }}>{(selectedPatient as any).emergencyContact}</Typography>
+                            <Typography variant="body2" sx={{ fontWeight: 700, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.82rem' }}>
+                              {typeof (selectedPatient as any).emergencyContact === 'object'
+                                ? [
+                                    (selectedPatient as any).emergencyContact.name,
+                                    (selectedPatient as any).emergencyContact.relationship ? `(${(selectedPatient as any).emergencyContact.relationship})` : '',
+                                    (selectedPatient as any).emergencyContact.phone
+                                  ].filter(Boolean).join(' ')
+                                : String((selectedPatient as any).emergencyContact)}
+                            </Typography>
                           </Grid>
                         )}
                       </Grid>
