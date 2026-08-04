@@ -257,31 +257,12 @@ export default function Header() {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
             {isAuthenticated && user ? (
               <>
-                <Chip
-                  avatar={
-                    <Avatar sx={{ bgcolor: 'var(--color-forest)', color: '#ffffff', width: 26, height: 26, fontWeight: 700, border: '1px solid var(--color-mint)' }}>
-                      {user.firstName?.[0] || 'U'}
-                    </Avatar>
-                  }
-                  label={user.role === 'doctor' ? `Dr. ${user.lastName || user.firstName}` : user.firstName}
-                  size="small"
-                  onClick={handleProfileClick}
-                  sx={{ 
-                    bgcolor: 'rgba(0, 0, 0, 0.05)', 
-                    color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)', 
-                    fontWeight: 700,
-                    fontSize: '0.75rem',
-                    border: '1px solid var(--glass-border)',
-                    cursor: 'pointer',
-                    '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.1)' }
-                  }}
-                />
-                {/* DigiLocker Verified Badge next to profile chip */}
+                {/* Verified Badge before profile chip */}
                 {user.role === 'doctor' && (
                   digilockerVerified ? (
                     <Chip
                       icon={<VerifiedUserIcon sx={{ fontSize: 15, color: '#ffffff !important' }} />}
-                      label="DigiLocker Verified"
+                      label="Verified"
                       size="small"
                       onClick={() => setVerificationModalOpen(true)}
                       clickable
@@ -323,6 +304,26 @@ export default function Header() {
                     />
                   )
                 )}
+                {/* Profile chip rightmost */}
+                <Chip
+                  avatar={
+                    <Avatar sx={{ bgcolor: 'var(--color-forest)', color: '#ffffff', width: 26, height: 26, fontWeight: 700, border: '1px solid var(--color-mint)' }}>
+                      {user.firstName?.[0] || 'U'}
+                    </Avatar>
+                  }
+                  label={user.role === 'doctor' ? `Dr. ${user.lastName || user.firstName}` : user.firstName}
+                  size="small"
+                  onClick={handleProfileClick}
+                  sx={{ 
+                    bgcolor: 'rgba(0, 0, 0, 0.05)', 
+                    color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)', 
+                    fontWeight: 700,
+                    fontSize: '0.75rem',
+                    border: '1px solid var(--glass-border)',
+                    cursor: 'pointer',
+                    '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.1)' }
+                  }}
+                />
               </>
             ) : (
               <IconButton 
