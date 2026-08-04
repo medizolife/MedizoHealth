@@ -17,26 +17,44 @@ import {
   Grid,
   IconButton,
   InputAdornment,
-  Link
+  Link,
+  Tabs,
+  Tab,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions
 } from '@mui/material';
 import { 
   LockOutlined as LockIcon, 
   Visibility,
   VisibilityOff,
-  Email as EmailIcon
+  Email as EmailIcon,
+  PhoneAndroid as PhoneIcon,
+  CalendarToday as CalendarIcon
 } from '@mui/icons-material';
+import { authAPI } from '../services/api';
 
 const Login = () => {
   const navigate = useNavigate();
-  const { authState, login, googleLogin } = useAuth();
+  const { authState, login, loginMobile, googleLogin } = useAuth();
   const { loading, error, isAuthenticated } = authState;
   
+  const [loginMode, setLoginMode] = useState<'email' | 'mobile'>('email');
   const [email, setEmail] = useState('');
+  const [mobileNumber, setMobileNumber] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [googleError, setGoogleError] = useState<string | null>(null);
   const [googleProcessing, setGoogleProcessing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Forgot Password Modal State
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotInput, setForgotInput] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotMsg, setForgotMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   
   // 3-Second Verification & DB Sync Hold state
   const [verifyingLogin, setVerifyingLogin] = useState(false);
@@ -76,15 +94,34 @@ const Login = () => {
   
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!email || !password) return;
     setIsSubmitting(true);
     try {
-      await login({ email, password });
+      if (loginMode === 'email') {
+        if (!email || !password) return;
+        await login({ email, password });
+      } else {
+        if (!mobileNumber || !password) return;
+        await loginMobile(mobileNumber, dateOfBirth, password);
+      }
       start3SecondHold(() => {
         navigate('/dashboard');
       });
     } catch (err) {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleSendForgotOtp = async () => {
+    if (!forgotInput.trim()) return;
+    setForgotLoading(true);
+    setForgotMsg(null);
+    try {
+      const res = await authAPI.forgotPassword(forgotInput.trim());
+      setForgotMsg({ type: 'success', text: res.message || 'Password reset OTP sent to your registered email address!' });
+    } catch (err: any) {
+      setForgotMsg({ type: 'error', text: err.response?.data?.message || err.message || 'Failed to request password reset' });
+    } finally {
+      setForgotLoading(false);
     }
   };
 
@@ -124,7 +161,9 @@ const Login = () => {
   };
 
   const handleForgotPassword = () => {
-    alert('Password reset link sent to your registered email address.');
+    setForgotOpen(true);
+    setForgotMsg(null);
+    setForgotInput('');
   };
   
   return (
@@ -375,41 +414,96 @@ const Login = () => {
           )}
           
           <Box component="form" onSubmit={handleSubmit}>
-            <TextField
-              margin="dense"
-              required
-              fullWidth
-              id="email"
-              label="Email Address"
-              name="email"
-              placeholder="Enter your email"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              InputLabelProps={{
-                sx: { color: '#2A6B5D', fontWeight: 600, fontSize: '0.85rem' }
+            {/* Login Mode Tabs */}
+            <Tabs
+              value={loginMode === 'email' ? 0 : 1}
+              onChange={(_, val) => setLoginMode(val === 0 ? 'email' : 'mobile')}
+              variant="fullWidth"
+              sx={{
+                mb: 2,
+                minHeight: 36,
+                '& .MuiTabs-indicator': { bgcolor: '#1A312C', height: 2.5, borderRadius: 2 },
+                '& .MuiTab-root': { minHeight: 36, fontWeight: 700, fontSize: '0.78rem', color: '#428475', textTransform: 'none' },
+                '& .Mui-selected': { color: '#1A312C !important' }
               }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <EmailIcon sx={{ color: '#428475', fontSize: 18 }} />
-                  </InputAdornment>
-                ),
-                sx: { 
-                  borderRadius: '14px',
-                  bgcolor: 'rgba(255, 255, 255, 0.95)',
-                  color: '#123029',
-                  fontSize: '0.9rem',
-                  '& input::placeholder': {
-                    color: '#4D9B8C',
-                    opacity: 0.85,
-                    fontWeight: 500,
-                  },
-                  '& fieldset': { borderColor: 'rgba(137, 215, 183, 0.5)' },
-                  '&:hover fieldset': { borderColor: '#428475 !important' }
-                }
-              }}
-            />
+            >
+              <Tab icon={<EmailIcon sx={{ fontSize: 16 }} />} iconPosition="start" label="Email" />
+              <Tab icon={<PhoneIcon sx={{ fontSize: 16 }} />} iconPosition="start" label="Mobile" />
+            </Tabs>
+
+            {/* Email Login Fields */}
+            {loginMode === 'email' && (
+              <TextField
+                margin="dense"
+                required
+                fullWidth
+                id="email"
+                label="Email Address"
+                name="email"
+                placeholder="Enter your email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                InputLabelProps={{
+                  sx: { color: '#2A6B5D', fontWeight: 600, fontSize: '0.85rem' }
+                }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <EmailIcon sx={{ color: '#428475', fontSize: 18 }} />
+                    </InputAdornment>
+                  ),
+                  sx: { 
+                    borderRadius: '14px',
+                    bgcolor: 'rgba(255, 255, 255, 0.95)',
+                    color: '#123029',
+                    fontSize: '0.9rem',
+                    '& input::placeholder': {
+                      color: '#4D9B8C',
+                      opacity: 0.85,
+                      fontWeight: 500,
+                    },
+                    '& fieldset': { borderColor: 'rgba(137, 215, 183, 0.5)' },
+                    '&:hover fieldset': { borderColor: '#428475 !important' }
+                  }
+                }}
+              />
+            )}
+
+            {/* Mobile Login Field */}
+            {loginMode === 'mobile' && (
+              <TextField
+                margin="dense"
+                required
+                fullWidth
+                id="mobileNumber"
+                label="Mobile Number"
+                name="mobileNumber"
+                placeholder="Enter your mobile number"
+                autoComplete="tel"
+                value={mobileNumber}
+                onChange={(e) => setMobileNumber(e.target.value)}
+                InputLabelProps={{
+                  sx: { color: '#2A6B5D', fontWeight: 600, fontSize: '0.85rem' }
+                }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <PhoneIcon sx={{ color: '#428475', fontSize: 18 }} />
+                    </InputAdornment>
+                  ),
+                  sx: { 
+                    borderRadius: '14px',
+                    bgcolor: 'rgba(255, 255, 255, 0.95)',
+                    color: '#123029',
+                    fontSize: '0.9rem',
+                    '& input::placeholder': { color: '#4D9B8C', opacity: 0.85, fontWeight: 500 },
+                    '& fieldset': { borderColor: 'rgba(137, 215, 183, 0.5)' },
+                    '&:hover fieldset': { borderColor: '#428475 !important' }
+                  }
+                }}
+              />
+            )}
             
             <TextField
               margin="dense"
@@ -618,6 +712,42 @@ const Login = () => {
           </Grid>
         </Grid>
       </Box>
+
+      {/* Forgot Password Dialog */}
+      <Dialog open={forgotOpen} onClose={() => setForgotOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 800, color: '#1A312C' }}>Forgot Password?</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 2, color: '#428475' }}>
+            Enter your registered email address or mobile number. We'll send you a password reset link.
+          </Typography>
+          {forgotMsg && (
+            <Alert severity={forgotMsg.type} sx={{ mb: 2, borderRadius: '10px' }}>
+              {forgotMsg.text}
+            </Alert>
+          )}
+          <TextField
+            autoFocus
+            fullWidth
+            label="Email or Mobile Number"
+            value={forgotInput}
+            onChange={(e) => setForgotInput(e.target.value)}
+            InputProps={{ sx: { borderRadius: '12px' } }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setForgotOpen(false)} color="inherit" sx={{ fontWeight: 700 }}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSendForgotOtp}
+            variant="contained"
+            disabled={forgotLoading || !forgotInput.trim()}
+            sx={{ bgcolor: '#1A312C', color: '#89D7B7', fontWeight: 800, borderRadius: '12px', '&:hover': { bgcolor: '#0F1D1A' } }}
+          >
+            {forgotLoading ? <CircularProgress size={20} sx={{ color: '#89D7B7' }} /> : 'Send Reset Email'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

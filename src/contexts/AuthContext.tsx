@@ -89,6 +89,7 @@ const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,
   user: null,
   login: async () => {},
+  loginMobile: async () => {},
   register: async () => {},
   googleLogin: async () => {},
   googleCompleteRegistration: () => {},
@@ -155,6 +156,22 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
+  // Mobile Login function
+  const loginMobile = async (mobileNumber: string, dateOfBirth: string, password: string) => {
+    dispatch({ type: 'AUTH_START' });
+    try {
+      const data = await api.authAPI.loginMobile(mobileNumber, dateOfBirth, password);
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      dispatch({ type: 'LOGIN_SUCCESS', payload: data });
+      return data;
+    } catch (error: any) {
+      const message = error.response?.data?.message || error.message || 'Mobile login failed';
+      dispatch({ type: 'AUTH_ERROR', payload: message });
+      throw error;
+    }
+  };
+
   // Register function
   const register = async (data: RegisterData) => {
     dispatch({ type: 'AUTH_START' });
@@ -209,6 +226,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       isAuthenticated: state.isAuthenticated,
       user: state.user,
       login, 
+      loginMobile,
       register, 
       googleLogin, 
       googleCompleteRegistration,

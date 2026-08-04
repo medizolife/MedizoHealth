@@ -23,6 +23,8 @@ import DialogActions from '@mui/material/DialogActions';
 import Button from '@mui/material/Button';
 import Alert from '@mui/material/Alert';
 import AlertTitle from '@mui/material/AlertTitle';
+import TextField from '@mui/material/TextField';
+import CircularProgress from '@mui/material/CircularProgress';
 
 import MenuIcon from '@mui/icons-material/Menu';
 import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
@@ -40,11 +42,12 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import LocalPharmacyIcon from '@mui/icons-material/LocalPharmacy';
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 import HistoryIcon from '@mui/icons-material/History';
+import PhoneAndroidIcon from '@mui/icons-material/PhoneAndroid';
 
 import { Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useThemeContext } from '../contexts/ThemeContext';
-import { digilockerAPI } from '../services/api';
+import { digilockerAPI, authAPI } from '../services/api';
 
 export default function Header() {
   const { authState, logout } = useAuth();
@@ -58,6 +61,37 @@ export default function Header() {
   const [digilockerVerified, setDigilockerVerified] = useState(false);
   const [digilockerProfile, setDigilockerProfile] = useState(null as any);
   const [verificationModalOpen, setVerificationModalOpen] = useState(false);
+
+  // Unverified email state (for patients without real email)
+  const [addEmailDialogOpen, setAddEmailDialogOpen] = useState(false);
+  const [newEmailInput, setNewEmailInput] = useState('');
+  const [emailUpdateLoading, setEmailUpdateLoading] = useState(false);
+  const [emailUpdateMsg, setEmailUpdateMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Check if this patient has an unverified/placeholder email
+  const isPatientUnverifiedEmail = isAuthenticated && user?.role === 'patient' && user?.email?.endsWith('@patient.medizo.life');
+
+  // DOB verification state (post-login identity check for mobile-login patients)
+  const [dobVerifyDialogOpen, setDobVerifyDialogOpen] = useState(false);
+  const [dobVerifyInput, setDobVerifyInput] = useState('');
+  const [dobVerifyLoading, setDobVerifyLoading] = useState(false);
+  const [dobVerifyMsg, setDobVerifyMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [dobVerified, setDobVerified] = useState(() => {
+    // Check if already verified this session
+    return sessionStorage.getItem('dobVerified') === 'true';
+  });
+
+  // Show DOB verify badge for patients with placeholder email who haven't verified yet
+  const needsDobVerification = isAuthenticated && user?.role === 'patient' && isPatientUnverifiedEmail && !dobVerified;
+
+  // Missing mobile number state (for patients registered with email only)
+  const [addPhoneDialogOpen, setAddPhoneDialogOpen] = useState(false);
+  const [newPhoneInput, setNewPhoneInput] = useState('');
+  const [phoneUpdateLoading, setPhoneUpdateLoading] = useState(false);
+  const [phoneUpdateMsg, setPhoneUpdateMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Check if patient is missing phone number
+  const isPatientMissingPhone = isAuthenticated && user?.role === 'patient' && !isPatientUnverifiedEmail && (!user?.phone || user?.phone === '');
 
   // Fetch DigiLocker verification status for doctors
   useEffect(() => {
@@ -304,6 +338,77 @@ export default function Header() {
                     />
                   )
                 )}
+
+                {/* Unverified Email Badge for patients */}
+                {user.role === 'patient' && isPatientUnverifiedEmail && (
+                  <Chip
+                    icon={<SecurityIcon sx={{ fontSize: 14, color: '#ffffff !important' }} />}
+                    label="⚠ Add Email"
+                    size="small"
+                    onClick={() => { setAddEmailDialogOpen(true); setEmailUpdateMsg(null); setNewEmailInput(''); }}
+                    clickable
+                    sx={{
+                      ml: 0.5,
+                      height: 26,
+                      bgcolor: '#e65100',
+                      color: '#ffffff',
+                      fontWeight: 800,
+                      fontSize: '0.7rem',
+                      border: '1.5px solid #ff9800',
+                      '& .MuiChip-icon': { ml: 0.5 },
+                      '& .MuiChip-label': { px: 0.8 },
+                    }}
+                  />
+                )}
+
+                {/* DOB Verification Badge for mobile-login patients */}
+                {needsDobVerification && (
+                  <Chip
+                    icon={<SecurityIcon sx={{ fontSize: 14, color: '#ffffff !important' }} />}
+                    label="🔐 Verify Identity"
+                    size="small"
+                    onClick={() => { setDobVerifyDialogOpen(true); setDobVerifyMsg(null); setDobVerifyInput(''); }}
+                    clickable
+                    sx={{
+                      ml: 0.5,
+                      height: 26,
+                      bgcolor: '#7b1fa2',
+                      color: '#ffffff',
+                      fontWeight: 800,
+                      fontSize: '0.7rem',
+                      border: '1.5px solid #ab47bc',
+                      '& .MuiChip-icon': { ml: 0.5 },
+                      '& .MuiChip-label': { px: 0.8 },
+                      animation: 'pulse 2s infinite',
+                      '@keyframes pulse': {
+                        '0%, 100%': { opacity: 1 },
+                        '50%': { opacity: 0.7 },
+                      },
+                    }}
+                  />
+                )}
+
+                {/* Missing Mobile Number Badge for email-only patients */}
+                {isPatientMissingPhone && (
+                  <Chip
+                    icon={<PhoneAndroidIcon sx={{ fontSize: 14, color: '#ffffff !important' }} />}
+                    label="📱 Add Mobile"
+                    size="small"
+                    onClick={() => { setAddPhoneDialogOpen(true); setPhoneUpdateMsg(null); setNewPhoneInput(''); }}
+                    clickable
+                    sx={{
+                      ml: 0.5,
+                      height: 26,
+                      bgcolor: '#0277bd',
+                      color: '#ffffff',
+                      fontWeight: 800,
+                      fontSize: '0.7rem',
+                      border: '1.5px solid #4fc3f7',
+                      '& .MuiChip-icon': { ml: 0.5 },
+                      '& .MuiChip-label': { px: 0.8 },
+                    }}
+                  />
+                )}
                 {/* Profile chip rightmost */}
                 <Chip
                   avatar={
@@ -405,7 +510,11 @@ export default function Header() {
                 {user.email}
               </Typography>
               <Chip 
-                label={user.role === 'doctor' ? (digilockerVerified ? 'DIGILOCKER VERIFIED ✓' : 'UNVERIFIED DOCTOR') : 'PATIENT ACCOUNT'} 
+                label={
+                  user.role === 'doctor' 
+                    ? (digilockerVerified ? 'DIGILOCKER VERIFIED ✓' : 'UNVERIFIED DOCTOR') 
+                    : (isPatientUnverifiedEmail ? 'UNVERIFIED EMAIL' : 'PATIENT ACCOUNT')
+                } 
                 size="small"
                 sx={{ 
                   height: 18, 
@@ -413,7 +522,7 @@ export default function Header() {
                   fontWeight: 800, 
                   bgcolor: user.role === 'doctor' 
                     ? (digilockerVerified ? 'rgba(76, 175, 80, 0.35)' : 'rgba(255, 152, 0, 0.35)') 
-                    : 'rgba(255, 255, 255, 0.2)', 
+                    : (isPatientUnverifiedEmail ? 'rgba(255, 152, 0, 0.35)' : 'rgba(255, 255, 255, 0.2)'), 
                   color: '#ffffff', 
                   mt: 0.5,
                   letterSpacing: 0.5
@@ -891,6 +1000,241 @@ export default function Header() {
             }}
           >
             Got it
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Add Email Dialog for Patients with Unverified Email */}
+      <Dialog
+        open={addEmailDialogOpen}
+        onClose={() => setAddEmailDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '24px',
+            bgcolor: mode === 'dark' ? '#1A2C28' : '#FAF6F0',
+            color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)',
+            p: 1
+          }
+        }}
+      >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <SecurityIcon sx={{ color: '#e65100' }} />
+            <Typography variant="h6" sx={{ fontWeight: 800, fontSize: '1.1rem' }}>
+              Add Email Address
+            </Typography>
+          </Box>
+          <IconButton onClick={() => setAddEmailDialogOpen(false)} size="small">
+            <CloseIcon sx={{ color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }} />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 2, color: mode === 'dark' ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)', fontSize: '0.85rem' }}>
+            Your account was created without an email address. Add one now to receive prescription notifications and enable password recovery.
+          </Typography>
+          {emailUpdateMsg && (
+            <Alert severity={emailUpdateMsg.type} sx={{ mb: 2, borderRadius: '12px' }}>
+              {emailUpdateMsg.text}
+            </Alert>
+          )}
+          <TextField
+            fullWidth
+            margin="dense"
+            label="Email Address"
+            type="email"
+            value={newEmailInput}
+            onChange={(e) => setNewEmailInput(e.target.value)}
+            placeholder="yourname@example.com"
+            InputProps={{ sx: { borderRadius: '12px' } }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 2, pt: 0 }}>
+          <Button onClick={() => setAddEmailDialogOpen(false)} color="inherit" sx={{ fontWeight: 700 }}>
+            Later
+          </Button>
+          <Button
+            variant="contained"
+            disabled={emailUpdateLoading || !newEmailInput.trim()}
+            onClick={async () => {
+              setEmailUpdateLoading(true);
+              setEmailUpdateMsg(null);
+              try {
+                const res = await authAPI.updateEmail(newEmailInput.trim());
+                setEmailUpdateMsg({ type: 'success', text: res.message || 'Email updated successfully!' });
+                // Update local storage with new user data
+                if (res.user) {
+                  localStorage.setItem('user', JSON.stringify(res.user));
+                }
+                // Reload user data after 1.5 seconds
+                setTimeout(() => {
+                  setAddEmailDialogOpen(false);
+                  window.location.reload();
+                }, 1500);
+              } catch (err: any) {
+                setEmailUpdateMsg({ type: 'error', text: err.response?.data?.message || err.message || 'Failed to update email' });
+              } finally {
+                setEmailUpdateLoading(false);
+              }
+            }}
+            sx={{ bgcolor: 'var(--color-forest)', color: '#ffffff', fontWeight: 800, textTransform: 'none', borderRadius: '12px' }}
+          >
+            {emailUpdateLoading ? <CircularProgress size={20} sx={{ color: '#ffffff' }} /> : 'Save Email'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Add Mobile Number Dialog for Email-Only Patients */}
+      <Dialog
+        open={addPhoneDialogOpen}
+        onClose={() => setAddPhoneDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '24px',
+            bgcolor: mode === 'dark' ? '#1A2C28' : '#FAF6F0',
+            color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)',
+            p: 1
+          }
+        }}
+      >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <PhoneAndroidIcon sx={{ color: '#0277bd' }} />
+            <Typography variant="h6" sx={{ fontWeight: 800, fontSize: '1.1rem' }}>
+              Add Mobile Number
+            </Typography>
+          </Box>
+          <IconButton onClick={() => setAddPhoneDialogOpen(false)} size="small">
+            <CloseIcon sx={{ color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }} />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 2, color: mode === 'dark' ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)', fontSize: '0.85rem' }}>
+            Add your mobile number to enable mobile login. You'll be able to sign in with either your email or mobile number.
+          </Typography>
+          {phoneUpdateMsg && (
+            <Alert severity={phoneUpdateMsg.type} sx={{ mb: 2, borderRadius: '12px' }}>
+              {phoneUpdateMsg.text}
+            </Alert>
+          )}
+          <TextField
+            fullWidth
+            margin="dense"
+            label="Mobile Number"
+            placeholder="Enter your mobile number"
+            value={newPhoneInput}
+            onChange={(e) => setNewPhoneInput(e.target.value)}
+            InputProps={{ sx: { borderRadius: '12px' } }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 2, pt: 0 }}>
+          <Button onClick={() => setAddPhoneDialogOpen(false)} color="inherit" sx={{ fontWeight: 700 }}>
+            Later
+          </Button>
+          <Button
+            variant="contained"
+            disabled={phoneUpdateLoading || !newPhoneInput.trim()}
+            onClick={async () => {
+              setPhoneUpdateLoading(true);
+              setPhoneUpdateMsg(null);
+              try {
+                const res = await authAPI.updatePhone(newPhoneInput.trim());
+                setPhoneUpdateMsg({ type: 'success', text: '✅ ' + (res.message || 'Mobile number added!') });
+                setTimeout(() => {
+                  setAddPhoneDialogOpen(false);
+                  window.location.reload();
+                }, 1500);
+              } catch (err: any) {
+                setPhoneUpdateMsg({ type: 'error', text: err.response?.data?.message || err.message || 'Failed to update' });
+              } finally {
+                setPhoneUpdateLoading(false);
+              }
+            }}
+            sx={{ bgcolor: '#0277bd', color: '#ffffff', fontWeight: 800, textTransform: 'none', borderRadius: '12px', '&:hover': { bgcolor: '#01579b' } }}
+          >
+            {phoneUpdateLoading ? <CircularProgress size={20} sx={{ color: '#ffffff' }} /> : 'Save Mobile'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* DOB Verification Dialog (Post-Login Identity Check) */}
+      <Dialog
+        open={dobVerifyDialogOpen}
+        onClose={() => setDobVerifyDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '24px',
+            bgcolor: mode === 'dark' ? '#1A2C28' : '#FAF6F0',
+            color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)',
+            p: 1
+          }
+        }}
+      >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <SecurityIcon sx={{ color: '#7b1fa2' }} />
+            <Typography variant="h6" sx={{ fontWeight: 800, fontSize: '1.1rem' }}>
+              Verify Your Identity
+            </Typography>
+          </Box>
+          <IconButton onClick={() => setDobVerifyDialogOpen(false)} size="small">
+            <CloseIcon sx={{ color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }} />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 2, color: mode === 'dark' ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)', fontSize: '0.85rem' }}>
+            Please confirm your Date of Birth to verify your identity and unlock full access to your prescriptions.
+          </Typography>
+          {dobVerifyMsg && (
+            <Alert severity={dobVerifyMsg.type} sx={{ mb: 2, borderRadius: '12px' }}>
+              {dobVerifyMsg.text}
+            </Alert>
+          )}
+          <TextField
+            fullWidth
+            margin="dense"
+            label="Date of Birth"
+            type="date"
+            value={dobVerifyInput}
+            onChange={(e) => setDobVerifyInput(e.target.value)}
+            InputLabelProps={{ shrink: true }}
+            InputProps={{ sx: { borderRadius: '12px' } }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 2, pt: 0 }}>
+          <Button onClick={() => setDobVerifyDialogOpen(false)} color="inherit" sx={{ fontWeight: 700 }}>
+            Later
+          </Button>
+          <Button
+            variant="contained"
+            disabled={dobVerifyLoading || !dobVerifyInput.trim()}
+            onClick={async () => {
+              setDobVerifyLoading(true);
+              setDobVerifyMsg(null);
+              try {
+                const res = await authAPI.verifyDob(dobVerifyInput.trim());
+                if (res.verified) {
+                  setDobVerifyMsg({ type: 'success', text: '✅ ' + (res.message || 'Identity verified!') });
+                  setDobVerified(true);
+                  sessionStorage.setItem('dobVerified', 'true');
+                  setTimeout(() => setDobVerifyDialogOpen(false), 1500);
+                } else {
+                  setDobVerifyMsg({ type: 'error', text: res.message || 'Verification failed' });
+                }
+              } catch (err: any) {
+                setDobVerifyMsg({ type: 'error', text: err.response?.data?.message || err.message || 'Verification failed' });
+              } finally {
+                setDobVerifyLoading(false);
+              }
+            }}
+            sx={{ bgcolor: '#7b1fa2', color: '#ffffff', fontWeight: 800, textTransform: 'none', borderRadius: '12px', '&:hover': { bgcolor: '#6a1b9a' } }}
+          >
+            {dobVerifyLoading ? <CircularProgress size={20} sx={{ color: '#ffffff' }} /> : 'Verify'}
           </Button>
         </DialogActions>
       </Dialog>

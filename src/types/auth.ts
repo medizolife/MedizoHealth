@@ -73,7 +73,10 @@ export interface LoginCredentials {
 export interface RegisterData {
   firstName: string;
   lastName: string;
-  email: string;
+  email?: string;
+  phone?: string;
+  mobileNumber?: string;
+  dateOfBirth?: string;
   password: string;
   role: 'doctor' | 'patient';
 }
@@ -83,6 +86,7 @@ export interface AuthContextType {
   isAuthenticated: boolean;
   user: User | null;
   login: (credentialsOrEmail: LoginCredentials | string, password?: string) => Promise<any>;
+  loginMobile: (mobileNumber: string, dateOfBirth: string, password: string) => Promise<any>;
   register: (data: RegisterData) => Promise<void>;
   googleLogin: (credential: string, role?: string) => Promise<{ isNewUser: boolean; user: User; token: string } | void>;
   googleCompleteRegistration: (token: string, user: User) => void;

@@ -10,7 +10,12 @@
 /build
 /dist
 /dist-desktop
+/dist-installer
+/out
 /*.exe
+/*.zip
+/*.appx
+/*.apk
 /.next
 
 # misc

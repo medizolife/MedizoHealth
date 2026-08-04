@@ -48,7 +48,9 @@ import {
   ListItemText,
   Snackbar,
   Tooltip,
-  Collapse
+  Collapse,
+  FormControlLabel,
+  Switch
 } from '@mui/material';
 import indianMedicines from '../data/indianMedicines.json';
 import {
@@ -129,10 +131,13 @@ const NewPrescription = () => {
     lastName: '',
     email: '',
     phone: '',
+    dateOfBirth: '',
     gender: 'male',
-    address: ''
+    address: '',
+    noEmail: false
   });
   const [newPatientError, setNewPatientError] = useState('');
+  const [newPatientSuccess, setNewPatientSuccess] = useState('');
 
   // Add existing patient modal state
   const [addExistingPatientDialogOpen, setAddExistingPatientDialogOpen] = useState(false);
@@ -3144,9 +3149,33 @@ const NewPrescription = () => {
           <PersonAddIcon sx={{ color: 'var(--color-mint)' }} /> Register New Patient
         </DialogTitle>
         <DialogContent>
-          <Typography variant="body2" sx={{ mb: 2, color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-teal)', fontWeight: 600 }}>
-            Create a patient account on the fly. Default login password: <strong>password123</strong>
-          </Typography>
+          {/* No-Email Toggle */}
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5, p: 1.2, borderRadius: '14px', bgcolor: newPatientData.noEmail ? 'rgba(245, 158, 11, 0.1)' : 'rgba(42, 107, 93, 0.08)', border: `1px solid ${newPatientData.noEmail ? 'rgba(245, 158, 11, 0.3)' : 'rgba(42, 107, 93, 0.2)'}` }}>
+            <Typography variant="body2" sx={{ fontWeight: 700, color: newPatientData.noEmail ? '#d97706' : 'var(--color-teal)', fontSize: '0.82rem' }}>
+              {newPatientData.noEmail ? '📱 Mobile-only account (no email)' : '📧 Email is primary identifier'}
+            </Typography>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={newPatientData.noEmail}
+                  onChange={(e) => setNewPatientData({ ...newPatientData, noEmail: e.target.checked, email: '' })}
+                  size="small"
+                  sx={{ '& .MuiSwitch-switchBase.Mui-checked': { color: '#d97706' }, '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: '#f59e0b' } }}
+                />
+              }
+              label={<Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.72rem' }}>No Email</Typography>}
+              labelPlacement="start"
+              sx={{ mr: 0 }}
+            />
+          </Box>
+
+          {/* Info banner for temp password */}
+          {newPatientData.noEmail && newPatientData.firstName && newPatientData.dateOfBirth && (
+            <Alert severity="info" sx={{ mb: 1.5, borderRadius: '12px', py: 0.5, '& .MuiAlert-message': { fontSize: '0.78rem' } }}>
+              Temporary password: <strong>{newPatientData.firstName}@{String(newPatientData.dateOfBirth).split('-')[0] || 'medizo'}</strong>
+            </Alert>
+          )}
+
           <Grid container spacing={1.8}>
             <Grid item xs={6}>
               <TextField
@@ -3172,18 +3201,32 @@ const NewPrescription = () => {
               <TextField
                 fullWidth
                 size="small"
-                label="Email Address *"
-                type="email"
-                value={newPatientData.email}
-                onChange={(e) => setNewPatientData({ ...newPatientData, email: e.target.value })}
+                label="Date of Birth *"
+                type="date"
+                value={newPatientData.dateOfBirth}
+                onChange={(e) => setNewPatientData({ ...newPatientData, dateOfBirth: e.target.value })}
+                InputLabelProps={{ shrink: true }}
                 InputProps={{ sx: { borderRadius: '12px' } }}
               />
             </Grid>
+            {!newPatientData.noEmail && (
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="Email Address *"
+                  type="email"
+                  value={newPatientData.email}
+                  onChange={(e) => setNewPatientData({ ...newPatientData, email: e.target.value })}
+                  InputProps={{ sx: { borderRadius: '12px' } }}
+                />
+              </Grid>
+            )}
             <Grid item xs={12}>
               <TextField
                 fullWidth
                 size="small"
-                label="Phone Number"
+                label={newPatientData.noEmail ? 'Mobile Number *' : 'Phone Number'}
                 value={newPatientData.phone}
                 onChange={(e) => setNewPatientData({ ...newPatientData, phone: e.target.value })}
                 InputProps={{ sx: { borderRadius: '12px' } }}
@@ -3202,7 +3245,13 @@ const NewPrescription = () => {
           </Button>
           <Button
             variant="contained"
-            disabled={creatingPatient || !newPatientData.firstName || !newPatientData.email}
+            disabled={
+              creatingPatient ||
+              !newPatientData.firstName ||
+              !newPatientData.lastName ||
+              !newPatientData.dateOfBirth ||
+              (newPatientData.noEmail ? !newPatientData.phone : !newPatientData.email)
+            }
             onClick={async () => {
               try {
                 setCreatingPatient(true);
@@ -3211,18 +3260,25 @@ const NewPrescription = () => {
                 const result = await usersAPI.createPatient({
                   firstName: newPatientData.firstName,
                   lastName: newPatientData.lastName,
-                  email: newPatientData.email,
+                  email: newPatientData.noEmail ? '' : newPatientData.email,
                   phone: newPatientData.phone,
+                  dateOfBirth: newPatientData.dateOfBirth,
                   gender: newPatientData.gender,
-                  address: newPatientData.address
+                  address: newPatientData.address,
+                  noEmail: newPatientData.noEmail
                 });
                 const newP = result.patient || result;
+                const tempPwd = result.tempPassword || '';
                 // Refresh the full linked patient list from backend
                 await fetchMyPatients();
                 setSelectedPatient(newP);
                 setFormData(prev => ({ ...prev, patientId: newP.id }));
                 setNewPatientDialogOpen(false);
-                setNewPatientData({ firstName: '', lastName: '', email: '', phone: '', gender: 'male', address: '' });
+                setNewPatientData({ firstName: '', lastName: '', email: '', phone: '', dateOfBirth: '', gender: 'male', address: '', noEmail: false });
+                // Show temp password in success snackbar
+                if (tempPwd) {
+                  setNewPatientSuccess(`✅ Patient created! Temporary password: ${tempPwd}`);
+                }
               } catch (err: any) {
                 console.error('Create patient error:', err);
                 setNewPatientError(err?.response?.data?.message || err?.message || 'Failed to create patient');
@@ -3236,6 +3292,18 @@ const NewPrescription = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Temp password success snackbar */}
+      <Snackbar
+        open={!!newPatientSuccess}
+        autoHideDuration={12000}
+        onClose={() => setNewPatientSuccess('')}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert onClose={() => setNewPatientSuccess('')} severity="success" sx={{ borderRadius: '14px', fontWeight: 700, fontSize: '0.85rem' }}>
+          {newPatientSuccess}
+        </Alert>
+      </Snackbar>
 
       {/* ─── Dialog: Add Existing Patient (Exact 3-Tab Match) ─── */}
       <Dialog 

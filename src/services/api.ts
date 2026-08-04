@@ -61,12 +61,32 @@ export const authAPI = {
     const response = await api.post('/auth/login', { email, password });
     return response.data;
   },
+  loginMobile: async (mobileNumber: string, dateOfBirth: string, password: string) => {
+    const response = await api.post('/auth/login-mobile', { mobileNumber, dateOfBirth, password });
+    return response.data;
+  },
+  forgotPassword: async (emailOrMobile: string) => {
+    const response = await api.post('/auth/forgot-password', { emailOrMobile });
+    return response.data;
+  },
   getMe: async () => {
     const response = await api.get('/auth/me');
     return response.data;
   },
   googleLogin: async (credential: string, role = 'patient') => {
     const response = await api.post('/auth/google', { credential, role });
+    return response.data;
+  },
+  updateEmail: async (email: string) => {
+    const response = await api.post('/auth/update-email', { email });
+    return response.data;
+  },
+  verifyDob: async (dateOfBirth: string) => {
+    const response = await api.post('/auth/verify-dob', { dateOfBirth });
+    return response.data;
+  },
+  updatePhone: async (phone: string) => {
+    const response = await api.post('/auth/update-phone', { phone });
     return response.data;
   },
 };

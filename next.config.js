@@ -1,23 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // output: 'export' is only needed for static builds (next build), not for dev server
+  ...(process.env.NODE_ENV === 'production' ? { output: 'export' } : {}),
+  images: {
+    unoptimized: true,
+  },
   reactStrictMode: true,
   transpilePackages: ['@mui/material', '@mui/icons-material', '@mui/system'],
-  async rewrites() {
-    const envUrl = process.env.NEXT_PUBLIC_API_URL || process.env.REACT_APP_API_URL;
-    let targetUrl = 'https://medizoserver.vercel.app/api';
-    if (envUrl) {
-      let cleanUrl = envUrl.trim().replace(/\/+$/, '');
-      cleanUrl = cleanUrl.replace(/\/health(\/api)?$/, '');
-      cleanUrl = cleanUrl.replace(/\/api$/, '');
-      targetUrl = `${cleanUrl}/api`;
-    }
-    return [
-      {
-        source: '/api/:path*',
-        destination: `${targetUrl}/:path*`,
-      },
-    ];
-  },
 };
 
 module.exports = nextConfig;
+

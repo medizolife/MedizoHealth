@@ -1,6 +1,8 @@
 {
-  "name": "healthcare-management-mobile",
-  "version": "0.1.0",
+  "name": "medizolife-desktop",
+  "version": "1.0.0",
+  "description": "Medizo Life Desktop - Standalone Local Frontend Application",
+  "author": "Medizo Life <contact@medizo.life>",
   "private": true,
   "homepage": "https://medizo.life",
   "main": "electron-main.js",
@@ -8,9 +10,49 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "dist:installer": "electron-builder --win nsis",
+    "dist:store": "electron-builder --win appx msix"
   },
-  "dependencies": {
+  "build": {
+    "appId": "com.medizolife.desktop",
+    "productName": "Medizo Life",
+    "directories": {
+      "output": "dist-installer"
+    },
+    "files": [
+      "electron-main.js",
+      "package.json",
+      "out/**/*",
+      "public/**/*"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "appx"
+      ]
+    },
+    "asar": true,
+    "npmRebuild": false,
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Medizo Life",
+      "artifactName": "MedizoLife-Setup.${ext}",
+      "differentialPackage": false
+    },
+    "appx": {
+      "applicationId": "MedizoLife",
+      "displayName": "Medizo Life",
+      "identityName": "DevelopeFuture.MedizoLife",
+      "publisher": "CN=2638D304-D136-4EC6-9ACF-5CD1BAB64110",
+      "publisherDisplayName": "Develope Future",
+      "artifactName": "MedizoLife-Store.${ext}"
+    }
+  },
+  "devDependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "^5.18.0",
@@ -21,7 +63,9 @@
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "axios": "^1.11.0",
-    "express": "^5.2.1",
+    "electron": "^43.2.0",
+    "electron-builder": "^26.15.3",
+    "electron-packager": "^17.1.2",
     "formik": "^2.4.6",
     "fuse.js": "^7.1.0",
     "html5-qrcode": "^2.3.8",
@@ -34,11 +78,5 @@
     "react-router-dom": "^6.30.4",
     "typescript": "^5.3.3",
     "yup": "^1.7.0"
-  },
-  "devDependencies": {
-    "electron": "^43.2.0",
-    "electron-packager": "^17.1.2",
-    "eslint": "^8.57.0",
-    "eslint-config-next": "^14.2.15"
   }
 }
