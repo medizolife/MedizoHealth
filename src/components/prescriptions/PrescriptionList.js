@@ -238,8 +238,8 @@ const PrescriptionList = () => {
                   <Typography variant="subtitle2" color="text.secondary">
                     Prescription ID
                   </Typography>
-                  <Typography variant="body1" gutterBottom>
-                    {selectedPrescription.id}
+                  <Typography variant="body1" gutterBottom sx={{ fontWeight: 800 }}>
+                    #{selectedPrescription.id?.toUpperCase()}
                   </Typography>
                 </Grid>
                 

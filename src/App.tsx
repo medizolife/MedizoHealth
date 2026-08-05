@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider } from './contexts/AuthContext';
 import { CustomThemeProvider } from './contexts/ThemeContext';
@@ -27,6 +27,87 @@ import TermsOfService from './views/TermsOfService';
 // Google OAuth Client ID
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '972944325297-fh67828kvguogf9coekjn6q07a2krv8o.apps.googleusercontent.com';
 
+const AnimatedRoutes = () => {
+  const location = useLocation();
+
+  return (
+    <Box key={location.pathname} className="page-transition-wrapper">
+      <Routes location={location}>
+        <Route 
+          path="/" 
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/home" 
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route 
+          path="/dashboard" 
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/profile" 
+          element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/prescriptions/new" 
+          element={
+            <ProtectedRoute requiredRole="doctor">
+              <NewPrescription />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/prescriptions/all" 
+          element={
+            <ProtectedRoute>
+              <DoctorPrescriptions />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/patients" 
+          element={
+            <ProtectedRoute requiredRole="doctor">
+              <PatientManagement />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/prescriptions/:id" 
+          element={
+            <ProtectedRoute>
+              <PrescriptionDetail />
+            </ProtectedRoute>
+          } 
+        />
+        <Route path="/unauthorized" element={<Unauthorized />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/terms" element={<TermsOfService />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </Box>
+  );
+};
+
 const App = () => {
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
@@ -35,78 +116,7 @@ const App = () => {
           <Router>
             <Box sx={{ minHeight: '100dvh', pb: { xs: '84px', md: '32px' }, boxSizing: 'border-box' }}>
               <Header />
-              <Routes>
-                <Route 
-                  path="/" 
-                  element={
-                    <ProtectedRoute>
-                      <Dashboard />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
-                  path="/home" 
-                  element={
-                    <ProtectedRoute>
-                      <Dashboard />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
-                <Route 
-                  path="/dashboard" 
-                  element={
-                    <ProtectedRoute>
-                      <Dashboard />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
-                  path="/profile" 
-                  element={
-                    <ProtectedRoute>
-                      <Profile />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
-                  path="/prescriptions/new" 
-                  element={
-                    <ProtectedRoute requiredRole="doctor">
-                      <NewPrescription />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
-                  path="/prescriptions/all" 
-                  element={
-                    <ProtectedRoute>
-                      <DoctorPrescriptions />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
-                  path="/patients" 
-                  element={
-                    <ProtectedRoute requiredRole="doctor">
-                      <PatientManagement />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
-                  path="/prescriptions/:id" 
-                  element={
-                    <ProtectedRoute>
-                      <PrescriptionDetail />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route path="/unauthorized" element={<Unauthorized />} />
-                <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-                <Route path="/terms" element={<TermsOfService />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
+              <AnimatedRoutes />
               <MobileBottomNav />
             </Box>
           </Router>

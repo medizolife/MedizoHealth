@@ -34,6 +34,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { getPrescriptions } from '../services/prescriptions';
+import { getCachedData } from '../services/apiCache';
 import { useThemeContext } from '../contexts/ThemeContext';
 
 import { Prescription } from '../types/prescription';
@@ -56,9 +57,21 @@ export default function DoctorPrescriptions() {
   const [stats, setStats] = useState<Stats | null>(null);
 
   useEffect(() => {
-    fetchPrescriptions();
-    const timer = setTimeout(() => fetchPrescriptions(true), 150);
-    return () => clearTimeout(timer);
+    // 1. Instant Synchronous Cache Check (0 spinner delay)
+    const cachedList = getCachedData<Prescription[]>('prescriptions_list');
+    if (Array.isArray(cachedList)) {
+      let filtered = cachedList;
+      if (statusFilter !== 'all') {
+        filtered = filtered.filter(p => p.status === statusFilter);
+      }
+      setPrescriptions(filtered);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
+
+    // 2. Background Revalidation (Stale-While-Revalidate)
+    fetchPrescriptions(Boolean(cachedList));
   }, [statusFilter]);
 
   const fetchPrescriptions = async (isBackgroundRefresh = false) => {

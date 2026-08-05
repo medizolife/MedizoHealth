@@ -1,6 +1,6 @@
 import api from './api';
 import { Patient } from '../types/auth';
-import { getCachedData, setCachedData, clearApiCache } from './apiCache';
+import { getCachedData, setCachedData, findInCachedList, clearApiCache } from './apiCache';
 
 // Patient service functions — gets ALL patients (admin use)
 export const getPatients = async (forceRefresh = false): Promise<Patient[]> => {
@@ -23,9 +23,19 @@ export const getMyPatients = async (forceRefresh = false): Promise<Patient[]> =>
   return setCachedData('my_patients', result);
 };
 
-export const getPatientById = async (id: string): Promise<Patient> => {
+export const getPatientById = async (id: string, forceRefresh = false): Promise<Patient> => {
+  if (!forceRefresh) {
+    const cached = getCachedData<Patient>(`patient_${id}`);
+    if (cached) return cached;
+    const fromMy = findInCachedList<Patient>('my_patients', id);
+    if (fromMy) return fromMy;
+    const fromAll = findInCachedList<Patient>('all_patients', id);
+    if (fromAll) return fromAll;
+    const fromManaged = findInCachedList<Patient>('managed_patients', id);
+    if (fromManaged) return fromManaged;
+  }
   const response = await api.get<Patient>(`/users/patients/${id}`);
-  return response.data;
+  return setCachedData(`patient_${id}`, response.data);
 };
 
 export const createPatient = async (data: Omit<Patient, 'id' | 'createdAt' | 'updatedAt'> & { password: string }): Promise<Patient> => {

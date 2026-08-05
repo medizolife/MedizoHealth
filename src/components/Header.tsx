@@ -50,7 +50,7 @@ import { useThemeContext } from '../contexts/ThemeContext';
 import { digilockerAPI, authAPI } from '../services/api';
 
 export default function Header() {
-  const { authState, logout } = useAuth();
+  const { authState, logout, needsDobVerification, markDobVerified } = useAuth();
   const { isAuthenticated, user } = authState;
   const { palette, mode, setPalette, toggleMode } = useThemeContext();
   const navigate = useNavigate();
@@ -76,13 +76,6 @@ export default function Header() {
   const [dobVerifyInput, setDobVerifyInput] = useState('');
   const [dobVerifyLoading, setDobVerifyLoading] = useState(false);
   const [dobVerifyMsg, setDobVerifyMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [dobVerified, setDobVerified] = useState(() => {
-    // Check if already verified this session
-    return sessionStorage.getItem('dobVerified') === 'true';
-  });
-
-  // Show DOB verify badge for patients with placeholder email who haven't verified yet
-  const needsDobVerification = isAuthenticated && user?.role === 'patient' && isPatientUnverifiedEmail && !dobVerified;
 
   // Missing mobile number state (for patients registered with email only)
   const [addPhoneDialogOpen, setAddPhoneDialogOpen] = useState(false);
@@ -1220,9 +1213,8 @@ export default function Header() {
                 const res = await authAPI.verifyDob(dobVerifyInput.trim());
                 if (res.verified) {
                   setDobVerifyMsg({ type: 'success', text: '✅ ' + (res.message || 'Identity verified!') });
-                  setDobVerified(true);
-                  sessionStorage.setItem('dobVerified', 'true');
-                  setTimeout(() => setDobVerifyDialogOpen(false), 1500);
+                  markDobVerified();
+                  setTimeout(() => setDobVerifyDialogOpen(false), 1200);
                 } else {
                   setDobVerifyMsg({ type: 'error', text: res.message || 'Verification failed' });
                 }

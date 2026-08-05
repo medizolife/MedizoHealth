@@ -24,7 +24,8 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  Chip
 } from '@mui/material';
 import { 
   PhotoCamera as PhotoCameraIcon,
@@ -394,13 +395,29 @@ const Profile = () => {
       </Paper>
 
       <Paper elevation={0} className={mode === 'dark' ? 'apple-glass-card-dark' : 'apple-glass-card'} sx={{ p: 3, borderRadius: '24px !important', mb: 3 }}>
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="h6" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }}>
-            Account Details
-          </Typography>
-          <Typography variant="body2" sx={{ color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-teal)', fontWeight: 600 }}>
-            Member since: {new Date(user.createdAt).toLocaleDateString()}
-          </Typography>
+        <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 1 }}>
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }}>
+              Account Details
+            </Typography>
+            <Typography variant="body2" sx={{ color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-teal)', fontWeight: 600 }}>
+              Member since: {new Date(user.createdAt).toLocaleDateString()}
+            </Typography>
+          </Box>
+          {user.id && (
+            <Chip
+              label={`ID: #${user.id.toUpperCase()}`}
+              size="small"
+              sx={{
+                fontWeight: 800,
+                fontSize: '0.75rem',
+                bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.15)' : 'rgba(42, 107, 93, 0.1)',
+                color: mode === 'dark' ? '#66CDAA' : '#1A312C',
+                border: '1px solid var(--color-mint)',
+                borderRadius: '10px'
+              }}
+            />
+          )}
         </Box>
         
         <Divider sx={{ my: 3, borderColor: 'var(--glass-border)' }} />

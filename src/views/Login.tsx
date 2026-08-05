@@ -2,7 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
+import { useTheme } from '@mui/material/styles';
 import { useAuth } from '../contexts/AuthContext';
+import { useThemeContext } from '../contexts/ThemeContext';
 import { 
   Box, 
   Paper, 
@@ -31,20 +33,33 @@ import {
   VisibilityOff,
   Email as EmailIcon,
   PhoneAndroid as PhoneIcon,
-  CalendarToday as CalendarIcon
+  CalendarToday as CalendarIcon,
+  VpnKey as OtpIcon,
+  Send as SendIcon
 } from '@mui/icons-material';
 import { authAPI } from '../services/api';
 
 const Login = () => {
   const navigate = useNavigate();
-  const { authState, login, loginMobile, googleLogin } = useAuth();
+  const theme = useTheme();
+  const { mode } = useThemeContext();
+  const isDark = mode === 'dark' || theme.palette.mode === 'dark';
+
+  const { authState, login, loginMobile, loginEmailOtp, googleLogin } = useAuth();
   const { loading, error, isAuthenticated } = authState;
   
   const [loginMode, setLoginMode] = useState<'email' | 'mobile'>('email');
+  const [emailAuthMethod, setEmailAuthMethod] = useState<'password' | 'otp'>('password');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [emailOtp, setEmailOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpSending, setOtpSending] = useState(false);
+  const [otpMsg, setOtpMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [resendCountdown, setResendCountdown] = useState(0);
+
   const [mobileNumber, setMobileNumber] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
-  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [googleError, setGoogleError] = useState<string | null>(null);
   const [googleProcessing, setGoogleProcessing] = useState(false);
@@ -91,14 +106,53 @@ const Login = () => {
       navigate('/dashboard');
     }
   }, [isAuthenticated, verifyingLogin, isSubmitting, googleProcessing, navigate]);
-  
+
+  useEffect(() => {
+    if (resendCountdown > 0) {
+      const timer = setInterval(() => setResendCountdown(prev => prev - 1), 1000);
+      return () => clearInterval(timer);
+    }
+  }, [resendCountdown]);
+
+  const handleSendEmailOtp = async () => {
+    if (!email || !email.trim()) {
+      setOtpMsg({ type: 'error', text: 'Please enter your email address first' });
+      return;
+    }
+    setOtpSending(true);
+    setOtpMsg(null);
+    try {
+      const res = await authAPI.sendLoginOtp(email.trim());
+      setOtpSent(true);
+      setOtpMsg({ type: 'success', text: res.message || 'OTP verification code sent to your email!' });
+      setResendCountdown(60);
+    } catch (err: any) {
+      let msg = err.response?.data?.message;
+      if (!msg) {
+        if (err.response?.status === 404) {
+          msg = 'Server endpoint updating (HTTP 404). Please re-try sending OTP code in a few moments.';
+        } else {
+          msg = err.message || 'Failed to send OTP code';
+        }
+      }
+      setOtpMsg({ type: 'error', text: msg });
+    } finally {
+      setOtpSending(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
       if (loginMode === 'email') {
-        if (!email || !password) return;
-        await login({ email, password });
+        if (emailAuthMethod === 'password') {
+          if (!email || !password) return;
+          await login({ email, password });
+        } else {
+          if (!email || !emailOtp) return;
+          await loginEmailOtp(email.trim(), emailOtp.trim());
+        }
       } else {
         if (!mobileNumber || !password) return;
         await loginMobile(mobileNumber, dateOfBirth, password);
@@ -294,9 +348,9 @@ const Login = () => {
                   width: '100%',
                   p: { xs: 3, sm: 4, md: 5 }, 
                   borderRadius: '32px !important', 
-                  bgcolor: 'rgba(255, 255, 255, 0.95) !important',
-                  border: '1.5px solid rgba(137, 215, 183, 0.6) !important',
-                  boxShadow: '0 24px 60px rgba(26, 49, 44, 0.15) !important',
+                  bgcolor: isDark ? 'rgba(23, 42, 38, 0.92) !important' : 'rgba(255, 255, 255, 0.95) !important',
+                  border: isDark ? '1px solid rgba(102, 205, 170, 0.35) !important' : '1.5px solid rgba(137, 215, 183, 0.6) !important',
+                  boxShadow: isDark ? '0 24px 60px rgba(0, 0, 0, 0.5) !important' : '0 24px 60px rgba(26, 49, 44, 0.15) !important',
                   textAlign: 'center',
                   height: '100%',
                   display: 'flex',
@@ -313,17 +367,17 @@ const Login = () => {
                       width: 64, 
                       height: 64, 
                       borderRadius: '18px', 
-                      border: '2px solid #89D7B7',
-                      boxShadow: '0 6px 20px rgba(66, 132, 117, 0.3)'
+                      border: isDark ? '2px solid #66CDAA' : '2px solid #89D7B7',
+                      boxShadow: isDark ? '0 6px 20px rgba(102, 205, 170, 0.35)' : '0 6px 20px rgba(66, 132, 117, 0.3)'
                     }}
                   />
                 </Box>
 
-                <Typography variant="h6" sx={{ fontWeight: 900, color: '#1A312C', fontSize: '1.25rem', mb: 0.5, fontFamily: "'Outfit', sans-serif" }}>
+                <Typography variant="h6" sx={{ fontWeight: 900, color: isDark ? '#F2FAF7' : '#1A312C', fontSize: '1.25rem', mb: 0.5, fontFamily: "'Outfit', sans-serif" }}>
                   Verifying Login, Please Wait...
                 </Typography>
 
-                <Typography variant="body2" sx={{ color: '#428475', fontWeight: 700, fontSize: '0.88rem', mb: 3, minHeight: 38, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Typography variant="body2" sx={{ color: isDark ? '#A5E6D2' : '#428475', fontWeight: 700, fontSize: '0.88rem', mb: 3, minHeight: 38, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {verifyStepText}
                 </Typography>
 
@@ -335,7 +389,7 @@ const Login = () => {
                     sx={{
                       height: 10,
                       borderRadius: 5,
-                      bgcolor: 'rgba(137, 215, 183, 0.25)',
+                      bgcolor: isDark ? 'rgba(102, 205, 170, 0.18)' : 'rgba(137, 215, 183, 0.25)',
                       '& .MuiLinearProgress-bar': {
                         borderRadius: 5,
                         background: 'linear-gradient(90deg, #2A6B5D 0%, #10B981 100%)'
@@ -343,10 +397,10 @@ const Login = () => {
                     }}
                   />
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
-                    <Typography variant="caption" sx={{ color: '#428475', fontWeight: 800, fontSize: '0.72rem' }}>
+                    <Typography variant="caption" sx={{ color: isDark ? '#A5E6D2' : '#428475', fontWeight: 800, fontSize: '0.72rem' }}>
                       Database Sync
                     </Typography>
-                    <Typography variant="caption" sx={{ color: '#1A312C', fontWeight: 900, fontSize: '0.72rem' }}>
+                    <Typography variant="caption" sx={{ color: isDark ? '#F2FAF7' : '#1A312C', fontWeight: 900, fontSize: '0.72rem' }}>
                       {verifyProgress}%
                     </Typography>
                   </Box>
@@ -356,11 +410,11 @@ const Login = () => {
                   label="🔒 256-Bit Encrypted Session Sync"
                   size="small"
                   sx={{
-                    bgcolor: 'rgba(16, 185, 129, 0.12)',
-                    color: '#059669',
+                    bgcolor: isDark ? 'rgba(102, 205, 170, 0.2)' : 'rgba(16, 185, 129, 0.12)',
+                    color: isDark ? '#66CDAA' : '#059669',
                     fontWeight: 800,
                     fontSize: '0.72rem',
-                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                    border: isDark ? '1px solid rgba(102, 205, 170, 0.4)' : '1px solid rgba(16, 185, 129, 0.3)',
                     py: 0.4,
                     mx: 'auto'
                   }}
@@ -374,9 +428,9 @@ const Login = () => {
                   width: '100%',
                   p: { xs: 3, sm: 4, md: 4.5 }, 
                   borderRadius: '32px !important', 
-                  bgcolor: 'rgba(255, 255, 255, 0.94) !important',
-                  border: '1px solid rgba(137, 215, 183, 0.45) !important',
-                  boxShadow: '0 20px 50px rgba(26, 49, 44, 0.1) !important'
+                  bgcolor: isDark ? 'rgba(23, 42, 38, 0.88) !important' : 'rgba(255, 255, 255, 0.94) !important',
+                  border: isDark ? '1px solid rgba(102, 205, 170, 0.35) !important' : '1px solid rgba(137, 215, 183, 0.45) !important',
+                  boxShadow: isDark ? '0 20px 50px rgba(0, 0, 0, 0.5) !important' : '0 20px 50px rgba(26, 49, 44, 0.1) !important'
                 }}
               >
           <Box sx={{ textAlign: 'center', mb: 1.5 }}>
@@ -389,26 +443,26 @@ const Login = () => {
                 height: 42, 
                 borderRadius: '12px', 
                 mb: 0.75,
-                border: '2px solid #89D7B7',
-                boxShadow: '0 4px 12px rgba(66, 132, 117, 0.18)'
+                border: isDark ? '2px solid #66CDAA' : '2px solid #89D7B7',
+                boxShadow: isDark ? '0 4px 12px rgba(102, 205, 170, 0.3)' : '0 4px 12px rgba(66, 132, 117, 0.18)'
               }}
             />
-            <Typography variant="h6" sx={{ fontWeight: 800, color: '#1A312C', letterSpacing: '-0.02em', fontSize: '1.15rem' }}>
+            <Typography variant="h6" sx={{ fontWeight: 800, color: isDark ? '#F2FAF7' : '#1A312C', letterSpacing: '-0.02em', fontSize: '1.15rem' }}>
               Welcome to Medizo
             </Typography>
-            <Typography variant="caption" sx={{ color: '#428475', fontWeight: 600, display: 'block', mt: 0.1, fontSize: '0.75rem' }}>
+            <Typography variant="caption" sx={{ color: isDark ? '#A5E6D2' : '#428475', fontWeight: 600, display: 'block', mt: 0.1, fontSize: '0.75rem' }}>
               Sign in to access your digital prescriptions
             </Typography>
           </Box>
 
           {error && (
-            <Alert severity="error" sx={{ mb: 1.25, py: 0.25, borderRadius: '12px', bgcolor: 'rgba(239, 68, 68, 0.1)', color: '#b91c1c', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+            <Alert severity="error" sx={{ mb: 1.25, py: 0.25, borderRadius: '12px', bgcolor: 'rgba(239, 68, 68, 0.1)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
               {error}
             </Alert>
           )}
 
           {googleError && (
-            <Alert severity="error" sx={{ mb: 1.25, py: 0.25, borderRadius: '12px', bgcolor: 'rgba(239, 68, 68, 0.1)', color: '#b91c1c', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+            <Alert severity="error" sx={{ mb: 1.25, py: 0.25, borderRadius: '12px', bgcolor: 'rgba(239, 68, 68, 0.1)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
               {googleError}
             </Alert>
           )}
@@ -422,154 +476,356 @@ const Login = () => {
               sx={{
                 mb: 2,
                 minHeight: 36,
-                '& .MuiTabs-indicator': { bgcolor: '#1A312C', height: 2.5, borderRadius: 2 },
-                '& .MuiTab-root': { minHeight: 36, fontWeight: 700, fontSize: '0.78rem', color: '#428475', textTransform: 'none' },
-                '& .Mui-selected': { color: '#1A312C !important' }
+                '& .MuiTabs-indicator': { bgcolor: isDark ? '#66CDAA' : '#1A312C', height: 2.5, borderRadius: 2 },
+                '& .MuiTab-root': { minHeight: 36, fontWeight: 700, fontSize: '0.78rem', color: isDark ? 'rgba(165, 230, 210, 0.7)' : '#428475', textTransform: 'none' },
+                '& .Mui-selected': { color: isDark ? '#66CDAA !important' : '#1A312C !important' }
               }}
             >
               <Tab icon={<EmailIcon sx={{ fontSize: 16 }} />} iconPosition="start" label="Email" />
               <Tab icon={<PhoneIcon sx={{ fontSize: 16 }} />} iconPosition="start" label="Mobile" />
             </Tabs>
 
-            {/* Email Login Fields */}
+            {/* Email Login Section */}
             {loginMode === 'email' && (
-              <TextField
-                margin="dense"
-                required
-                fullWidth
-                id="email"
-                label="Email Address"
-                name="email"
-                placeholder="Enter your email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                InputLabelProps={{
-                  sx: { color: '#2A6B5D', fontWeight: 600, fontSize: '0.85rem' }
-                }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <EmailIcon sx={{ color: '#428475', fontSize: 18 }} />
-                    </InputAdornment>
-                  ),
-                  sx: { 
-                    borderRadius: '14px',
-                    bgcolor: 'rgba(255, 255, 255, 0.95)',
-                    color: '#123029',
-                    fontSize: '0.9rem',
-                    '& input::placeholder': {
-                      color: '#4D9B8C',
-                      opacity: 0.85,
-                      fontWeight: 500,
-                    },
-                    '& fieldset': { borderColor: 'rgba(137, 215, 183, 0.5)' },
-                    '&:hover fieldset': { borderColor: '#428475 !important' }
-                  }
-                }}
-              />
+              <>
+                {/* Email Sub-Toggle: Password vs OTP */}
+                <Box 
+                  sx={{ 
+                    display: 'flex', 
+                    bgcolor: isDark ? 'rgba(0,0,0,0.25)' : 'rgba(26, 49, 44, 0.05)', 
+                    p: 0.5, 
+                    borderRadius: '12px', 
+                    mb: 1.5,
+                    border: isDark ? '1px solid rgba(102, 205, 170, 0.2)' : '1px solid rgba(137, 215, 183, 0.3)'
+                  }}
+                >
+                  <Button
+                    fullWidth
+                    size="small"
+                    startIcon={<LockIcon sx={{ fontSize: 14 }} />}
+                    onClick={() => setEmailAuthMethod('password')}
+                    sx={{
+                      borderRadius: '10px',
+                      py: 0.6,
+                      fontWeight: 800,
+                      fontSize: '0.75rem',
+                      textTransform: 'none',
+                      bgcolor: emailAuthMethod === 'password' ? (isDark ? '#66CDAA' : '#1A312C') : 'transparent',
+                      color: emailAuthMethod === 'password' ? (isDark ? '#0E1A17' : '#89D7B7') : (isDark ? 'rgba(255,255,255,0.7)' : '#428475'),
+                      '&:hover': { bgcolor: emailAuthMethod === 'password' ? (isDark ? '#66CDAA' : '#1A312C') : 'rgba(0,0,0,0.05)' }
+                    }}
+                  >
+                    Login with Password
+                  </Button>
+                  <Button
+                    fullWidth
+                    size="small"
+                    startIcon={<OtpIcon sx={{ fontSize: 14 }} />}
+                    onClick={() => setEmailAuthMethod('otp')}
+                    sx={{
+                      borderRadius: '10px',
+                      py: 0.6,
+                      fontWeight: 800,
+                      fontSize: '0.75rem',
+                      textTransform: 'none',
+                      bgcolor: emailAuthMethod === 'otp' ? (isDark ? '#66CDAA' : '#1A312C') : 'transparent',
+                      color: emailAuthMethod === 'otp' ? (isDark ? '#0E1A17' : '#89D7B7') : (isDark ? 'rgba(255,255,255,0.7)' : '#428475'),
+                      '&:hover': { bgcolor: emailAuthMethod === 'otp' ? (isDark ? '#66CDAA' : '#1A312C') : 'rgba(0,0,0,0.05)' }
+                    }}
+                  >
+                    Login with OTP
+                  </Button>
+                </Box>
+
+                <TextField
+                  margin="dense"
+                  required
+                  fullWidth
+                  id="email"
+                  label="Email Address"
+                  name="email"
+                  placeholder="Enter your email address"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  InputLabelProps={{
+                    sx: { color: isDark ? '#A5E6D2' : '#2A6B5D', fontWeight: 600, fontSize: '0.85rem' }
+                  }}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <EmailIcon sx={{ color: isDark ? '#66CDAA' : '#428475', fontSize: 18 }} />
+                      </InputAdornment>
+                    ),
+                    sx: { 
+                      borderRadius: '14px',
+                      bgcolor: isDark ? 'rgba(14, 26, 23, 0.75)' : 'rgba(255, 255, 255, 0.95)',
+                      color: isDark ? '#F2FAF7' : '#123029',
+                      fontSize: '0.9rem',
+                      '& input::placeholder': {
+                        color: isDark ? 'rgba(165, 230, 210, 0.6)' : '#4D9B8C',
+                        opacity: 0.85,
+                        fontWeight: 500,
+                      },
+                      '& fieldset': { borderColor: isDark ? 'rgba(102, 205, 170, 0.35)' : 'rgba(137, 215, 183, 0.5)' },
+                      '&:hover fieldset': { borderColor: isDark ? '#66CDAA !important' : '#428475 !important' },
+                      '&.Mui-focused fieldset': { borderColor: isDark ? '#66CDAA !important' : '#2A6B5D !important' }
+                    }
+                  }}
+                />
+
+                {/* Password Mode Fields */}
+                {emailAuthMethod === 'password' && (
+                  <>
+                    <TextField
+                      margin="dense"
+                      required
+                      fullWidth
+                      name="password"
+                      label="Password"
+                      placeholder="Enter your password"
+                      type={showPassword ? 'text' : 'password'}
+                      id="password"
+                      autoComplete="current-password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      InputLabelProps={{
+                        sx: { color: isDark ? '#A5E6D2' : '#2A6B5D', fontWeight: 600, fontSize: '0.85rem' }
+                      }}
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <LockIcon sx={{ color: isDark ? '#66CDAA' : '#428475', fontSize: 18 }} />
+                          </InputAdornment>
+                        ),
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            <IconButton
+                              aria-label="toggle password visibility"
+                              onClick={() => setShowPassword(!showPassword)}
+                              edge="end"
+                              size="small"
+                              sx={{ color: isDark ? '#66CDAA' : '#428475' }}
+                            >
+                              {showPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                            </IconButton>
+                          </InputAdornment>
+                        ),
+                        sx: { 
+                          borderRadius: '14px',
+                          bgcolor: isDark ? 'rgba(14, 26, 23, 0.75)' : 'rgba(255, 255, 255, 0.95)',
+                          color: isDark ? '#F2FAF7' : '#123029',
+                          fontSize: '0.9rem',
+                          '& input::placeholder': {
+                            color: isDark ? 'rgba(165, 230, 210, 0.6)' : '#4D9B8C',
+                            opacity: 0.85,
+                            fontWeight: 500,
+                          },
+                          '& fieldset': { borderColor: isDark ? 'rgba(102, 205, 170, 0.35)' : 'rgba(137, 215, 183, 0.5)' },
+                          '&:hover fieldset': { borderColor: isDark ? '#66CDAA !important' : '#428475 !important' },
+                          '&.Mui-focused fieldset': { borderColor: isDark ? '#66CDAA !important' : '#2A6B5D !important' }
+                        }
+                      }}
+                    />
+
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 0.25, mb: 0.5 }}>
+                      <Typography
+                        variant="caption"
+                        onClick={handleForgotPassword}
+                        sx={{
+                          color: isDark ? '#66CDAA' : '#428475',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          fontSize: '0.725rem',
+                          '&:hover': { color: isDark ? '#80E5C2' : '#1A312C', textDecoration: 'underline' }
+                        }}
+                      >
+                        Forgot Password?
+                      </Typography>
+                    </Box>
+                  </>
+                )}
+
+                {/* Email OTP Mode Fields */}
+                {emailAuthMethod === 'otp' && (
+                  <Box sx={{ mt: 1, mb: 1 }}>
+                    {otpMsg && (
+                      <Alert severity={otpMsg.type} sx={{ mb: 1.25, borderRadius: '12px', py: 0.25, fontSize: '0.78rem' }}>
+                        {otpMsg.text}
+                      </Alert>
+                    )}
+
+                    <Box sx={{ mb: 1.25 }}>
+                      <Button
+                        fullWidth
+                        variant="outlined"
+                        onClick={handleSendEmailOtp}
+                        disabled={otpSending || resendCountdown > 0 || !email.trim()}
+                        startIcon={otpSending ? <CircularProgress size={16} color="inherit" /> : <SendIcon sx={{ fontSize: 15 }} />}
+                        sx={{
+                          borderRadius: '12px',
+                          py: 0.8,
+                          fontWeight: 800,
+                          fontSize: '0.78rem',
+                          borderColor: isDark ? '#66CDAA' : '#1A312C',
+                          color: isDark ? '#66CDAA' : '#1A312C',
+                          textTransform: 'none',
+                          '&:hover': { bgcolor: isDark ? 'rgba(102, 205, 170, 0.15)' : 'rgba(26, 49, 44, 0.08)' }
+                        }}
+                      >
+                        {otpSending 
+                          ? 'Sending Verification Code...' 
+                          : resendCountdown > 0 
+                          ? `Resend Code in ${resendCountdown}s` 
+                          : otpSent 
+                          ? 'Resend OTP Code' 
+                          : '📩 Send OTP Code to Email'}
+                      </Button>
+                    </Box>
+
+                    <TextField
+                      margin="dense"
+                      required
+                      fullWidth
+                      id="emailOtp"
+                      label="6-Digit Verification OTP"
+                      name="emailOtp"
+                      placeholder="Enter 6-digit OTP"
+                      value={emailOtp}
+                      onChange={(e) => setEmailOtp(e.target.value)}
+                      inputProps={{ maxLength: 6 }}
+                      InputLabelProps={{
+                        sx: { color: isDark ? '#A5E6D2' : '#2A6B5D', fontWeight: 600, fontSize: '0.85rem' }
+                      }}
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <OtpIcon sx={{ color: isDark ? '#66CDAA' : '#428475', fontSize: 18 }} />
+                          </InputAdornment>
+                        ),
+                        sx: { 
+                          borderRadius: '14px',
+                          bgcolor: isDark ? 'rgba(14, 26, 23, 0.75)' : 'rgba(255, 255, 255, 0.95)',
+                          color: isDark ? '#F2FAF7' : '#123029',
+                          fontSize: '0.9rem',
+                          fontWeight: 700,
+                          letterSpacing: '3px',
+                          '& input::placeholder': { color: isDark ? 'rgba(165, 230, 210, 0.6)' : '#4D9B8C', opacity: 0.85, fontWeight: 500, letterSpacing: 'normal' },
+                          '& fieldset': { borderColor: isDark ? 'rgba(102, 205, 170, 0.35)' : 'rgba(137, 215, 183, 0.5)' },
+                          '&:hover fieldset': { borderColor: isDark ? '#66CDAA !important' : '#428475 !important' },
+                          '&.Mui-focused fieldset': { borderColor: isDark ? '#66CDAA !important' : '#2A6B5D !important' }
+                        }
+                      }}
+                    />
+                  </Box>
+                )}
+              </>
             )}
 
-            {/* Mobile Login Field */}
+            {/* Mobile Login Fields */}
             {loginMode === 'mobile' && (
-              <TextField
-                margin="dense"
-                required
-                fullWidth
-                id="mobileNumber"
-                label="Mobile Number"
-                name="mobileNumber"
-                placeholder="Enter your mobile number"
-                autoComplete="tel"
-                value={mobileNumber}
-                onChange={(e) => setMobileNumber(e.target.value)}
-                InputLabelProps={{
-                  sx: { color: '#2A6B5D', fontWeight: 600, fontSize: '0.85rem' }
-                }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <PhoneIcon sx={{ color: '#428475', fontSize: 18 }} />
-                    </InputAdornment>
-                  ),
-                  sx: { 
-                    borderRadius: '14px',
-                    bgcolor: 'rgba(255, 255, 255, 0.95)',
-                    color: '#123029',
-                    fontSize: '0.9rem',
-                    '& input::placeholder': { color: '#4D9B8C', opacity: 0.85, fontWeight: 500 },
-                    '& fieldset': { borderColor: 'rgba(137, 215, 183, 0.5)' },
-                    '&:hover fieldset': { borderColor: '#428475 !important' }
-                  }
-                }}
-              />
-            )}
-            
-            <TextField
-              margin="dense"
-              required
-              fullWidth
-              name="password"
-              label="Password"
-              placeholder="Enter your password"
-              type={showPassword ? 'text' : 'password'}
-              id="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              InputLabelProps={{
-                sx: { color: '#2A6B5D', fontWeight: 600, fontSize: '0.85rem' }
-              }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <LockIcon sx={{ color: '#428475', fontSize: 18 }} />
-                  </InputAdornment>
-                ),
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton
-                      aria-label="toggle password visibility"
-                      onClick={() => setShowPassword(!showPassword)}
-                      edge="end"
-                      size="small"
-                      sx={{ color: '#428475' }}
-                    >
-                      {showPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
-                    </IconButton>
-                  </InputAdornment>
-                ),
-                sx: { 
-                  borderRadius: '14px',
-                  bgcolor: 'rgba(255, 255, 255, 0.95)',
-                  color: '#123029',
-                  fontSize: '0.9rem',
-                  '& input::placeholder': {
-                    color: '#4D9B8C',
-                    opacity: 0.85,
-                    fontWeight: 500,
-                  },
-                  '& fieldset': { borderColor: 'rgba(137, 215, 183, 0.5)' },
-                  '&:hover fieldset': { borderColor: '#428475 !important' }
-                }
-              }}
-            />
+              <>
+                <TextField
+                  margin="dense"
+                  required
+                  fullWidth
+                  id="mobileNumber"
+                  label="Mobile Number"
+                  name="mobileNumber"
+                  placeholder="Enter your mobile number"
+                  autoComplete="tel"
+                  value={mobileNumber}
+                  onChange={(e) => setMobileNumber(e.target.value)}
+                  InputLabelProps={{
+                    sx: { color: isDark ? '#A5E6D2' : '#2A6B5D', fontWeight: 600, fontSize: '0.85rem' }
+                  }}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <PhoneIcon sx={{ color: isDark ? '#66CDAA' : '#428475', fontSize: 18 }} />
+                      </InputAdornment>
+                    ),
+                    sx: { 
+                      borderRadius: '14px',
+                      bgcolor: isDark ? 'rgba(14, 26, 23, 0.75)' : 'rgba(255, 255, 255, 0.95)',
+                      color: isDark ? '#F2FAF7' : '#123029',
+                      fontSize: '0.9rem',
+                      '& input::placeholder': { color: isDark ? 'rgba(165, 230, 210, 0.6)' : '#4D9B8C', opacity: 0.85, fontWeight: 500 },
+                      '& fieldset': { borderColor: isDark ? 'rgba(102, 205, 170, 0.35)' : 'rgba(137, 215, 183, 0.5)' },
+                      '&:hover fieldset': { borderColor: isDark ? '#66CDAA !important' : '#428475 !important' },
+                      '&.Mui-focused fieldset': { borderColor: isDark ? '#66CDAA !important' : '#2A6B5D !important' }
+                    }
+                  }}
+                />
 
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 0.25, mb: 0.5 }}>
-              <Typography
-                variant="caption"
-                onClick={handleForgotPassword}
-                sx={{
-                  color: '#428475',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  fontSize: '0.725rem',
-                  '&:hover': { color: '#1A312C', textDecoration: 'underline' }
-                }}
-              >
-                Forgot Password?
-              </Typography>
-            </Box>
+                <TextField
+                  margin="dense"
+                  required
+                  fullWidth
+                  name="password"
+                  label="Password"
+                  placeholder="Enter your password"
+                  type={showPassword ? 'text' : 'password'}
+                  id="password"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  InputLabelProps={{
+                    sx: { color: isDark ? '#A5E6D2' : '#2A6B5D', fontWeight: 600, fontSize: '0.85rem' }
+                  }}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <LockIcon sx={{ color: isDark ? '#66CDAA' : '#428475', fontSize: 18 }} />
+                      </InputAdornment>
+                    ),
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          aria-label="toggle password visibility"
+                          onClick={() => setShowPassword(!showPassword)}
+                          edge="end"
+                          size="small"
+                          sx={{ color: isDark ? '#66CDAA' : '#428475' }}
+                        >
+                          {showPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                    sx: { 
+                      borderRadius: '14px',
+                      bgcolor: isDark ? 'rgba(14, 26, 23, 0.75)' : 'rgba(255, 255, 255, 0.95)',
+                      color: isDark ? '#F2FAF7' : '#123029',
+                      fontSize: '0.9rem',
+                      '& input::placeholder': {
+                        color: isDark ? 'rgba(165, 230, 210, 0.6)' : '#4D9B8C',
+                        opacity: 0.85,
+                        fontWeight: 500,
+                      },
+                      '& fieldset': { borderColor: isDark ? 'rgba(102, 205, 170, 0.35)' : 'rgba(137, 215, 183, 0.5)' },
+                      '&:hover fieldset': { borderColor: isDark ? '#66CDAA !important' : '#428475 !important' },
+                      '&.Mui-focused fieldset': { borderColor: isDark ? '#66CDAA !important' : '#2A6B5D !important' }
+                    }
+                  }}
+                />
+
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 0.25, mb: 0.5 }}>
+                  <Typography
+                    variant="caption"
+                    onClick={handleForgotPassword}
+                    sx={{
+                      color: isDark ? '#66CDAA' : '#428475',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      fontSize: '0.725rem',
+                      '&:hover': { color: isDark ? '#80E5C2' : '#1A312C', textDecoration: 'underline' }
+                    }}
+                  >
+                    Forgot Password?
+                  </Typography>
+                </Box>
+              </>
+            )}
 
             <Button
               type="submit"
@@ -581,33 +837,33 @@ const Login = () => {
                 mt: 1.25, 
                 mb: 1.25, 
                 height: 46, 
-                bgcolor: '#1A312C', 
-                color: '#89D7B7',
+                background: isDark ? 'linear-gradient(135deg, #66CDAA 0%, #4D9B8C 100%)' : '#1A312C', 
+                color: isDark ? '#0E1A17' : '#89D7B7',
                 borderRadius: '14px',
                 fontSize: '0.9rem',
                 fontWeight: 800,
-                boxShadow: (loading || isSubmitting) ? 'none' : '0 6px 18px rgba(26, 49, 44, 0.2)',
-                border: '1px solid #89D7B7',
-                '&:hover': { bgcolor: '#0F1D1A' },
-                '&.Mui-disabled': { bgcolor: '#1A312C', color: '#89D7B7', opacity: 0.85 },
+                boxShadow: (loading || isSubmitting) ? 'none' : isDark ? '0 6px 20px rgba(102, 205, 170, 0.3)' : '0 6px 18px rgba(26, 49, 44, 0.2)',
+                border: isDark ? '1px solid #80E5C2' : '1px solid #89D7B7',
+                '&:hover': { background: isDark ? 'linear-gradient(135deg, #80E5C2 0%, #52A694 100%)' : '#0F1D1A' },
+                '&.Mui-disabled': { bgcolor: isDark ? 'rgba(102, 205, 170, 0.4)' : '#1A312C', color: isDark ? '#0E1A17' : '#89D7B7', opacity: 0.85 },
                 transition: 'all 0.2s ease'
               }}
             >
               {(loading || isSubmitting) ? (
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1.2 }}>
-                  <CircularProgress size={18} sx={{ color: '#89D7B7' }} />
-                  <Typography variant="body2" sx={{ fontWeight: 800, color: '#89D7B7', fontSize: '0.9rem', letterSpacing: '0.02em' }}>
+                  <CircularProgress size={18} sx={{ color: isDark ? '#0E1A17' : '#89D7B7' }} />
+                  <Typography variant="body2" sx={{ fontWeight: 800, color: isDark ? '#0E1A17' : '#89D7B7', fontSize: '0.9rem', letterSpacing: '0.02em' }}>
                     Signing in...
                   </Typography>
                 </Box>
               ) : (
-                'Sign In'
+                loginMode === 'email' && emailAuthMethod === 'otp' ? 'Verify OTP & Sign In' : 'Sign In'
               )}
             </Button>
 
             {/* Google Sign-In Divider */}
-            <Divider sx={{ my: 1, borderColor: 'rgba(137, 215, 183, 0.3)' }}>
-              <Typography variant="caption" sx={{ color: '#428475', fontWeight: 700, px: 1, fontSize: '0.675rem' }}>
+            <Divider sx={{ my: 1, borderColor: isDark ? 'rgba(102, 205, 170, 0.25)' : 'rgba(137, 215, 183, 0.3)' }}>
+              <Typography variant="caption" sx={{ color: isDark ? '#A5E6D2' : '#428475', fontWeight: 700, px: 1, fontSize: '0.675rem' }}>
                 OR
               </Typography>
             </Divider>
@@ -616,27 +872,45 @@ const Login = () => {
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', my: 1.25 }}>
               {googleProcessing ? (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <CircularProgress size={20} sx={{ color: '#428475' }} />
-                  <Typography variant="caption" sx={{ color: '#428475', fontWeight: 600 }}>
+                  <CircularProgress size={20} sx={{ color: isDark ? '#66CDAA' : '#428475' }} />
+                  <Typography variant="caption" sx={{ color: isDark ? '#A5E6D2' : '#428475', fontWeight: 600 }}>
                     Signing in with Google...
                   </Typography>
                 </Box>
               ) : (
-                <GoogleLogin
-                  onSuccess={handleGoogleSuccess}
-                  onError={handleGoogleError}
-                  useOneTap={false}
-                  theme="outline"
-                  size="large"
-                  text="continue_with"
-                  shape="rectangular"
-                  width="320"
-                />
+                <Box
+                  sx={{
+                    display: 'inline-flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    bgcolor: '#FFFFFF',
+                    borderRadius: '12px',
+                    boxShadow: isDark ? '0 4px 16px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.3)' : '0 4px 14px rgba(0, 0, 0, 0.08)',
+                    overflow: 'hidden',
+                    p: '1px',
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                      boxShadow: isDark ? '0 6px 22px rgba(255, 255, 255, 0.3)' : '0 6px 18px rgba(0, 0, 0, 0.12)',
+                      transform: 'translateY(-1px)'
+                    }
+                  }}
+                >
+                  <GoogleLogin
+                    onSuccess={handleGoogleSuccess}
+                    onError={handleGoogleError}
+                    useOneTap={false}
+                    theme="outline"
+                    size="large"
+                    text="continue_with"
+                    shape="rectangular"
+                    width="318"
+                  />
+                </Box>
               )}
             </Box>
 
-            <Divider sx={{ my: 1.25, borderColor: 'rgba(137, 215, 183, 0.3)' }}>
-              <Typography variant="caption" sx={{ color: '#428475', fontWeight: 700, px: 1, fontSize: '0.675rem' }}>
+            <Divider sx={{ my: 1.25, borderColor: isDark ? 'rgba(102, 205, 170, 0.25)' : 'rgba(137, 215, 183, 0.3)' }}>
+              <Typography variant="caption" sx={{ color: isDark ? '#A5E6D2' : '#428475', fontWeight: 700, px: 1, fontSize: '0.675rem' }}>
                 NEW TO MEDIZO?
               </Typography>
             </Divider>
@@ -649,13 +923,17 @@ const Login = () => {
               size="medium"
               sx={{ 
                 height: 42, 
-                borderColor: '#428475', 
-                color: '#1A312C',
+                borderColor: isDark ? '#66CDAA' : '#428475', 
+                color: isDark ? '#66CDAA' : '#1A312C',
                 borderRadius: '14px',
                 fontWeight: 800,
                 borderWidth: '1.5px',
                 fontSize: '0.85rem',
-                '&:hover': { bgcolor: 'rgba(137, 215, 183, 0.15)', borderColor: '#1A312C' }
+                '&:hover': { 
+                  bgcolor: isDark ? 'rgba(102, 205, 170, 0.15)' : 'rgba(137, 215, 183, 0.15)', 
+                  borderColor: isDark ? '#80E5C2' : '#1A312C',
+                  color: isDark ? '#80E5C2' : '#1A312C'
+                }
               }}
             >
               Create New Account
@@ -666,7 +944,7 @@ const Login = () => {
               sx={{
                 mt: 2,
                 fontSize: '0.65rem',
-                color: '#428475',
+                color: isDark ? 'rgba(165, 230, 210, 0.75)' : '#428475',
                 textAlign: 'center',
                 lineHeight: 1.6,
                 px: 1,
@@ -683,24 +961,24 @@ const Login = () => {
                 to="/privacy-policy"
                 sx={{
                   fontSize: '0.68rem',
-                  color: '#428475',
+                  color: isDark ? '#66CDAA' : '#428475',
                   fontWeight: 600,
                   textDecoration: 'none',
-                  '&:hover': { textDecoration: 'underline', color: '#1A312C' },
+                  '&:hover': { textDecoration: 'underline', color: isDark ? '#80E5C2' : '#1A312C' },
                 }}
               >
                 Privacy Policy
               </Link>
-              <Typography sx={{ fontSize: '0.68rem', color: 'rgba(66, 132, 117, 0.4)' }}>•</Typography>
+              <Typography sx={{ fontSize: '0.68rem', color: isDark ? 'rgba(102, 205, 170, 0.4)' : 'rgba(66, 132, 117, 0.4)' }}>•</Typography>
               <Link
                 component={RouterLink}
                 to="/terms"
                 sx={{
                   fontSize: '0.68rem',
-                  color: '#428475',
+                  color: isDark ? '#66CDAA' : '#428475',
                   fontWeight: 600,
                   textDecoration: 'none',
-                  '&:hover': { textDecoration: 'underline', color: '#1A312C' },
+                  '&:hover': { textDecoration: 'underline', color: isDark ? '#80E5C2' : '#1A312C' },
                 }}
               >
                 Terms of Service
@@ -714,10 +992,23 @@ const Login = () => {
       </Box>
 
       {/* Forgot Password Dialog */}
-      <Dialog open={forgotOpen} onClose={() => setForgotOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ fontWeight: 800, color: '#1A312C' }}>Forgot Password?</DialogTitle>
+      <Dialog 
+        open={forgotOpen} 
+        onClose={() => setForgotOpen(false)} 
+        maxWidth="xs" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '24px',
+            bgcolor: isDark ? '#172A26' : '#FFFFFF',
+            border: isDark ? '1px solid rgba(102, 205, 170, 0.3)' : 'none',
+            color: isDark ? '#F2FAF7' : 'inherit'
+          }
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 800, color: isDark ? '#F2FAF7' : '#1A312C' }}>Forgot Password?</DialogTitle>
         <DialogContent>
-          <Typography variant="body2" sx={{ mb: 2, color: '#428475' }}>
+          <Typography variant="body2" sx={{ mb: 2, color: isDark ? '#A5E6D2' : '#428475' }}>
             Enter your registered email address or mobile number. We'll send you a password reset link.
           </Typography>
           {forgotMsg && (
@@ -731,20 +1022,34 @@ const Login = () => {
             label="Email or Mobile Number"
             value={forgotInput}
             onChange={(e) => setForgotInput(e.target.value)}
-            InputProps={{ sx: { borderRadius: '12px' } }}
+            InputLabelProps={{ sx: { color: isDark ? '#A5E6D2' : '#2A6B5D' } }}
+            InputProps={{ 
+              sx: { 
+                borderRadius: '12px',
+                bgcolor: isDark ? 'rgba(14, 26, 23, 0.75)' : '#FFFFFF',
+                color: isDark ? '#F2FAF7' : '#123029',
+                '& fieldset': { borderColor: isDark ? 'rgba(102, 205, 170, 0.35)' : undefined }
+              } 
+            }}
           />
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setForgotOpen(false)} color="inherit" sx={{ fontWeight: 700 }}>
+          <Button onClick={() => setForgotOpen(false)} sx={{ color: isDark ? '#A5E6D2' : 'inherit', fontWeight: 700 }}>
             Cancel
           </Button>
           <Button
             onClick={handleSendForgotOtp}
             variant="contained"
             disabled={forgotLoading || !forgotInput.trim()}
-            sx={{ bgcolor: '#1A312C', color: '#89D7B7', fontWeight: 800, borderRadius: '12px', '&:hover': { bgcolor: '#0F1D1A' } }}
+            sx={{ 
+              background: isDark ? 'linear-gradient(135deg, #66CDAA 0%, #4D9B8C 100%)' : '#1A312C', 
+              color: isDark ? '#0E1A17' : '#89D7B7', 
+              fontWeight: 800, 
+              borderRadius: '12px', 
+              '&:hover': { background: isDark ? 'linear-gradient(135deg, #80E5C2 0%, #52A694 100%)' : '#0F1D1A' } 
+            }}
           >
-            {forgotLoading ? <CircularProgress size={20} sx={{ color: '#89D7B7' }} /> : 'Send Reset Email'}
+            {forgotLoading ? <CircularProgress size={20} sx={{ color: isDark ? '#0E1A17' : '#89D7B7' }} /> : 'Send Reset Email'}
           </Button>
         </DialogActions>
       </Dialog>

@@ -27,7 +27,10 @@ import {
   AlertTitle,
   Snackbar,
   Button,
-  Dialog
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions
 } from '@mui/material';
 import { 
   Add as AddIcon, 
@@ -53,7 +56,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { getPrescriptions, lookupPrescriptionByCode } from '../services/prescriptions';
-import { digilockerAPI, usersAPI } from '../services/api';
+import { getCachedData } from '../services/apiCache';
+import { digilockerAPI, usersAPI, authAPI } from '../services/api';
 import { Prescription } from '../types/prescription';
 import EnhancedPatientManagement from '../components/EnhancedPatientManagement';
 import WallpaperCarouselHero from '../components/WallpaperCarouselHero';
@@ -63,8 +67,14 @@ import QrScannerModal from '../components/QrScannerModal';
 const Dashboard = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { authState } = useAuth();
+  const { authState, needsDobVerification, markDobVerified } = useAuth();
   const { user } = authState;
+
+  // DOB Gate Dialog State
+  const [dobGateDialogOpen, setDobGateDialogOpen] = useState(false);
+  const [dobGateInput, setDobGateInput] = useState('');
+  const [dobGateLoading, setDobGateLoading] = useState(false);
+  const [dobGateMsg, setDobGateMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   if (user?.role === 'pharmacist') {
     return <PharmacistDashboard />;
@@ -166,23 +176,31 @@ const Dashboard = () => {
       setLoading(false);
       return;
     }
+
+    // 1. Instant Synchronous Cache Check (0 spinner delay on return visits)
+    const cachedList = getCachedData<Prescription[]>('prescriptions_list');
+    if (Array.isArray(cachedList)) {
+      setPrescriptions(cachedList);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
+
+    // 2. Background Revalidation (Stale-While-Revalidate)
     const fetchPrescriptions = async (isBackgroundRefresh = false) => {
       try {
-        if (!isBackgroundRefresh) setLoading(true);
-        const data = await getPrescriptions(isBackgroundRefresh);
+        const data = await getPrescriptions(isBackgroundRefresh || Boolean(cachedList));
         setPrescriptions(Array.isArray(data) ? data : []);
         setError(null);
       } catch (err) {
         console.error('Error fetching prescriptions:', err);
-        if (!isBackgroundRefresh) setError('Failed to load prescriptions');
+        if (!cachedList) setError('Failed to load prescriptions');
       } finally {
-        if (!isBackgroundRefresh) setLoading(false);
+        setLoading(false);
       }
     };
-    // Load from cache first (instant), then background refresh
-    fetchPrescriptions();
-    const timer = setTimeout(() => fetchPrescriptions(true), 150);
-    return () => clearTimeout(timer);
+
+    fetchPrescriptions(Boolean(cachedList));
   }, [authState.isAuthenticated]);
   
   // Filter prescriptions based on search and status
@@ -287,6 +305,184 @@ const Dashboard = () => {
       setSnackbar({ open: true, message: err?.response?.data?.message || 'Failed to look up prescription.', severity: 'error' });
     }
   };
+
+  if (needsDobVerification) {
+    return (
+      <>
+        <Container maxWidth="sm" sx={{ pt: { xs: 4, md: 8 }, pb: 8, px: 2 }}>
+          <Card
+            className="glass-card-dark animate-scale-in"
+            sx={{
+              p: { xs: 3, sm: 5 },
+              borderRadius: '28px',
+              textAlign: 'center',
+              background: mode === 'dark'
+                ? 'linear-gradient(145deg, rgba(25, 18, 36, 0.95) 0%, rgba(45, 20, 60, 0.9) 100%) !important'
+                : 'linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 240, 255, 0.98) 100%) !important',
+              border: '2px solid rgba(171, 71, 188, 0.3)',
+              boxShadow: '0 20px 60px rgba(123, 31, 162, 0.25)'
+            }}
+          >
+            {/* Animated Lock Shield Icon */}
+            <Box
+              sx={{
+                width: 90,
+                height: 90,
+                borderRadius: '50%',
+                bgcolor: 'rgba(123, 31, 162, 0.15)',
+                color: '#ab47bc',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                mx: 'auto',
+                mb: 3,
+                border: '2px solid rgba(171, 71, 188, 0.4)',
+                boxShadow: '0 0 30px rgba(123, 31, 162, 0.3)',
+                animation: 'pulse 2.5s infinite',
+                '@keyframes pulse': {
+                  '0%, 100%': { transform: 'scale(1)', boxShadow: '0 0 30px rgba(123, 31, 162, 0.3)' },
+                  '50%': { transform: 'scale(1.06)', boxShadow: '0 0 45px rgba(171, 71, 188, 0.5)' }
+                }
+              }}
+            >
+              <SecurityIcon sx={{ fontSize: 48 }} />
+            </Box>
+
+            <Chip
+              label="Identity Verification Required"
+              size="small"
+              sx={{
+                fontWeight: 800,
+                fontSize: '0.75rem',
+                bgcolor: 'rgba(123, 31, 162, 0.2)',
+                color: mode === 'dark' ? '#ce93d8' : '#7b1fa2',
+                border: '1px solid rgba(171, 71, 188, 0.3)',
+                mb: 2.5,
+                px: 1.5,
+                py: 1.8
+              }}
+            />
+
+            <Typography variant="h4" sx={{ fontWeight: 900, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', mb: 1.5, letterSpacing: '-0.02em' }}>
+              Verify Date of Birth
+            </Typography>
+
+            <Typography variant="body1" sx={{ color: mode === 'dark' ? 'rgba(255, 255, 255, 0.75)' : '#475569', mb: 4, lineHeight: 1.6, maxWidth: 420, mx: 'auto' }}>
+              To protect your medical privacy, please verify your Date of Birth before accessing your health records, prescriptions, and medical portal.
+            </Typography>
+
+            {/* ONE BIG BUTTON */}
+            <Button
+              variant="contained"
+              size="large"
+              fullWidth
+              onClick={() => { setDobGateDialogOpen(true); setDobGateMsg(null); setDobGateInput(''); }}
+              startIcon={<SecurityIcon sx={{ fontSize: 26 }} />}
+              sx={{
+                py: 2,
+                fontSize: '1.05rem',
+                fontWeight: 800,
+                borderRadius: '20px',
+                bgcolor: '#7b1fa2',
+                color: '#ffffff',
+                boxShadow: '0 10px 30px rgba(123, 31, 162, 0.4)',
+                textTransform: 'none',
+                letterSpacing: 0.3,
+                '&:hover': {
+                  bgcolor: '#6a1b9a',
+                  boxShadow: '0 14px 40px rgba(123, 31, 162, 0.5)',
+                  transform: 'translateY(-2px)'
+                },
+                transition: 'all 0.25s ease'
+              }}
+            >
+              🔐 Verify Date of Birth
+            </Button>
+          </Card>
+        </Container>
+
+        {/* DOB Verification Dialog Modal */}
+        <Dialog
+          open={dobGateDialogOpen}
+          onClose={() => setDobGateDialogOpen(false)}
+          maxWidth="xs"
+          fullWidth
+          PaperProps={{
+            sx: {
+              borderRadius: '24px',
+              p: 1,
+              bgcolor: mode === 'dark' ? '#141416' : '#ffffff',
+              border: '1px solid rgba(171, 71, 188, 0.3)',
+              boxShadow: '0 20px 50px rgba(0,0,0,0.3)'
+            }
+          }}
+        >
+          <DialogTitle sx={{ fontWeight: 900, textAlign: 'center', pt: 2, pb: 0.5, color: mode === 'dark' ? '#FAF2F5' : '#0f172a' }}>
+            🔐 Enter Date of Birth
+          </DialogTitle>
+          <DialogContent sx={{ pt: 1 }}>
+            <Typography variant="body2" sx={{ mb: 2, textAlign: 'center', color: mode === 'dark' ? 'rgba(255,255,255,0.7)' : '#64748b' }}>
+              Please enter your Date of Birth as registered on your account to unlock your medical records.
+            </Typography>
+            {dobGateMsg && (
+              <Alert severity={dobGateMsg.type} sx={{ mb: 2, borderRadius: '14px', fontWeight: 600 }}>
+                {dobGateMsg.text}
+              </Alert>
+            )}
+            <TextField
+              fullWidth
+              margin="dense"
+              label="Date of Birth"
+              type="date"
+              value={dobGateInput}
+              onChange={(e) => setDobGateInput(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              InputProps={{ sx: { borderRadius: '14px' } }}
+            />
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+            <Button onClick={() => setDobGateDialogOpen(false)} color="inherit" sx={{ fontWeight: 700, borderRadius: '12px' }}>
+              Cancel
+            </Button>
+            <Button
+              variant="contained"
+              disabled={dobGateLoading || !dobGateInput.trim()}
+              onClick={async () => {
+                setDobGateLoading(true);
+                setDobGateMsg(null);
+                try {
+                  const res = await authAPI.verifyDob(dobGateInput.trim());
+                  if (res.verified) {
+                    setDobGateMsg({ type: 'success', text: '✅ ' + (res.message || 'Identity verified!') });
+                    markDobVerified();
+                    setTimeout(() => setDobGateDialogOpen(false), 1200);
+                  } else {
+                    setDobGateMsg({ type: 'error', text: res.message || 'Verification failed. Date of birth does not match.' });
+                  }
+                } catch (err: any) {
+                  setDobGateMsg({ type: 'error', text: err.response?.data?.message || err.message || 'Verification failed.' });
+                } finally {
+                  setDobGateLoading(false);
+                }
+              }}
+              sx={{
+                bgcolor: '#7b1fa2',
+                color: '#ffffff',
+                fontWeight: 800,
+                borderRadius: '14px',
+                px: 3,
+                py: 1,
+                textTransform: 'none',
+                '&:hover': { bgcolor: '#6a1b9a' }
+              }}
+            >
+              {dobGateLoading ? <CircularProgress size={20} color="inherit" /> : 'Verify Identity'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </>
+    );
+  }
 
   return (
     <>

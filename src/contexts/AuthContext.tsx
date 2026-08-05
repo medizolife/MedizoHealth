@@ -1,5 +1,5 @@
 'use client';
-import { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useReducer, useEffect, useState, ReactNode } from 'react';
 import { AuthContextType, AuthState, LoginCredentials, RegisterData, User } from '../types/auth';
 import * as api from '../services/api';
 
@@ -88,8 +88,12 @@ const AuthContext = createContext<AuthContextType>({
   authState: initialState,
   isAuthenticated: false,
   user: null,
+  dobVerified: false,
+  needsDobVerification: false,
+  markDobVerified: () => {},
   login: async () => {},
   loginMobile: async () => {},
+  loginEmailOtp: async () => {},
   register: async () => {},
   googleLogin: async () => {},
   googleCompleteRegistration: () => {},
@@ -106,6 +110,22 @@ interface AuthProviderProps {
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
+  const [dobVerified, setDobVerified] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('dobVerified') === 'true';
+    }
+    return false;
+  });
+
+  const markDobVerified = () => {
+    setDobVerified(true);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('dobVerified', 'true');
+    }
+  };
+
+  const isPatientUnverifiedEmail = state.isAuthenticated && state.user?.role === 'patient' && state.user?.email?.endsWith('@patient.medizo.life');
+  const needsDobVerification = Boolean(state.isAuthenticated && state.user?.role === 'patient' && isPatientUnverifiedEmail && !dobVerified);
 
   // Load user on mount
   useEffect(() => {
@@ -172,6 +192,22 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
+  // Email OTP Login function
+  const loginEmailOtp = async (email: string, otp: string) => {
+    dispatch({ type: 'AUTH_START' });
+    try {
+      const data = await api.authAPI.loginEmailOtp(email, otp);
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      dispatch({ type: 'LOGIN_SUCCESS', payload: data });
+      return data;
+    } catch (error: any) {
+      const message = error.response?.data?.message || error.message || 'OTP verification failed';
+      dispatch({ type: 'AUTH_ERROR', payload: message });
+      throw error;
+    }
+  };
+
   // Register function
   const register = async (data: RegisterData) => {
     dispatch({ type: 'AUTH_START' });
@@ -212,6 +248,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   // Logout function
   const logout = () => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('dobVerified');
+    }
+    setDobVerified(false);
     dispatch({ type: 'LOGOUT' });
   };
 
@@ -225,8 +265,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       authState: state, 
       isAuthenticated: state.isAuthenticated,
       user: state.user,
+      dobVerified,
+      needsDobVerification,
+      markDobVerified,
       login, 
       loginMobile,
+      loginEmailOtp,
       register, 
       googleLogin, 
       googleCompleteRegistration,

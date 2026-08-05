@@ -1,6 +1,6 @@
 import api from './api';
 import { CreatePrescriptionData, Prescription, UpdatePrescriptionData } from '../types/prescription';
-import { getCachedData, setCachedData, clearApiCache } from './apiCache';
+import { getCachedData, setCachedData, findInCachedList, clearApiCache } from './apiCache';
 
 // Prescription service functions with caching
 export const getPrescriptions = async (forceRefresh = false): Promise<Prescription[]> => {
@@ -16,6 +16,8 @@ export const getPrescriptionById = async (id: string, forceRefresh = false): Pro
   if (!forceRefresh) {
     const cached = getCachedData<Prescription>(`prescription_${id}`);
     if (cached) return cached;
+    const fromList = findInCachedList<Prescription>('prescriptions_list', id);
+    if (fromList) return fromList;
   }
   const response = await api.get<Prescription>(`/prescriptions/${id}`);
   return setCachedData(`prescription_${id}`, response.data);

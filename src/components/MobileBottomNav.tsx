@@ -17,9 +17,13 @@ import { useThemeContext } from '../contexts/ThemeContext';
 const MobileBottomNav = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { authState } = useAuth();
+  const { authState, needsDobVerification } = useAuth();
   const { isAuthenticated, user } = authState;
   const { mode } = useThemeContext();
+
+  if (needsDobVerification) {
+    return null;
+  }
 
   const getActiveTab = () => {
     const path = location.pathname;

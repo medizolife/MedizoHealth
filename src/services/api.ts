@@ -65,6 +65,14 @@ export const authAPI = {
     const response = await api.post('/auth/login-mobile', { mobileNumber, dateOfBirth, password });
     return response.data;
   },
+  sendLoginOtp: async (email: string) => {
+    const response = await api.post('/auth/send-login-otp', { email });
+    return response.data;
+  },
+  loginEmailOtp: async (email: string, otp: string) => {
+    const response = await api.post('/auth/login-email-otp', { email, otp });
+    return response.data;
+  },
   forgotPassword: async (emailOrMobile: string) => {
     const response = await api.post('/auth/forgot-password', { emailOrMobile });
     return response.data;

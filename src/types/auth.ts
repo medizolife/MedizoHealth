@@ -85,8 +85,12 @@ export interface AuthContextType {
   authState: AuthState;
   isAuthenticated: boolean;
   user: User | null;
+  dobVerified: boolean;
+  needsDobVerification: boolean;
+  markDobVerified: () => void;
   login: (credentialsOrEmail: LoginCredentials | string, password?: string) => Promise<any>;
   loginMobile: (mobileNumber: string, dateOfBirth: string, password: string) => Promise<any>;
+  loginEmailOtp: (email: string, otp: string) => Promise<any>;
   register: (data: RegisterData) => Promise<void>;
   googleLogin: (credential: string, role?: string) => Promise<{ isNewUser: boolean; user: User; token: string } | void>;
   googleCompleteRegistration: (token: string, user: User) => void;

@@ -30,6 +30,16 @@ export const setCachedData = <T>(key: string, data: T): T => {
 };
 
 /**
+ * Find an item inside a cached array list by ID
+ */
+export const findInCachedList = <T>(listKey: string, idValue: string, idField: string = 'id'): T | null => {
+  const cachedList = getCachedData<T[]>(listKey);
+  if (!Array.isArray(cachedList)) return null;
+  const item = cachedList.find((x: any) => x && (x[idField] === idValue || x._id === idValue || x.id === idValue));
+  return item ? (item as T) : null;
+};
+
+/**
  * Clear cached data by prefix or purge all
  */
 export const clearApiCache = (keyPrefix?: string) => {

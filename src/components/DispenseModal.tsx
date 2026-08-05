@@ -411,7 +411,7 @@ export default function DispenseModal({ open, onClose, prescription, onDispensed
                 {(prescription as any).patientName || 'Patient'}
               </Typography>
               <Typography variant="body2" sx={{ color: isDark ? '#93C5FD' : '#1E40AF', fontWeight: 800, fontSize: '0.82rem' }}>
-                ID: #{String(prescription.patientId).slice(-6)}
+                ID: #{String(prescription.patientId).slice(-6).toUpperCase()}
               </Typography>
               {(prescription as any).patientEmail && (prescription as any).patientEmail !== 'N/A' && (
                 <Typography variant="caption" sx={{ color: isDark ? '#BFDBFE' : '#2563EB', fontWeight: 700, display: 'block', mt: 0.3, fontSize: '0.75rem' }}>

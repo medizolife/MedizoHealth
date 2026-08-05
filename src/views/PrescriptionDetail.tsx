@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { getPrescriptionById } from '../services/prescriptions';
 import { prescriptionsAPI } from '../services/api';
 import { getPatientById } from '../services/patients';
+import { getCachedData, findInCachedList } from '../services/apiCache';
 import { Prescription } from '../types/prescription';
 import { Patient } from '../types/auth';
 import { 
@@ -46,16 +47,30 @@ const PrescriptionDetail = () => {
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   
   useEffect(() => {
+    if (!id) return;
+
+    // 1. Instant Cache Hydration (0 spinner delay)
+    const cachedRx = getCachedData<Prescription>(`prescription_${id}`) || findInCachedList<Prescription>('prescriptions_list', id);
+    if (cachedRx) {
+      setPrescription(cachedRx);
+      setLoading(false);
+      if (cachedRx.patientId) {
+        const cachedPatient = getCachedData<Patient>(`patient_${cachedRx.patientId}`) || findInCachedList<Patient>('my_patients', cachedRx.patientId) || findInCachedList<Patient>('all_patients', cachedRx.patientId);
+        if (cachedPatient) setPatient(cachedPatient);
+      }
+    } else {
+      setLoading(true);
+    }
+
+    // 2. Background Revalidation (Stale-While-Revalidate)
     const fetchPrescriptionDetails = async () => {
       try {
-        if (!id) return;
-        setLoading(true);
-        const prescriptionData = await getPrescriptionById(id);
+        const prescriptionData = await getPrescriptionById(id, Boolean(cachedRx));
         setPrescription(prescriptionData);
         
         if (prescriptionData.patientId) {
           try {
-            const patientData = await getPatientById(prescriptionData.patientId);
+            const patientData = await getPatientById(prescriptionData.patientId, Boolean(cachedRx));
             setPatient(patientData);
           } catch (e) {
             console.log('Patient details fetch failed');
@@ -64,7 +79,7 @@ const PrescriptionDetail = () => {
         setError(null);
       } catch (err) {
         console.error('Error fetching prescription details:', err);
-        setError('Failed to load prescription details');
+        if (!cachedRx) setError('Failed to load prescription details');
       } finally {
         setLoading(false);
       }
@@ -151,7 +166,7 @@ const PrescriptionDetail = () => {
                   DIGITAL PRESCRIPTION
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 800, color: '#0f172a' }}>
-                  #{prescription.id?.substring(0, 8) || 'RX-001'}
+                  #{prescription.id?.substring(0, 8).toUpperCase() || 'RX-001'}
                 </Typography>
               </Box>
               <Chip 
@@ -472,7 +487,7 @@ const PrescriptionDetail = () => {
             <QRCode value={prescription.id || 'VALID-RX'} size={200} />
           </Box>
           <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 2 }}>
-            Digital Signature Token: {prescription.id || 'RX-MEDIZO'}
+            Digital Signature Token: {prescription.id?.toUpperCase() || 'RX-MEDIZO'}
           </Typography>
         </DialogContent>
       </Dialog>

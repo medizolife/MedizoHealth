@@ -951,50 +951,98 @@ const NewPrescription = () => {
           
           <Grid container spacing={2}>
             <Grid item xs={12}>
-              <FormControl fullWidth required size="small">
-                <InputLabel id="patient-select-label" sx={{ color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)', fontWeight: 700 }}>Select Patient *</InputLabel>
-                <Select
-                  labelId="patient-select-label"
-                  name="patientId"
-                  value={formData.patientId}
-                  label="Select Patient *"
-                  onChange={handleSelectChange}
-                  MenuProps={{
-                    PaperProps: {
-                      sx: {
-                        maxHeight: 260,
-                        overflowY: 'auto',
-                        borderRadius: '14px',
-                        '&::-webkit-scrollbar': { width: 6 },
-                        '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(66,132,117,0.3)', borderRadius: 3 }
-                      }
-                    }
+              <Box sx={{ width: '100%' }}>
+                <Autocomplete
+                  options={patients}
+                  getOptionLabel={(patient) => 
+                    typeof patient === 'string' 
+                      ? patient 
+                      : `${patient.firstName || ''} ${patient.lastName || ''} (${patient.email || patient.contactNumber || patient.phone || ''})`.trim()
+                  }
+                  value={patients.find((p) => p.id === formData.patientId) || null}
+                  onChange={(_e, newValue) => {
+                    setFormData((prev) => ({
+                      ...prev,
+                      patientId: newValue ? newValue.id : ''
+                    }));
                   }}
-                  sx={{ 
-                    borderRadius: '16px',
-                    bgcolor: mode === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(255, 255, 255, 0.9)',
-                    fontWeight: 700,
-                    color: mode === 'dark' ? '#FAF2F5' : '#123029',
-                    '& fieldset': { borderColor: 'var(--glass-border)' }
+                  isOptionEqualToValue={(option, value) => option.id === value.id}
+                  filterOptions={(options, state) => {
+                    const query = state.inputValue.toLowerCase().trim();
+                    if (!query) return options;
+                    return options.filter((patient) => {
+                      const name = `${patient.firstName || ''} ${patient.lastName || ''}`.toLowerCase();
+                      const email = (patient.email || '').toLowerCase();
+                      const phone = (patient.phone || patient.contactNumber || '').toLowerCase();
+                      return name.includes(query) || email.includes(query) || phone.includes(query);
+                    });
                   }}
-                >
-                  {patients.length === 0 && (
-                    <MenuItem disabled value="" sx={{ fontStyle: 'italic', color: '#999' }}>
-                      No linked patients yet — use + NEW or + ADD EXISTING
-                    </MenuItem>
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Search & Select Patient *"
+                      placeholder="Type patient name, email, or phone to search..."
+                      required={!formData.patientId}
+                      size="small"
+                      InputProps={{
+                        ...params.InputProps,
+                        startAdornment: (
+                          <>
+                            <InputAdornment position="start">
+                              <SearchIcon sx={{ color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-forest)', fontSize: 20 }} />
+                            </InputAdornment>
+                            {params.InputProps.startAdornment}
+                          </>
+                        ),
+                        sx: {
+                          borderRadius: '16px',
+                          bgcolor: mode === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(255, 255, 255, 0.9)',
+                          fontWeight: 700,
+                          color: mode === 'dark' ? '#FAF2F5' : '#123029',
+                          '& fieldset': { borderColor: 'var(--glass-border)' }
+                        }
+                      }}
+                      InputLabelProps={{
+                        sx: { color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)', fontWeight: 700 }
+                      }}
+                    />
                   )}
-                  {patients.map(patient => (
-                    <MenuItem key={patient.id} value={patient.id} sx={{ fontWeight: 600 }}>
-                      {patient.firstName} {patient.lastName} ({patient.email})
-                    </MenuItem>
-                  ))}
-                </Select>
+                  renderOption={(props, patient) => (
+                    <Box 
+                      component="li" 
+                      {...props} 
+                      key={patient.id}
+                      sx={{ 
+                        py: 1, 
+                        px: 2, 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        alignItems: 'flex-start',
+                        borderBottom: '1px solid rgba(0,0,0,0.04)',
+                        '&:hover': { bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.15)' : 'rgba(42, 107, 93, 0.08)' }
+                      }}
+                    >
+                      <Typography variant="body2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#123029' }}>
+                        {patient.firstName} {patient.lastName}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-teal)', fontWeight: 600 }}>
+                        📧 {patient.email || 'No email'} {patient.contactNumber || patient.phone ? ` • 📱 ${patient.contactNumber || patient.phone}` : ''}
+                      </Typography>
+                    </Box>
+                  )}
+                  noOptionsText={
+                    patients.length === 0 
+                      ? 'No linked patients yet — use + NEW PATIENT or + ADD EXISTING' 
+                      : 'No patient matching search'
+                  }
+                  sx={{ width: '100%' }}
+                />
                 <Typography variant="caption" sx={{ color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-teal)', mt: 0.8, display: 'block', fontWeight: 600 }}>
                   {patients.length > 0 
-                    ? `Showing ${patients.length} linked patient${patients.length > 1 ? 's' : ''} (latest activity first)`
+                    ? `Showing ${patients.length} linked patient${patients.length > 1 ? 's' : ''} (Search by name, email, or phone)`
                     : 'Add patients using + NEW PATIENT or + ADD EXISTING above'}
                 </Typography>
-              </FormControl>
+              </Box>
             </Grid>
             
             {selectedPatient && (
@@ -1445,13 +1493,13 @@ const NewPrescription = () => {
             mb: 2, 
             borderRadius: '24px !important', 
             overflow: 'hidden',
-            bgcolor: 'rgba(255, 255, 255, 0.88) !important',
+            bgcolor: mode === 'dark' ? 'rgba(20, 38, 34, 0.94) !important' : 'rgba(255, 255, 255, 0.88) !important',
             '&:before': { display: 'none' }
           }}
         >
-          <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: '#428475' }} />}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#1A312C', display: 'flex', alignItems: 'center', gap: 1 }}>
-              <VitalIcon sx={{ color: '#428475' }} /> 2. Vital Signs (Consultation)
+          <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: mode === 'dark' ? '#89D7B7' : '#428475' }} />}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', display: 'flex', alignItems: 'center', gap: 1 }}>
+              <VitalIcon sx={{ color: mode === 'dark' ? '#89D7B7' : '#428475' }} /> 2. Vital Signs (Consultation)
             </Typography>
           </AccordionSummary>
           <AccordionDetails sx={{ pt: 0 }}>
@@ -1604,20 +1652,20 @@ const NewPrescription = () => {
             mb: 2, 
             borderRadius: '24px !important', 
             overflow: 'hidden',
-            bgcolor: 'rgba(255, 255, 255, 0.88) !important',
+            bgcolor: mode === 'dark' ? 'rgba(20, 38, 34, 0.94) !important' : 'rgba(255, 255, 255, 0.88) !important',
             '&:before': { display: 'none' }
           }}
         >
-          <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: '#428475' }} />}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#1A312C', display: 'flex', alignItems: 'center', gap: 1 }}>
-              <MedicalIcon sx={{ color: '#428475' }} /> 3. Complaints & Diagnosis
+          <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: mode === 'dark' ? '#89D7B7' : '#428475' }} />}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', display: 'flex', alignItems: 'center', gap: 1 }}>
+              <MedicalIcon sx={{ color: mode === 'dark' ? '#89D7B7' : '#428475' }} /> 3. Complaints & Diagnosis
             </Typography>
           </AccordionSummary>
           <AccordionDetails sx={{ pt: 0 }}>
             <Grid container spacing={2.5}>
               {/* Presenting Complaints */}
               <Grid item xs={12}>
-                <Typography variant="caption" sx={{ fontWeight: 800, color: '#428475', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', textTransform: 'uppercase', letterSpacing: 0.5 }}>
                   Presenting Complaints
                 </Typography>
                 <Box sx={{ display: 'flex', gap: 1, mt: 0.5, mb: 1 }}>
@@ -1633,21 +1681,21 @@ const NewPrescription = () => {
                   <Button 
                     variant="contained" 
                     onClick={() => addToArray('presentingComplaints', newComplaint, setNewComplaint)}
-                    sx={{ bgcolor: '#428475', minWidth: 44, borderRadius: '14px', px: 2 }}
+                    sx={{ bgcolor: mode === 'dark' ? '#2A6B5D' : '#428475', minWidth: 44, borderRadius: '14px', px: 2 }}
                   >
                     <AddIcon />
                   </Button>
                 </Box>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
                   {formData.presentingComplaints?.map((item, idx) => (
-                    <Chip key={idx} label={item} onDelete={() => removeFromArray('presentingComplaints', idx)} sx={{ fontWeight: 600, bgcolor: 'rgba(66, 132, 117, 0.12)', color: '#1A312C' }} />
+                    <Chip key={idx} label={item} onDelete={() => removeFromArray('presentingComplaints', idx)} sx={{ fontWeight: 600, bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.2)' : 'rgba(66, 132, 117, 0.12)', color: mode === 'dark' ? '#FAF2F5' : '#1A312C' }} />
                   ))}
                 </Box>
               </Grid>
 
               {/* Clinical Examination Findings */}
               <Grid item xs={12}>
-                <Typography variant="caption" sx={{ fontWeight: 800, color: '#428475', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', textTransform: 'uppercase', letterSpacing: 0.5 }}>
                   Clinical Findings
                 </Typography>
                 <Box sx={{ display: 'flex', gap: 1, mt: 0.5, mb: 1 }}>
@@ -1663,21 +1711,21 @@ const NewPrescription = () => {
                   <Button 
                     variant="contained" 
                     onClick={() => addToArray('clinicalFindings', newFinding, setNewFinding)}
-                    sx={{ bgcolor: '#428475', minWidth: 44, borderRadius: '14px', px: 2 }}
+                    sx={{ bgcolor: mode === 'dark' ? '#2A6B5D' : '#428475', minWidth: 44, borderRadius: '14px', px: 2 }}
                   >
                     <AddIcon />
                   </Button>
                 </Box>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
                   {formData.clinicalFindings?.map((item, idx) => (
-                    <Chip key={idx} label={item} onDelete={() => removeFromArray('clinicalFindings', idx)} sx={{ fontWeight: 600, bgcolor: 'rgba(255, 244, 225, 0.9)', color: '#1A312C' }} />
+                    <Chip key={idx} label={item} onDelete={() => removeFromArray('clinicalFindings', idx)} sx={{ fontWeight: 600, bgcolor: mode === 'dark' ? 'rgba(255, 215, 150, 0.2)' : 'rgba(255, 244, 225, 0.9)', color: mode === 'dark' ? '#FAF2F5' : '#1A312C' }} />
                   ))}
                 </Box>
               </Grid>
 
               {/* Provisional Diagnosis */}
               <Grid item xs={12}>
-                <Typography variant="caption" sx={{ fontWeight: 800, color: '#428475', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', textTransform: 'uppercase', letterSpacing: 0.5 }}>
                   Provisional Diagnosis
                 </Typography>
                 <Box sx={{ display: 'flex', gap: 1, mt: 0.5, mb: 1 }}>
@@ -1693,7 +1741,7 @@ const NewPrescription = () => {
                   <Button 
                     variant="contained" 
                     onClick={() => addToArray('provisionalDiagnosis', newDiagnosis, setNewDiagnosis)}
-                    sx={{ bgcolor: '#1A312C', color: '#89D7B7', minWidth: 44, borderRadius: '14px', px: 2 }}
+                    sx={{ bgcolor: mode === 'dark' ? '#89D7B7' : '#1A312C', color: mode === 'dark' ? '#1A312C' : '#89D7B7', minWidth: 44, borderRadius: '14px', px: 2 }}
                   >
                     <AddIcon />
                   </Button>
@@ -1704,7 +1752,7 @@ const NewPrescription = () => {
                       key={idx} 
                       label={item} 
                       onDelete={() => removeFromArray('provisionalDiagnosis', idx)} 
-                      sx={{ fontWeight: 800, bgcolor: '#1A312C', color: '#89D7B7' }} 
+                      sx={{ fontWeight: 800, bgcolor: mode === 'dark' ? '#89D7B7' : '#1A312C', color: mode === 'dark' ? '#1A312C' : '#89D7B7' }} 
                     />
                   ))}
                 </Box>
@@ -1712,7 +1760,7 @@ const NewPrescription = () => {
 
               {/* Current Medications (Ongoing) */}
               <Grid item xs={12}>
-                <Typography variant="caption" sx={{ fontWeight: 800, color: '#428475', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', textTransform: 'uppercase', letterSpacing: 0.5 }}>
                   Current Medications (Ongoing)
                 </Typography>
                 <Box sx={{ display: 'flex', gap: 1, mt: 0.5, mb: 1 }}>
@@ -1728,21 +1776,21 @@ const NewPrescription = () => {
                   <Button 
                     variant="contained" 
                     onClick={() => addToArray('currentMedications', newCurrentMed, setNewCurrentMed)}
-                    sx={{ bgcolor: '#428475', minWidth: 44, borderRadius: '14px', px: 2 }}
+                    sx={{ bgcolor: mode === 'dark' ? '#2A6B5D' : '#428475', minWidth: 44, borderRadius: '14px', px: 2 }}
                   >
                     <AddIcon />
                   </Button>
                 </Box>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
                   {formData.currentMedications?.map((item, idx) => (
-                    <Chip key={idx} label={item} onDelete={() => removeFromArray('currentMedications', idx)} sx={{ fontWeight: 600, bgcolor: 'rgba(66, 132, 117, 0.15)', color: '#1A312C' }} />
+                    <Chip key={idx} label={item} onDelete={() => removeFromArray('currentMedications', idx)} sx={{ fontWeight: 600, bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.2)' : 'rgba(66, 132, 117, 0.15)', color: mode === 'dark' ? '#FAF2F5' : '#1A312C' }} />
                   ))}
                 </Box>
               </Grid>
 
               {/* Past Surgical History */}
               <Grid item xs={12}>
-                <Typography variant="caption" sx={{ fontWeight: 800, color: '#428475', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', textTransform: 'uppercase', letterSpacing: 0.5 }}>
                   Past Surgical History
                 </Typography>
                 <Box sx={{ display: 'flex', gap: 1, mt: 0.5, mb: 1 }}>
@@ -1758,14 +1806,14 @@ const NewPrescription = () => {
                   <Button 
                     variant="contained" 
                     onClick={() => addToArray('pastSurgicalHistory', newSurgery, setNewSurgery)}
-                    sx={{ bgcolor: '#428475', minWidth: 44, borderRadius: '14px', px: 2 }}
+                    sx={{ bgcolor: mode === 'dark' ? '#2A6B5D' : '#428475', minWidth: 44, borderRadius: '14px', px: 2 }}
                   >
                     <AddIcon />
                   </Button>
                 </Box>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
                   {formData.pastSurgicalHistory?.map((item, idx) => (
-                    <Chip key={idx} label={item} onDelete={() => removeFromArray('pastSurgicalHistory', idx)} sx={{ fontWeight: 600, bgcolor: 'rgba(255, 200, 150, 0.3)', color: '#1A312C' }} />
+                    <Chip key={idx} label={item} onDelete={() => removeFromArray('pastSurgicalHistory', idx)} sx={{ fontWeight: 600, bgcolor: mode === 'dark' ? 'rgba(255, 200, 150, 0.2)' : 'rgba(255, 200, 150, 0.3)', color: mode === 'dark' ? '#FAF2F5' : '#1A312C' }} />
                   ))}
                 </Box>
               </Grid>
@@ -1781,15 +1829,15 @@ const NewPrescription = () => {
             mb: 2, 
             borderRadius: '24px !important', 
             overflow: 'hidden',
-            bgcolor: 'rgba(255, 255, 255, 0.88) !important',
+            bgcolor: mode === 'dark' ? 'rgba(20, 38, 34, 0.94) !important' : 'rgba(255, 255, 255, 0.88) !important',
             border: '2px solid rgba(137, 215, 183, 0.6) !important',
             '&:before': { display: 'none' }
           }}
         >
-          <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: '#428475' }} />}>
+          <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: mode === 'dark' ? '#89D7B7' : '#428475' }} />}>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', pr: 1 }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#1A312C', display: 'flex', alignItems: 'center', gap: 1 }}>
-                <MedicationIcon sx={{ color: '#428475' }} /> 4. Rx – Prescribed Medications *
+              <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', display: 'flex', alignItems: 'center', gap: 1 }}>
+                <MedicationIcon sx={{ color: mode === 'dark' ? '#89D7B7' : '#428475' }} /> 4. Rx – Prescribed Medications *
               </Typography>
               <Chip 
                 label={`${formData.medications?.length || 0} Added`} 
@@ -2494,19 +2542,19 @@ const NewPrescription = () => {
                       mb: 1.5, 
                       p: 2, 
                       borderRadius: '16px', 
-                      bgcolor: 'rgba(255, 255, 255, 0.95)',
-                      borderColor: 'rgba(137, 215, 183, 0.5)',
-                      boxShadow: '0 4px 14px rgba(26, 49, 44, 0.04)'
+                      bgcolor: mode === 'dark' ? 'rgba(18, 38, 34, 0.85)' : 'rgba(255, 255, 255, 0.95)',
+                      borderColor: mode === 'dark' ? 'rgba(137, 215, 183, 0.3)' : 'rgba(137, 215, 183, 0.5)',
+                      boxShadow: mode === 'dark' ? '0 4px 14px rgba(0, 0, 0, 0.3)' : '0 4px 14px rgba(26, 49, 44, 0.04)'
                     }}
                   >
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <Box sx={{ width: '100%' }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 1 }}>
-                          <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#1A312C' }}>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C' }}>
                             {idx + 1}. {med.name}
                           </Typography>
                           {med.type && (
-                            <Chip label={med.type} size="small" sx={{ height: 20, fontSize: '0.65rem', fontWeight: 800, bgcolor: 'rgba(66, 132, 117, 0.15)', color: '#428475' }} />
+                            <Chip label={med.type} size="small" sx={{ height: 20, fontSize: '0.65rem', fontWeight: 800, bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.2)' : 'rgba(66, 132, 117, 0.15)', color: mode === 'dark' ? '#89D7B7' : '#428475' }} />
                           )}
                         </Box>
                         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 0.8 }}>
@@ -2627,13 +2675,13 @@ const NewPrescription = () => {
             mb: 2, 
             borderRadius: '24px !important', 
             overflow: 'hidden',
-            bgcolor: 'rgba(255, 255, 255, 0.88) !important',
+            bgcolor: mode === 'dark' ? 'rgba(20, 38, 34, 0.94) !important' : 'rgba(255, 255, 255, 0.88) !important',
             '&:before': { display: 'none' }
           }}
         >
-          <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: '#428475' }} />}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#1A312C', display: 'flex', alignItems: 'center', gap: 1 }}>
-              <ScienceIcon sx={{ color: '#428475' }} /> 5. Required Investigations & Lab Tests
+          <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: mode === 'dark' ? '#89D7B7' : '#428475' }} />}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', display: 'flex', alignItems: 'center', gap: 1 }}>
+              <ScienceIcon sx={{ color: mode === 'dark' ? '#89D7B7' : '#428475' }} /> 5. Required Investigations & Lab Tests
             </Typography>
           </AccordionSummary>
           <AccordionDetails sx={{ pt: 0 }}>
@@ -2816,13 +2864,13 @@ const NewPrescription = () => {
             {formData.investigations && formData.investigations.length > 0 && (
               <Box sx={{ mb: 2 }}>
                 {formData.investigations.map((inv, idx) => (
-                  <Card key={idx} variant="outlined" sx={{ mb: 1, p: 1.5, borderRadius: '14px', bgcolor: '#ffffff' }}>
+                  <Card key={idx} variant="outlined" sx={{ mb: 1, p: 1.5, borderRadius: '14px', bgcolor: mode === 'dark' ? 'rgba(18, 38, 34, 0.85)' : '#ffffff', borderColor: mode === 'dark' ? 'rgba(137, 215, 183, 0.3)' : 'rgba(0,0,0,0.12)' }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <Box>
-                        <Typography variant="body2" sx={{ fontWeight: 800, color: '#1A312C' }}>
+                        <Typography variant="body2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C' }}>
                           {idx + 1}. {inv.testName}
                         </Typography>
-                        <Typography variant="caption" sx={{ color: '#428475', display: 'block', fontWeight: 600 }}>
+                        <Typography variant="caption" sx={{ color: mode === 'dark' ? '#89D7B7' : '#428475', display: 'block', fontWeight: 600 }}>
                           Reason: {inv.reason || 'Standard check'} • Priority: {inv.priority}
                         </Typography>
                       </Box>
@@ -2854,20 +2902,20 @@ const NewPrescription = () => {
             mb: 2, 
             borderRadius: '24px !important', 
             overflow: 'hidden',
-            bgcolor: 'rgba(255, 255, 255, 0.88) !important',
+            bgcolor: mode === 'dark' ? 'rgba(20, 38, 34, 0.94) !important' : 'rgba(255, 255, 255, 0.88) !important',
             '&:before': { display: 'none' }
           }}
         >
-          <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: '#428475' }} />}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#1A312C', display: 'flex', alignItems: 'center', gap: 1 }}>
-              <DietIcon sx={{ color: '#428475' }} /> 6. Diet & Lifestyle Advice
+          <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: mode === 'dark' ? '#89D7B7' : '#428475' }} />}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', display: 'flex', alignItems: 'center', gap: 1 }}>
+              <DietIcon sx={{ color: mode === 'dark' ? '#89D7B7' : '#428475' }} /> 6. Diet & Lifestyle Advice
             </Typography>
           </AccordionSummary>
           <AccordionDetails sx={{ pt: 0 }}>
             <Grid container spacing={2}>
               {/* Diet Modifications */}
               <Grid item xs={12}>
-                <Typography variant="caption" sx={{ fontWeight: 800, color: '#428475', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', textTransform: 'uppercase', letterSpacing: 0.5 }}>
                   Diet Restrictions & Modifications
                 </Typography>
                 <Box sx={{ display: 'flex', gap: 1, mt: 0.5, mb: 1 }}>
@@ -2883,7 +2931,7 @@ const NewPrescription = () => {
                   <Button 
                     variant="contained" 
                     onClick={() => addToArray('dietModifications', newDiet, setNewDiet)}
-                    sx={{ bgcolor: '#428475', minWidth: 44, borderRadius: '14px', px: 2 }}
+                    sx={{ bgcolor: mode === 'dark' ? '#2A6B5D' : '#428475', minWidth: 44, borderRadius: '14px', px: 2 }}
                   >
                     <AddIcon />
                   </Button>
@@ -2897,7 +2945,7 @@ const NewPrescription = () => {
 
               {/* Lifestyle Changes */}
               <Grid item xs={12}>
-                <Typography variant="caption" sx={{ fontWeight: 800, color: '#428475', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', textTransform: 'uppercase', letterSpacing: 0.5 }}>
                   Lifestyle Modifications
                 </Typography>
                 <Box sx={{ display: 'flex', gap: 1, mt: 0.5, mb: 1 }}>
@@ -2913,7 +2961,7 @@ const NewPrescription = () => {
                   <Button 
                     variant="contained" 
                     onClick={() => addToArray('lifestyleChanges', newLifestyle, setNewLifestyle)}
-                    sx={{ bgcolor: '#428475', minWidth: 44, borderRadius: '14px', px: 2 }}
+                    sx={{ bgcolor: mode === 'dark' ? '#2A6B5D' : '#428475', minWidth: 44, borderRadius: '14px', px: 2 }}
                   >
                     <AddIcon />
                   </Button>
@@ -2965,13 +3013,13 @@ const NewPrescription = () => {
             mb: 3, 
             borderRadius: '24px !important', 
             overflow: 'hidden',
-            bgcolor: 'rgba(255, 255, 255, 0.88) !important',
+            bgcolor: mode === 'dark' ? 'rgba(20, 38, 34, 0.94) !important' : 'rgba(255, 255, 255, 0.88) !important',
             '&:before': { display: 'none' }
           }}
         >
-          <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: '#428475' }} />}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#1A312C', display: 'flex', alignItems: 'center', gap: 1 }}>
-              <EventIcon sx={{ color: '#428475' }} /> 7. Follow-Up Schedule
+          <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: mode === 'dark' ? '#89D7B7' : '#428475' }} />}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', display: 'flex', alignItems: 'center', gap: 1 }}>
+              <EventIcon sx={{ color: mode === 'dark' ? '#89D7B7' : '#428475' }} /> 7. Follow-Up Schedule
             </Typography>
           </AccordionSummary>
           <AccordionDetails sx={{ pt: 0 }}>
@@ -3029,7 +3077,7 @@ const NewPrescription = () => {
 
               {/* Bring Items for Follow-Up */}
               <Grid item xs={12}>
-                <Typography variant="caption" sx={{ fontWeight: 800, color: '#428475', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', textTransform: 'uppercase', letterSpacing: 0.5 }}>
                   📋 Bring to Next Visit
                 </Typography>
                 <Box sx={{ display: 'flex', gap: 1, mt: 0.5, mb: 1 }}>
@@ -3045,14 +3093,14 @@ const NewPrescription = () => {
                   <Button 
                     variant="contained" 
                     onClick={addBringItem}
-                    sx={{ bgcolor: '#428475', minWidth: 44, borderRadius: '14px', px: 2 }}
+                    sx={{ bgcolor: mode === 'dark' ? '#2A6B5D' : '#428475', minWidth: 44, borderRadius: '14px', px: 2 }}
                   >
                     <AddIcon />
                   </Button>
                 </Box>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
                   {formData.followUpInfo?.bringItems?.map((item, idx) => (
-                    <Chip key={idx} label={item} onDelete={() => removeBringItem(idx)} sx={{ fontWeight: 600, bgcolor: 'rgba(66, 132, 117, 0.15)', color: '#1A312C' }} />
+                    <Chip key={idx} label={item} onDelete={() => removeBringItem(idx)} sx={{ fontWeight: 600, bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.2)' : 'rgba(66, 132, 117, 0.15)', color: mode === 'dark' ? '#FAF2F5' : '#1A312C' }} />
                   ))}
                 </Box>
               </Grid>
@@ -3061,8 +3109,8 @@ const NewPrescription = () => {
         </Accordion>
 
         {/* Additional Clinical Notes Paper */}
-        <Paper className="glass-panel" sx={{ p: 2.5, mb: 3, borderRadius: '24px !important', bgcolor: 'rgba(255, 255, 255, 0.9) !important' }}>
-          <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#1A312C', mb: 1 }}>
+        <Paper className="glass-panel" sx={{ p: 2.5, mb: 3, borderRadius: '24px !important', bgcolor: mode === 'dark' ? 'rgba(20, 38, 34, 0.94) !important' : 'rgba(255, 255, 255, 0.9) !important' }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', mb: 1 }}>
             Additional Clinical Remarks
           </Typography>
           <TextField
@@ -3534,7 +3582,7 @@ const NewPrescription = () => {
                     {foundPatient.firstName} {foundPatient.lastName}
                   </Typography>
                   <Typography variant="caption" sx={{ color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-teal)', display: 'block', fontWeight: 600 }}>
-                    ID: {foundPatient.id} • {foundPatient.email}
+                    ID: {foundPatient.id?.toUpperCase()} • {foundPatient.email}
                   </Typography>
                 </Box>
               </Box>
