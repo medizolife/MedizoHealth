@@ -100,7 +100,7 @@ export interface AuthContextType {
   loginMobile: (mobileNumber: string, dateOfBirth: string, password: string) => Promise<any>;
   loginEmailOtp: (email: string, otp: string) => Promise<any>;
   register: (data: RegisterData) => Promise<void>;
-  googleLogin: (credential: string, role?: string) => Promise<{ isNewUser: boolean; user: User; token: string } | void>;
+  googleLogin: (credential: string, role?: string) => Promise<{ isNewUser: boolean; requiresRoleSelection?: boolean; googleUserInfo?: any; user?: User; token?: string } | void>;
   googleCompleteRegistration: (token: string, user: User) => void;
   logout: () => void;
   loading: boolean;

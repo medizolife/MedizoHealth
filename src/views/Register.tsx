@@ -144,24 +144,26 @@ const Register = () => {
       const result = await googleLogin(credentialResponse.credential, formData.role);
       
       if (result && result.isNewUser) {
-        setFormData(prev => ({
-          ...prev,
-          firstName: result.user.firstName || prev.firstName,
-          lastName: result.user.lastName || prev.lastName,
-          email: result.user.email || prev.email,
-        }));
-        navigate('/register', { 
-          state: { 
-            googleData: {
-              firstName: result.user.firstName,
-              lastName: result.user.lastName,
-              email: result.user.email,
-              token: result.token,
-              user: result.user
-            }
-          },
-          replace: true 
-        });
+        if (result.user) {
+          setFormData(prev => ({
+            ...prev,
+            firstName: result.user!.firstName || prev.firstName,
+            lastName: result.user!.lastName || prev.lastName,
+            email: result.user!.email || prev.email,
+          }));
+          navigate('/register', { 
+            state: { 
+              googleData: {
+                firstName: result.user.firstName,
+                lastName: result.user.lastName,
+                email: result.user.email,
+                token: result.token,
+                user: result.user
+              }
+            },
+            replace: true 
+          });
+        }
       }
     } catch (err: any) {
       console.error('Google sign-up error:', err);
