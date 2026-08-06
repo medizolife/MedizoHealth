@@ -90,64 +90,87 @@ const PrescriptionDetail = () => {
     fetchPrescriptionDetails();
   }, [id]);
   
-  const [printingPdf, setPrintingPdf] = useState(false);
-
-  const getImageUrl = (path: string) => {
-    if (!path) return '';
-    if (path.startsWith('http') || path.startsWith('data:image/')) return path;
-    const baseUrl = getApiBaseUrl().replace(/\/api\/?$/, '');
-    return `${baseUrl}${path}`;
+  const handlePrint = () => {
+    window.print();
   };
-
-  const handlePrint = async () => {
+  
+  const handleShare = async () => {
     if (!id) return;
     try {
-      setPrintingPdf(true);
+      setDownloadingPdf(true);
+      // Fetch PDF blob
       const blob = await prescriptionsAPI.downloadPrescription(id);
-      const blobUrl = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
-      
-      const iframe = document.createElement('iframe');
-      iframe.style.position = 'fixed';
-      iframe.style.right = '0';
-      iframe.style.bottom = '0';
-      iframe.style.width = '0';
-      iframe.style.height = '0';
-      iframe.style.border = '0';
-      iframe.src = blobUrl;
-      document.body.appendChild(iframe);
+      const filename = `Prescription_${id.substring(0, 8).toUpperCase()}.pdf`;
+      const pdfFile = new File([blob], filename, { type: 'application/pdf' });
 
-      iframe.onload = () => {
-        setTimeout(() => {
-          iframe.contentWindow?.focus();
-          iframe.contentWindow?.print();
-          setPrintingPdf(false);
-        }, 400);
-      };
-    } catch (err) {
-      console.error('Error printing prescription PDF:', err);
-      window.print();
-      setPrintingPdf(false);
-    }
-  };
-
-  const handleShare = async () => {
-    // Share clean frontend link (e.g. https://m.medizo.life/prescriptions/share/:id)
-    const shareUrl = `${window.location.origin}/prescriptions/share/${id}`;
-    if (navigator.share && prescription) {
-      try {
+      // Check if native file sharing is supported (Mobile / Chrome Web Share API)
+      if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
         await navigator.share({
-          title: `Medizo Digital Prescription #${id?.substring(0, 8).toUpperCase()}`,
-          text: `View & print digital prescription for ${patient ? `${patient.firstName} ${patient.lastName}` : (prescription.patientName || 'Patient')}`,
-          url: shareUrl,
+          files: [pdfFile],
+          title: `Medizo Digital Prescription #${id.substring(0, 8).toUpperCase()}`,
+          text: `Digital Prescription for ${patient ? `${patient.firstName} ${patient.lastName}` : (prescription?.patientName || 'Patient')}`,
         });
-      } catch (err) {
-        console.log('Share canceled');
+      } else {
+        // Desktop / Fallback: Download PDF file & copy clean summary
+        const blobUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.setAttribute('download', filename);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(blobUrl);
+
+        // Copy text summary
+        const summaryText = buildSummaryText(prescription, patient);
+        navigator.clipboard?.writeText(summaryText);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 5000);
       }
-    } else {
+    } catch (err) {
+      console.error('Error sharing prescription:', err);
+      // Fallback: Share clean web portal link
+      const shareUrl = `${window.location.origin}/prescriptions/share/${id}`;
       navigator.clipboard?.writeText(shareUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 4000);
+    } finally {
+      setDownloadingPdf(false);
     }
+  };
+
+  const buildSummaryText = (rx: Prescription | null, pat: Patient | null) => {
+    if (!rx) return 'Medizo Prescription Document';
+    const rxId = rx.id?.substring(0, 8).toUpperCase() || 'RX';
+    const patientName = pat ? `${pat.firstName} ${pat.lastName}` : (rx.patientName || 'Patient');
+    const doctorName = rx.doctorName ? `Dr. ${rx.doctorName}` : 'Attending MD';
+
+    let medsText = '';
+    if (rx.medications && rx.medications.length > 0) {
+      medsText = rx.medications.map((m, i) =>
+        `${i + 1}. ${m.name} (${m.type || 'Medication'})\n   Dosage: ${m.dosage || 'As directed'} | Duration: ${m.duration || 'As needed'}`
+      ).join('\n');
+    } else if (rx.medication) {
+      medsText = `1. ${rx.medication}\n   Dosage: ${rx.dosage || 'As directed'} | Duration: ${rx.duration || 'As needed'}`;
+    }
+
+    let text = `DIGITAL PRESCRIPTION #${rxId}\nPatient: ${patientName}\nDoctor: ${doctorName}\n\n💊 Prescribed Medications:\n${medsText}`;
+
+    if (rx.presentingComplaints?.length) {
+      text += `\n\n📋 Presenting Complaints:\n${rx.presentingComplaints.join(', ')}`;
+    }
+    if (rx.clinicalFindings?.length) {
+      text += `\n\n🔬 Clinical Findings:\n${rx.clinicalFindings.join(', ')}`;
+    }
+    if (rx.vitalSigns && Object.keys(rx.vitalSigns).some(k => (rx.vitalSigns as any)[k])) {
+      const v = rx.vitalSigns as any;
+      text += `\n\n📊 Vital Signs:\nBP: ${v.bloodPressure || 'N/A'} | Pulse: ${v.pulse ? v.pulse + ' bpm' : 'N/A'} | Temp: ${v.temperature ? v.temperature + ' °F' : 'N/A'} | SpO2: ${v.spo2 ? v.spo2 + '%' : 'N/A'}`;
+    }
+    if (rx.followUpDate) {
+      text += `\n\n📅 Follow-Up Date: ${new Date(rx.followUpDate).toLocaleDateString()}`;
+    }
+
+    return text;
   };
 
   const handleDownloadPdf = async () => {
@@ -158,7 +181,7 @@ const PrescriptionDetail = () => {
       const blobUrl = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
       const link = document.createElement('a');
       link.href = blobUrl;
-      link.setAttribute('download', `Prescription_${id.substring(0, 8)}.pdf`);
+      link.setAttribute('download', `Prescription_${id.substring(0, 8).toUpperCase()}.pdf`);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -198,20 +221,40 @@ const PrescriptionDetail = () => {
     <Container maxWidth="lg" sx={{ pt: { xs: 2, md: 3 }, pb: 6, px: { xs: 2, sm: 3, md: 4 } }}>
       <style>{`
         @media print {
-          body {
+          @page {
+            size: A4 portrait;
+            margin: 6mm;
+          }
+          html, body {
+            margin: 0 !important;
+            padding: 0 !important;
             background: #ffffff !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          body * {
+            visibility: hidden !important;
+          }
+          .printable-prescription, .printable-prescription * {
+            visibility: visible !important;
+          }
+          .printable-prescription {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 16px !important;
+            box-shadow: none !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 16px !important;
+            background: #ffffff !important;
+            box-sizing: border-box !important;
+            page-break-inside: avoid !important;
           }
           .no-print {
             display: none !important;
-          }
-          .printable-prescription {
-            position: static !important;
-            width: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            box-shadow: none !important;
-            border: none !important;
-            overflow: visible !important;
           }
         }
       `}</style>
@@ -222,7 +265,7 @@ const PrescriptionDetail = () => {
           <Paper sx={{ p: 1.5, mb: 2, bgcolor: '#e6fffa', border: '1px solid #319795', borderRadius: '14px', display: 'flex', alignItems: 'center', gap: 1 }}>
             <DoneIcon sx={{ color: '#234e52' }} />
             <Typography variant="body2" sx={{ color: '#234e52', fontWeight: 700 }}>
-              Shareable prescription link copied! Anyone with this link can view & print this prescription without logging in.
+              Prescription PDF downloaded & text summary copied to clipboard for easy sharing!
             </Typography>
           </Paper>
         )}
@@ -495,6 +538,7 @@ const PrescriptionDetail = () => {
           </Grid>
           <Grid item xs={6}>
             <Paper variant="outlined" sx={{ p: 1.5, borderRadius: '12px', bgcolor: '#f1f5f9' }}>
+              <Typography variant="caption" color="text.secondary">PATIENT</Typography>
               <Typography variant="body2" sx={{ fontWeight: 700 }}>
                 {patient ? `${patient.firstName} ${patient.lastName}` : ((prescription as any).patientName || 'Registered Patient')}
               </Typography>
@@ -503,50 +547,31 @@ const PrescriptionDetail = () => {
               </Typography>
             </Paper>
           </Grid>
-        </Grid>
-
-        {/* Stamp, Signature & Security QR footer inside printable card */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', mt: 3, pt: 2, borderTop: '1px dashed #cbd5e1', flexWrap: 'wrap', gap: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <QRCode value={prescription.id || 'VALID-RX'} size={70} />
+        {/* Verification & QR Code Footer (Included in Print) */}
+        <Box sx={{ mt: 2.5, pt: 2, borderTop: '1px dashed #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box sx={{ p: 1, bgcolor: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+              <QRCode value={prescription.id || 'VALID-RX'} size={72} />
+            </Box>
             <Box>
-              <Typography variant="caption" sx={{ fontWeight: 800, color: '#134F4D', display: 'block' }}>
+              <Typography variant="caption" sx={{ color: '#134F4D', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block' }}>
                 OFFICIAL DIGITAL PRESCRIPTION
               </Typography>
-              <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.68rem', display: 'block' }}>
-                Token: #{prescription.id?.substring(0, 8).toUpperCase()}
+              <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#0f172a' }}>
+                Token: #{prescription.id?.substring(0, 8).toUpperCase() || 'RX-MEDIZO'}
               </Typography>
-              <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', display: 'block' }}>
+              <Typography variant="caption" color="text.secondary" display="block">
                 Scan QR to verify on Medizo Cloud
               </Typography>
             </Box>
           </Box>
-
-          <Box sx={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-            {((prescription as any).doctorSignature || (prescription as any).signature) && (
-              <Box sx={{ textAlign: 'center' }}>
-                <img 
-                  src={getImageUrl((prescription as any).doctorSignature || (prescription as any).signature)} 
-                  alt="Doctor Signature" 
-                  style={{ maxHeight: 48, maxWidth: 140, objectFit: 'contain' }} 
-                />
-                <Typography variant="caption" sx={{ display: 'block', color: '#64748b', fontWeight: 700, fontSize: '0.68rem', mt: 0.3 }}>
-                  Digital Signature
-                </Typography>
-              </Box>
-            )}
-            {((prescription as any).doctorStamp || (prescription as any).stamp) && (
-              <Box sx={{ textAlign: 'center' }}>
-                <img 
-                  src={getImageUrl((prescription as any).doctorStamp || (prescription as any).stamp)} 
-                  alt="Official Stamp" 
-                  style={{ maxHeight: 56, maxWidth: 140, objectFit: 'contain' }} 
-                />
-                <Typography variant="caption" sx={{ display: 'block', color: '#64748b', fontWeight: 700, fontSize: '0.68rem', mt: 0.3 }}>
-                  Official Doctor Stamp
-                </Typography>
-              </Box>
-            )}
+          <Box sx={{ textAlign: 'right' }}>
+            <Typography variant="caption" color="text.secondary" display="block" sx={{ fontWeight: 700 }}>
+              Medizo Healthcare Management
+            </Typography>
+            <Typography variant="caption" color="text.secondary" display="block">
+              Verified Digital Record
+            </Typography>
           </Box>
         </Box>
           </Paper>
