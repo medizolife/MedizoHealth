@@ -130,6 +130,21 @@ export const prescriptionsAPI = {
       return response.data;
     }
   },
+  uploadExternalPrescription: async (formData: FormData) => {
+    const response = await api.post('/prescriptions/upload-external', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
+  },
+  getExternalPrescriptions: async (patientId?: string) => {
+    const url = patientId ? `/prescriptions/external?patientId=${patientId}` : '/prescriptions/external';
+    const response = await api.get(url);
+    return response.data;
+  },
+  deleteExternalPrescription: async (id: string) => {
+    const response = await api.delete(`/prescriptions/external/${id}`);
+    return response.data;
+  },
 };
 
 // Users API

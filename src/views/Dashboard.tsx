@@ -50,19 +50,25 @@ import {
   FilterList as FilterIcon,
   Security as SecurityIcon,
   Close as CloseIcon,
-  MedicalInformation as MedicalInfoIcon
+  MedicalInformation as MedicalInfoIcon,
+  CloudUpload as UploadIcon,
+  PictureAsPdf as PdfIcon,
+  Delete as DeleteIcon,
+  Visibility as ViewIcon,
+  Description as FileIcon
 } from '@mui/icons-material';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { getPrescriptions, lookupPrescriptionByCode } from '../services/prescriptions';
 import { getCachedData } from '../services/apiCache';
-import { digilockerAPI, usersAPI, authAPI } from '../services/api';
+import { digilockerAPI, usersAPI, authAPI, prescriptionsAPI, getApiBaseUrl } from '../services/api';
 import { Prescription } from '../types/prescription';
 import EnhancedPatientManagement from '../components/EnhancedPatientManagement';
 import WallpaperCarouselHero from '../components/WallpaperCarouselHero';
 import PharmacistDashboard from './PharmacistDashboard';
 import QrScannerModal from '../components/QrScannerModal';
+import UploadPastPrescriptionModal from '../components/UploadPastPrescriptionModal';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -115,6 +121,40 @@ const Dashboard = () => {
   const [scannedRx, setScannedRx] = useState<any>(null);
   const [qrLinking, setQrLinking] = useState(false);
 
+  // External Records State
+  const [uploadPastRxModalOpen, setUploadPastRxModalOpen] = useState(false);
+  const [externalRecords, setExternalRecords] = useState<any[]>([]);
+  const [loadingExternal, setLoadingExternal] = useState(false);
+
+  const fetchExternalRecords = async () => {
+    try {
+      setLoadingExternal(true);
+      const data = await prescriptionsAPI.getExternalPrescriptions();
+      setExternalRecords(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Error fetching external records:', err);
+    } finally {
+      setLoadingExternal(false);
+    }
+  };
+
+  useEffect(() => {
+    if (authState.isAuthenticated) {
+      fetchExternalRecords();
+    }
+  }, [authState.isAuthenticated]);
+
+  const handleDeleteExternalRecord = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this past prescription record?')) return;
+    try {
+      await prescriptionsAPI.deleteExternalPrescription(id);
+      setSnackbar({ open: true, message: 'Record deleted successfully.', severity: 'success' });
+      fetchExternalRecords();
+    } catch (err: any) {
+      setSnackbar({ open: true, message: 'Failed to delete record.', severity: 'error' });
+    }
+  };
+
   // Touch swipe gesture state for native sliding tab animation
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [touchEndX, setTouchEndX] = useState<number | null>(null);
@@ -132,7 +172,7 @@ const Dashboard = () => {
     if (touchStartX === null || touchEndX === null) return;
     const distance = touchStartX - touchEndX;
     const minSwipeDistance = 40;
-    const totalTabs = user?.role === 'doctor' ? 3 : 2;
+    const totalTabs = user?.role === 'doctor' ? 4 : 3;
 
     if (distance > minSwipeDistance) {
       // Swiped left -> Go to next tab
@@ -821,10 +861,15 @@ const Dashboard = () => {
         >
           <Tab label={`Active (${activePrescriptions.length})`} />
           <Tab label={`Completed (${completedPrescriptions.length})`} />
+          <Tab 
+            label={`Past Records (${externalRecords.length})`} 
+            icon={<UploadIcon sx={{ fontSize: 18, color: tabValue === 2 ? (mode === 'dark' ? '#66CDAA' : '#1A312C') : (mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : '#428475') }} />} 
+            iconPosition="start" 
+          />
           {user?.role === 'doctor' && (
             <Tab 
               label="Patients" 
-              icon={<PeopleIcon sx={{ fontSize: 18, color: tabValue === 2 ? (mode === 'dark' ? '#66CDAA' : '#1A312C') : (mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : '#428475') }} />} 
+              icon={<PeopleIcon sx={{ fontSize: 18, color: tabValue === 3 ? (mode === 'dark' ? '#66CDAA' : '#1A312C') : (mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : '#428475') }} />} 
               iconPosition="start" 
             />
           )}
@@ -848,18 +893,18 @@ const Dashboard = () => {
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
           >
-            {/* Horizontal sliding track across all 3 tabs */}
+            {/* Horizontal sliding track across all tabs */}
             <Box
               sx={{
                 display: 'flex',
-                width: user?.role === 'doctor' ? '300%' : '200%',
-                transform: `translateX(-${(tabValue * 100) / (user?.role === 'doctor' ? 3 : 2)}%)`,
+                width: user?.role === 'doctor' ? '400%' : '300%',
+                transform: `translateX(-${(tabValue * 100) / (user?.role === 'doctor' ? 4 : 3)}%)`,
                 transition: 'transform 0.35s cubic-bezier(0.25, 1, 0.5, 1)',
                 willChange: 'transform'
               }}
             >
               {/* ─── Pane 0: Active Prescriptions ─── */}
-              <Box sx={{ width: user?.role === 'doctor' ? '33.3333%' : '50%', p: { xs: 1.5, sm: 2 }, flexShrink: 0, boxSizing: 'border-box' }}>
+              <Box sx={{ width: user?.role === 'doctor' ? '25%' : '33.3333%', p: { xs: 1.5, sm: 2 }, flexShrink: 0, boxSizing: 'border-box' }}>
                 {/* 📅 Top-most Upcoming Appointments Section in Active Tab */}
                 {user?.role === 'doctor' && upcomingAppointments.length > 0 && (
                   <Paper
@@ -1040,7 +1085,7 @@ const Dashboard = () => {
               </Box>
 
               {/* ─── Pane 1: Completed Prescriptions ─── */}
-              <Box sx={{ width: user?.role === 'doctor' ? '33.3333%' : '50%', p: { xs: 1.5, sm: 2 }, flexShrink: 0, boxSizing: 'border-box' }}>
+              <Box sx={{ width: user?.role === 'doctor' ? '25%' : '33.3333%', p: { xs: 1.5, sm: 2 }, flexShrink: 0, boxSizing: 'border-box' }}>
                 {completedPrescriptions.length === 0 ? (
                   <Box sx={{ py: 6, textAlign: 'center' }}>
                     <Box sx={{ p: 2, borderRadius: '50%', bgcolor: 'rgba(26, 49, 44, 0.08)', width: 72, height: 72, mx: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2 }}>
@@ -1101,9 +1146,163 @@ const Dashboard = () => {
                 )}
               </Box>
 
-              {/* ─── Pane 2: Patients (Doctor Only) ─── */}
+              {/* ─── Pane 2: Past / Uploaded External Prescriptions & Reports ─── */}
+              <Box sx={{ width: user?.role === 'doctor' ? '25%' : '33.3333%', p: { xs: 1.5, sm: 2 }, flexShrink: 0, boxSizing: 'border-box' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+                  <Box>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C' }}>
+                      📜 Past / External Prescriptions & Reports
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Medical records from other clinics & past consultations
+                    </Typography>
+                  </Box>
+                  <Button
+                    variant="contained"
+                    size="small"
+                    startIcon={<UploadIcon />}
+                    onClick={() => setUploadPastRxModalOpen(true)}
+                    sx={{
+                      borderRadius: '12px',
+                      bgcolor: '#134F4D',
+                      color: '#ffffff',
+                      fontWeight: 800,
+                      px: 2,
+                      py: 0.8,
+                      fontSize: '0.78rem',
+                      textTransform: 'none',
+                      '&:hover': { bgcolor: '#0e3b3a' }
+                    }}
+                  >
+                    Upload Record
+                  </Button>
+                </Box>
+
+                {loadingExternal ? (
+                  <Box sx={{ p: 6, textAlign: 'center' }}>
+                    <CircularProgress size={32} sx={{ color: '#134F4D', mb: 1 }} />
+                    <Typography variant="caption" display="block" color="text.secondary">
+                      Loading past prescription records...
+                    </Typography>
+                  </Box>
+                ) : externalRecords.length === 0 ? (
+                  <Box sx={{ py: 6, textAlign: 'center', bgcolor: mode === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)', borderRadius: '20px', p: 3 }}>
+                    <Box sx={{ p: 2, borderRadius: '50%', bgcolor: 'rgba(19, 79, 77, 0.1)', width: 64, height: 64, mx: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2 }}>
+                      <UploadIcon sx={{ fontSize: 32, color: '#134F4D' }} />
+                    </Box>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', mb: 0.5 }}>
+                      No Past Prescriptions Uploaded
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 340, mx: 'auto', mb: 2.5, fontSize: '0.82rem' }}>
+                      Upload photos or PDFs of old prescriptions from other clinics to keep your complete health history in one place.
+                    </Typography>
+                    <Button
+                      variant="contained"
+                      startIcon={<UploadIcon />}
+                      onClick={() => setUploadPastRxModalOpen(true)}
+                      sx={{
+                        borderRadius: '14px',
+                        bgcolor: '#134F4D',
+                        color: '#ffffff',
+                        fontWeight: 800,
+                        px: 3,
+                        py: 1,
+                        '&:hover': { bgcolor: '#0e3b3a' }
+                      }}
+                    >
+                      Upload Past Prescription
+                    </Button>
+                  </Box>
+                ) : (
+                  <Grid container spacing={2}>
+                    {externalRecords.map((record) => (
+                      <Grid item xs={12} sm={6} key={record.id}>
+                        <Card
+                          variant="outlined"
+                          sx={{
+                            p: 2,
+                            borderRadius: '18px',
+                            bgcolor: mode === 'dark' ? 'rgba(15, 23, 42, 0.6)' : '#ffffff',
+                            border: '1px solid rgba(19, 79, 77, 0.18)',
+                            height: '100%',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justify: 'space-between',
+                            boxShadow: '0 4px 14px rgba(0,0,0,0.03)'
+                          }}
+                        >
+                          <Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                {record.fileType === 'pdf' ? (
+                                  <PdfIcon sx={{ color: '#dc2626', fontSize: 26 }} />
+                                ) : (
+                                  <FileIcon sx={{ color: '#134F4D', fontSize: 26 }} />
+                                )}
+                                <Typography variant="subtitle2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#0f172a' }}>
+                                  {record.title}
+                                </Typography>
+                              </Box>
+                              <Chip
+                                label={record.fileType?.toUpperCase() || 'FILE'}
+                                size="small"
+                                sx={{ height: 20, fontSize: '0.65rem', fontWeight: 800, bgcolor: 'rgba(19, 79, 77, 0.1)', color: '#134F4D' }}
+                              />
+                            </Box>
+
+                            {record.doctorName && (
+                              <Typography variant="caption" sx={{ color: '#134F4D', fontWeight: 700, display: 'block', mb: 0.5 }}>
+                                Doctor / Clinic: {record.doctorName}
+                              </Typography>
+                            )}
+
+                            <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+                              Date: {record.recordDate || new Date(record.createdAt).toLocaleDateString()}
+                            </Typography>
+
+                            {record.notes && (
+                              <Typography variant="body2" sx={{ fontSize: '0.78rem', color: mode === 'dark' ? 'rgba(255,255,255,0.7)' : '#475569', fontStyle: 'italic', mb: 1.5 }}>
+                                "{record.notes}"
+                              </Typography>
+                            )}
+                          </Box>
+
+                          <Box sx={{ display: 'flex', gap: 1, pt: 1.5, borderTop: '1px solid #f1f5f9' }}>
+                            <Button
+                              variant="outlined"
+                              size="small"
+                              startIcon={<ViewIcon />}
+                              onClick={() => window.open(record.fileUrl?.startsWith('http') ? record.fileUrl : `${getApiBaseUrl()}${record.fileUrl}`, '_blank')}
+                              sx={{
+                                flex: 1,
+                                borderRadius: '10px',
+                                fontWeight: 800,
+                                fontSize: '0.75rem',
+                                borderColor: '#134F4D',
+                                color: '#134F4D'
+                              }}
+                            >
+                              View Document
+                            </Button>
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => handleDeleteExternalRecord(record.id)}
+                              title="Delete record"
+                            >
+                              <DeleteIcon sx={{ fontSize: 18 }} />
+                            </IconButton>
+                          </Box>
+                        </Card>
+                      </Grid>
+                    ))}
+                  </Grid>
+                )}
+              </Box>
+
+              {/* ─── Pane 3: Patients (Doctor Only) ─── */}
               {user?.role === 'doctor' && (
-                <Box sx={{ width: '33.3333%', p: { xs: 1.5, sm: 2 }, flexShrink: 0, boxSizing: 'border-box' }}>
+                <Box sx={{ width: '25%', p: { xs: 1.5, sm: 2 }, flexShrink: 0, boxSizing: 'border-box' }}>
                   <EnhancedPatientManagement maxPatients={3} searchQuery={searchQuery} />
                 </Box>
               )}
@@ -1504,6 +1703,13 @@ const Dashboard = () => {
           )}
         </Box>
       </Dialog>
+
+      {/* Upload Past / External Prescription Modal */}
+      <UploadPastPrescriptionModal
+        open={uploadPastRxModalOpen}
+        onClose={() => setUploadPastRxModalOpen(false)}
+        onSuccess={fetchExternalRecords}
+      />
     </>
   );
 };
