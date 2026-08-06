@@ -129,42 +129,42 @@ const Profile = () => {
     
     if (user.role === 'doctor') {
       const doctorUser = user as Doctor;
-      setDoctorFormData({
-        firstName: user.firstName || '',
-        lastName: user.lastName || '',
-        specialization: doctorUser.specialization || '',
-        contactNumber: doctorUser.contactNumber || '',
-        profileImage: doctorUser.profileImage || '',
-        clinicLogo: doctorUser.clinicLogo || '',
-        signature: doctorUser.signature || '',
-        stamp: doctorUser.stamp || '',
-        clinicName: doctorUser.clinicName || '',
-        clinicAddress: doctorUser.clinicAddress || '',
-        clinicLatitude: doctorUser.clinicLatitude !== undefined ? Number(doctorUser.clinicLatitude) : undefined,
-        clinicLongitude: doctorUser.clinicLongitude !== undefined ? Number(doctorUser.clinicLongitude) : undefined,
-        clinicLocationAccuracy: doctorUser.clinicLocationAccuracy !== undefined ? Number(doctorUser.clinicLocationAccuracy) : undefined,
-        clinicPlaceName: doctorUser.clinicPlaceName || '',
-        alternateEmail: doctorUser.alternateEmail || '',
-        secondaryPhone: doctorUser.secondaryPhone || '',
-        fax: doctorUser.fax || '',
-        whatsapp: doctorUser.whatsapp || '',
-        website: doctorUser.website || '',
-        linkedin: doctorUser.linkedin || '',
-        twitter: doctorUser.twitter || '',
-        facebook: doctorUser.facebook || '',
-        instagram: doctorUser.instagram || '',
-        licenseNumber: doctorUser.licenseNumber || '',
-        experience: doctorUser.experience || '',
-        qualifications: doctorUser.qualifications || ''
-      });
+      setDoctorFormData(prev => ({
+        firstName: prev.firstName || user.firstName || '',
+        lastName: prev.lastName || user.lastName || '',
+        specialization: prev.specialization || doctorUser.specialization || '',
+        contactNumber: prev.contactNumber || doctorUser.contactNumber || '',
+        profileImage: prev.profileImage || doctorUser.profileImage || '',
+        clinicLogo: prev.clinicLogo || doctorUser.clinicLogo || '',
+        signature: prev.signature || doctorUser.signature || '',
+        stamp: prev.stamp || doctorUser.stamp || '',
+        clinicName: prev.clinicName || doctorUser.clinicName || '',
+        clinicAddress: prev.clinicAddress || doctorUser.clinicAddress || '',
+        clinicLatitude: prev.clinicLatitude !== undefined ? prev.clinicLatitude : (doctorUser.clinicLatitude !== undefined ? Number(doctorUser.clinicLatitude) : undefined),
+        clinicLongitude: prev.clinicLongitude !== undefined ? prev.clinicLongitude : (doctorUser.clinicLongitude !== undefined ? Number(doctorUser.clinicLongitude) : undefined),
+        clinicLocationAccuracy: prev.clinicLocationAccuracy !== undefined ? prev.clinicLocationAccuracy : (doctorUser.clinicLocationAccuracy !== undefined ? Number(doctorUser.clinicLocationAccuracy) : undefined),
+        clinicPlaceName: prev.clinicPlaceName || doctorUser.clinicPlaceName || '',
+        alternateEmail: prev.alternateEmail || doctorUser.alternateEmail || '',
+        secondaryPhone: prev.secondaryPhone || doctorUser.secondaryPhone || '',
+        fax: prev.fax || doctorUser.fax || '',
+        whatsapp: prev.whatsapp || doctorUser.whatsapp || '',
+        website: prev.website || doctorUser.website || '',
+        linkedin: prev.linkedin || doctorUser.linkedin || '',
+        twitter: prev.twitter || doctorUser.twitter || '',
+        facebook: prev.facebook || doctorUser.facebook || '',
+        instagram: prev.instagram || doctorUser.instagram || '',
+        licenseNumber: prev.licenseNumber || doctorUser.licenseNumber || '',
+        experience: prev.experience || doctorUser.experience || '',
+        qualifications: prev.qualifications || doctorUser.qualifications || ''
+      }));
     } else if (user.role === 'patient') {
-      setPatientFormData({
-        firstName: user.firstName || '',
-        lastName: user.lastName || '',
-        dateOfBirth: (user as Patient).dateOfBirth || '',
-        contactNumber: (user as Patient).contactNumber || '',
-        address: (user as Patient).address || ''
-      });
+      setPatientFormData(prev => ({
+        firstName: prev.firstName || user.firstName || '',
+        lastName: prev.lastName || user.lastName || '',
+        dateOfBirth: prev.dateOfBirth || (user as Patient).dateOfBirth || '',
+        contactNumber: prev.contactNumber || (user as Patient).contactNumber || '',
+        address: prev.address || (user as Patient).address || ''
+      }));
     }
   }, [user]);
 
