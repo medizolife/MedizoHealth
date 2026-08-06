@@ -2,7 +2,7 @@ import axios from 'axios';
 import { LoginCredentials, RegisterData, User } from '../types/auth';
 
 // Base API URL resolution from environment variables
-const getApiUrl = () => {
+export const getApiBaseUrl = () => {
   const envUrl = process.env.NEXT_PUBLIC_API_URL || process.env.REACT_APP_API_URL;
   if (envUrl) {
     let cleanUrl = envUrl.trim().replace(/\/+$/, '');
@@ -12,7 +12,7 @@ const getApiUrl = () => {
   }
   return 'https://medizoserver.vercel.app/api';
 };
-const API_URL = getApiUrl();
+const API_URL = getApiBaseUrl();
 
 // Create axios instance
 const api = axios.create({

@@ -429,7 +429,8 @@ const Profile = () => {
     try {
       setError(null);
       setDoctorFormData(prev => ({ ...prev, [field]: '' }));
-      await updateDoctorProfile({ ...doctorFormData, [field]: '' });
+      // Only send the field being cleared — don't send entire form with potentially large image data
+      await updateDoctorProfile({ [field]: '' });
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
@@ -448,7 +449,20 @@ const Profile = () => {
       setSuccess(false);
       
       if (user?.role === 'doctor') {
-        await updateDoctorProfile(doctorFormData);
+        // Strip large image data from the payload to avoid Vercel's 4.5MB body limit.
+        // Images are already saved via their dedicated upload endpoints (upload-profile-image,
+        // upload-clinic-logo, upload-signature, upload-stamp), so we only send URL paths here
+        // and exclude any base64 data:image strings.
+        const { profileImage, clinicLogo, signature, stamp, ...textFields } = doctorFormData;
+        
+        // Only include image fields if they are URL paths (not base64 data)
+        const imageFields: Partial<Doctor> = {};
+        if (profileImage && !profileImage.startsWith('data:')) imageFields.profileImage = profileImage;
+        if (clinicLogo && !clinicLogo.startsWith('data:')) imageFields.clinicLogo = clinicLogo;
+        if (signature && !signature.startsWith('data:')) imageFields.signature = signature;
+        if (stamp && !stamp.startsWith('data:')) imageFields.stamp = stamp;
+        
+        await updateDoctorProfile({ ...textFields, ...imageFields });
       } else if (user?.role === 'patient') {
         await updatePatientProfile(patientFormData);
       }

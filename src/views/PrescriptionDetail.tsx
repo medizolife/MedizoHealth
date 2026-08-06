@@ -1,9 +1,9 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getPrescriptionById } from '../services/prescriptions';
-import { prescriptionsAPI } from '../services/api';
+import { prescriptionsAPI, getApiBaseUrl } from '../services/api';
 import { getPatientById } from '../services/patients';
 import { getCachedData, findInCachedList } from '../services/apiCache';
 import { Prescription } from '../types/prescription';
@@ -36,6 +36,7 @@ import {
 const PrescriptionDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { authState } = useAuth();
   const { user } = authState;
   
@@ -47,8 +48,16 @@ const PrescriptionDetail = () => {
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [copied, setCopied] = useState(false);
   
+  const isPublicShareRoute = location.pathname.includes('/prescriptions/share/') || location.pathname.includes('/prescriptions/public/');
+
   useEffect(() => {
     if (!id) return;
+
+    if (isPublicShareRoute) {
+      const publicPdfUrl = `${getApiBaseUrl()}/prescriptions/public/${id}/pdf`;
+      window.location.href = publicPdfUrl;
+      return;
+    }
 
     // 1. Instant Cache Hydration (0 spinner delay)
     const cachedRx = getCachedData<Prescription>(`prescription_${id}`) || findInCachedList<Prescription>('prescriptions_list', id);
@@ -87,26 +96,26 @@ const PrescriptionDetail = () => {
     };
     
     fetchPrescriptionDetails();
-  }, [id]);
+  }, [id, isPublicShareRoute]);
   
   const handlePrint = () => {
     window.print();
   };
   
   const handleShare = async () => {
-    const shareUrl = `${window.location.origin}/prescriptions/share/${id}`;
+    const publicPdfUrl = `${getApiBaseUrl()}/prescriptions/public/${id}/pdf`;
     if (navigator.share && prescription) {
       try {
         await navigator.share({
           title: `Medizo Digital Prescription #${id?.substring(0, 8).toUpperCase()}`,
-          text: `View digital prescription for ${patient ? `${patient.firstName} ${patient.lastName}` : (prescription.patientName || 'Patient')}`,
-          url: shareUrl,
+          text: `Print/View digital prescription for ${patient ? `${patient.firstName} ${patient.lastName}` : (prescription.patientName || 'Patient')}`,
+          url: publicPdfUrl,
         });
       } catch (err) {
         console.log('Share canceled');
       }
     } else {
-      navigator.clipboard?.writeText(shareUrl);
+      navigator.clipboard?.writeText(publicPdfUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 4000);
     }
