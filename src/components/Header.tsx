@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
+import { GoogleLogin } from '@react-oauth/google';
 import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
@@ -68,8 +69,12 @@ export default function Header() {
   const [emailUpdateLoading, setEmailUpdateLoading] = useState(false);
   const [emailUpdateMsg, setEmailUpdateMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Check if this patient has an unverified/placeholder email
-  const isPatientUnverifiedEmail = isAuthenticated && user?.role === 'patient' && user?.email?.endsWith('@patient.medizo.life');
+  // Check if this user (doctor or patient) has an unverified/placeholder email
+  const isPatientUnverifiedEmail = isAuthenticated && !!user?.email && (
+    user.email.endsWith('@patient.medizo.life') ||
+    user.email.endsWith('@doctor.medizo.life') ||
+    (user.email.includes('.medizo.life') && !user.email.startsWith('admin@'))
+  );
 
   // DOB verification state (post-login identity check for mobile-login patients)
   const [dobVerifyDialogOpen, setDobVerifyDialogOpen] = useState(false);
@@ -332,8 +337,8 @@ export default function Header() {
                   )
                 )}
 
-                {/* Unverified Email Badge for patients */}
-                {user.role === 'patient' && isPatientUnverifiedEmail && (
+                {/* Unverified Email Badge for patients and doctors */}
+                {isPatientUnverifiedEmail && (
                   <Chip
                     icon={<SecurityIcon sx={{ fontSize: 14, color: '#ffffff !important' }} />}
                     label="⚠ Add Email"
@@ -1042,6 +1047,60 @@ export default function Header() {
             placeholder="yourname@example.com"
             InputProps={{ sx: { borderRadius: '12px' } }}
           />
+
+          <Divider sx={{ my: 2.5, borderColor: mode === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)' }}>
+            <Typography variant="caption" sx={{ color: mode === 'dark' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)', fontWeight: 700, px: 1 }}>
+              OR USE GOOGLE
+            </Typography>
+          </Divider>
+
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', gap: 1 }}>
+            <GoogleLogin
+              onSuccess={async (credentialResponse) => {
+                if (credentialResponse.credential) {
+                  setEmailUpdateLoading(true);
+                  setEmailUpdateMsg(null);
+                  try {
+                    const base64Url = credentialResponse.credential.split('.')[1];
+                    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                    const jsonPayload = decodeURIComponent(
+                      atob(base64)
+                        .split('')
+                        .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+                        .join('')
+                    );
+                    const googleData = JSON.parse(jsonPayload);
+                    const googleEmail = googleData?.email;
+
+                    if (!googleEmail) {
+                      throw new Error('Could not retrieve email from Google Account');
+                    }
+
+                    const res = await authAPI.updateEmail(googleEmail);
+                    setEmailUpdateMsg({ type: 'success', text: `✅ Email updated to ${googleEmail} via Google!` });
+                    if (res.user) {
+                      localStorage.setItem('user', JSON.stringify(res.user));
+                    }
+                    setTimeout(() => {
+                      setAddEmailDialogOpen(false);
+                      window.location.reload();
+                    }, 1500);
+                  } catch (err: any) {
+                    setEmailUpdateMsg({ type: 'error', text: err.response?.data?.message || err.message || 'Failed to update email with Google' });
+                  } finally {
+                    setEmailUpdateLoading(false);
+                  }
+                }
+              }}
+              onError={() => {
+                setEmailUpdateMsg({ type: 'error', text: 'Google Sign-In failed. Please try typing your email address manually.' });
+              }}
+              shape="pill"
+              theme={mode === 'dark' ? 'filled_black' : 'outline'}
+              text="continue_with"
+              width="100%"
+            />
+          </Box>
         </DialogContent>
         <DialogActions sx={{ p: 2, pt: 0 }}>
           <Button onClick={() => setAddEmailDialogOpen(false)} color="inherit" sx={{ fontWeight: 700 }}>
