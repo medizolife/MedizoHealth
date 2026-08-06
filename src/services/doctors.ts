@@ -44,3 +44,14 @@ export const uploadSignature = async (file: File): Promise<{ url: string }> => {
   });
   return response.data;
 };
+
+export const uploadStamp = async (file: File): Promise<{ url: string }> => {
+  const formData = new FormData();
+  formData.append('stamp', file);
+  const response = await api.post<{ url: string }>('/doctors/upload-stamp', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return response.data;
+};

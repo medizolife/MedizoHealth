@@ -36,6 +36,7 @@ import api from '../services/api';
 import { getPrescriptions } from '../services/prescriptions';
 import { getCachedData } from '../services/apiCache';
 import { useThemeContext } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext';
 
 import { Prescription } from '../types/prescription';
 
@@ -49,6 +50,8 @@ interface Stats {
 export default function DoctorPrescriptions() {
   const navigate = useNavigate();
   const { mode } = useThemeContext();
+  const { authState } = useAuth();
+  const { user } = authState;
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -217,24 +220,26 @@ export default function DoctorPrescriptions() {
           </Typography>
         </Box>
 
-        <Button
-          variant="contained"
-          onClick={() => navigate('/prescriptions/new')}
-          startIcon={<PharmacyIcon />}
-          sx={{
-            borderRadius: '20px',
-            fontWeight: 800,
-            px: 3,
-            py: 1,
-            bgcolor: mode === 'dark' ? '#66CDAA' : '#2A6B5D',
-            color: mode === 'dark' ? '#123029' : '#FFFFFF',
-            boxShadow: '0 6px 20px rgba(42, 107, 93, 0.25)',
-            '&:hover': { bgcolor: mode === 'dark' ? '#80E5C2' : '#1E4D43', transform: 'translateY(-2px)' },
-            transition: 'all 0.2s ease'
-          }}
-        >
-          Create New Prescription
-        </Button>
+        {user?.role === 'doctor' && (
+          <Button
+            variant="contained"
+            onClick={() => navigate('/prescriptions/new')}
+            startIcon={<PharmacyIcon />}
+            sx={{
+              borderRadius: '20px',
+              fontWeight: 800,
+              px: 3,
+              py: 1,
+              bgcolor: mode === 'dark' ? '#66CDAA' : '#2A6B5D',
+              color: mode === 'dark' ? '#123029' : '#FFFFFF',
+              boxShadow: '0 6px 20px rgba(42, 107, 93, 0.25)',
+              '&:hover': { bgcolor: mode === 'dark' ? '#80E5C2' : '#1E4D43', transform: 'translateY(-2px)' },
+              transition: 'all 0.2s ease'
+            }}
+          >
+            Create New Prescription
+          </Button>
+        )}
       </Paper>
 
       {error && (
@@ -366,15 +371,21 @@ export default function DoctorPrescriptions() {
             No prescriptions found
           </Typography>
           <Typography variant="body2" sx={{ color: '#428475', mb: 2 }}>
-            Try searching for a different keyword or create a new prescription.
+            {user?.role === 'doctor' 
+              ? 'Try searching for a different keyword or create a new prescription.' 
+              : user?.role === 'pharmacist'
+              ? 'No prescriptions match your search criteria. Incoming customer prescriptions will appear here.'
+              : 'Your doctor will issue digital prescriptions here after your consultation.'}
           </Typography>
-          <Button
-            variant="contained"
-            onClick={() => navigate('/prescriptions/new')}
-            sx={{ borderRadius: '20px', fontWeight: 800, bgcolor: '#89D7B7', color: '#1A312C' }}
-          >
-            Create First Prescription
-          </Button>
+          {user?.role === 'doctor' && (
+            <Button
+              variant="contained"
+              onClick={() => navigate('/prescriptions/new')}
+              sx={{ borderRadius: '20px', fontWeight: 800, bgcolor: '#89D7B7', color: '#1A312C' }}
+            >
+              Create First Prescription
+            </Button>
+          )}
         </Paper>
       ) : (
         <Grid container spacing={2.5}>

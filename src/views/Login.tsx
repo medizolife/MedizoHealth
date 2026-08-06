@@ -57,6 +57,7 @@ const Login = () => {
   const [otpSending, setOtpSending] = useState(false);
   const [otpMsg, setOtpMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [resendCountdown, setResendCountdown] = useState(0);
+  const [unregisteredEmailAlert, setUnregisteredEmailAlert] = useState<string | null>(null);
 
   const [mobileNumber, setMobileNumber] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
@@ -121,21 +122,30 @@ const Login = () => {
     }
     setOtpSending(true);
     setOtpMsg(null);
+    setUnregisteredEmailAlert(null);
     try {
       const res = await authAPI.sendLoginOtp(email.trim());
       setOtpSent(true);
       setOtpMsg({ type: 'success', text: res.message || 'OTP verification code sent to your email!' });
       setResendCountdown(60);
     } catch (err: any) {
-      let msg = err.response?.data?.message;
-      if (!msg) {
-        if (err.response?.status === 404) {
-          msg = 'Server endpoint updating (HTTP 404). Please re-try sending OTP code in a few moments.';
-        } else {
-          msg = err.message || 'Failed to send OTP code';
+      let msg = err.response?.data?.message || err.message || '';
+      if (msg.includes('No Medizo account') || msg.includes('not found') || msg.includes('create an account')) {
+        setUnregisteredEmailAlert(email.trim());
+        setOtpMsg({
+          type: 'error',
+          text: 'No Medizo account found for this email address.'
+        });
+      } else {
+        if (!msg) {
+          if (err.response?.status === 404) {
+            msg = 'Server endpoint updating (HTTP 404). Please re-try sending OTP code in a few moments.';
+          } else {
+            msg = 'Failed to send OTP code';
+          }
         }
+        setOtpMsg({ type: 'error', text: msg });
       }
-      setOtpMsg({ type: 'error', text: msg });
     } finally {
       setOtpSending(false);
     }
@@ -653,6 +663,45 @@ const Login = () => {
                       <Alert severity={otpMsg.type} sx={{ mb: 1.25, borderRadius: '12px', py: 0.25, fontSize: '0.78rem' }}>
                         {otpMsg.text}
                       </Alert>
+                    )}
+
+                    {unregisteredEmailAlert && (
+                      <Box 
+                        sx={{ 
+                          p: 1.75, 
+                          mb: 1.5, 
+                          borderRadius: '16px', 
+                          bgcolor: isDark ? 'rgba(245, 158, 11, 0.16)' : 'rgba(245, 158, 11, 0.1)', 
+                          border: '1.5px solid rgba(245, 158, 11, 0.4)',
+                          textAlign: 'left' 
+                        }}
+                      >
+                        <Typography variant="subtitle2" sx={{ fontWeight: 900, color: isDark ? '#FBBF24' : '#D97706', display: 'flex', alignItems: 'center', gap: 0.8, mb: 0.5, fontSize: '0.85rem' }}>
+                          <span>⚠️</span> Account Not Registered
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: isDark ? '#FDE68A' : '#92400E', fontSize: '0.78rem', fontWeight: 600, mb: 1.5, lineHeight: 1.4 }}>
+                          No account exists for <strong>{unregisteredEmailAlert}</strong>. Please create an account first to select your account role (Doctor vs Patient).
+                        </Typography>
+                        <Button
+                          fullWidth
+                          variant="contained"
+                          size="small"
+                          onClick={() => navigate('/register', { state: { prefilledEmail: unregisteredEmailAlert } })}
+                          sx={{ 
+                            bgcolor: '#D97706', 
+                            color: '#ffffff', 
+                            fontWeight: 800, 
+                            borderRadius: '12px', 
+                            py: 0.8,
+                            fontSize: '0.8rem',
+                            textTransform: 'none',
+                            boxShadow: '0 4px 12px rgba(217, 119, 6, 0.3)',
+                            '&:hover': { bgcolor: '#B45309' } 
+                          }}
+                        >
+                          ✨ Create Account Now (Select Role)
+                        </Button>
+                      </Box>
                     )}
 
                     <Box sx={{ mb: 1.25 }}>

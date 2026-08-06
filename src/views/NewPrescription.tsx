@@ -115,6 +115,13 @@ const NewPrescription = () => {
   const { user } = authState;
   const { mode } = useThemeContext();
   
+  // Redirect non-doctors away from prescription creation page
+  useEffect(() => {
+    if (user && user.role !== 'doctor') {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [user, navigate]);
+
   const [patients, setPatients] = useState<Patient[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [loading, setLoading] = useState(false);

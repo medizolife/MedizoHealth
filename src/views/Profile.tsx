@@ -25,7 +25,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Chip
+  Chip,
+  LinearProgress
 } from '@mui/material';
 import { 
   PhotoCamera as PhotoCameraIcon,
@@ -38,26 +39,42 @@ import {
   Delete as DeleteIcon,
   CheckCircle as CheckCircleIcon,
   Warning as WarningIcon,
-  DeleteForever as DeleteForeverIcon
+  DeleteForever as DeleteForeverIcon,
+  MyLocation as MyLocationIcon,
+  LocationOn as LocationOnIcon,
+  GpsFixed as GpsFixedIcon,
+  OpenInNew as OpenInNewIcon,
+  Clear as ClearIcon,
+  Verified as VerifiedIcon
 } from '@mui/icons-material';
-import { updateDoctorProfile, uploadProfileImage, uploadClinicLogo, uploadSignature } from '../services/doctors';
+import { updateDoctorProfile, uploadProfileImage, uploadClinicLogo, uploadSignature, uploadStamp } from '../services/doctors';
 import { updatePatientProfile } from '../services/patients';
 import { Doctor, Patient } from '../types/auth';
-import { usersAPI } from '../services/api';
+import { usersAPI, digilockerAPI } from '../services/api';
 import WallpaperCarouselHero from '../components/WallpaperCarouselHero';
 
 const Profile = () => {
   const { authState, logout } = useAuth();
   const { user } = authState;
   const navigate = useNavigate();
+
+  // DigiLocker status state
+  const [digilockerStatus, setDigilockerStatus] = useState<{ verified: boolean; profile: any } | null>(null);
+  const [digilockerLoading, setDigilockerLoading] = useState(false);
   
   const [loading, setLoading] = useState(false);
   const [uploadingProfile, setUploadingProfile] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingSignature, setUploadingSignature] = useState(false);
+  const [uploadingStamp, setUploadingStamp] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   
+  // Location states
+  const [locating, setLocating] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [locationNotice, setLocationNotice] = useState<string | null>(null);
+
   // Delete account state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
@@ -67,6 +84,7 @@ const Profile = () => {
   const profileImageRef = useRef<HTMLInputElement>(null);
   const clinicLogoRef = useRef<HTMLInputElement>(null);
   const signatureRef = useRef<HTMLInputElement>(null);
+  const stampRef = useRef<HTMLInputElement>(null);
   
   const [doctorFormData, setDoctorFormData] = useState<Partial<Doctor>>({
     firstName: '',
@@ -76,8 +94,13 @@ const Profile = () => {
     profileImage: '',
     clinicLogo: '',
     signature: '',
+    stamp: '',
     clinicName: '',
     clinicAddress: '',
+    clinicLatitude: undefined,
+    clinicLongitude: undefined,
+    clinicLocationAccuracy: undefined,
+    clinicPlaceName: '',
     alternateEmail: '',
     secondaryPhone: '',
     fax: '',
@@ -114,8 +137,13 @@ const Profile = () => {
         profileImage: doctorUser.profileImage || '',
         clinicLogo: doctorUser.clinicLogo || '',
         signature: doctorUser.signature || '',
+        stamp: doctorUser.stamp || '',
         clinicName: doctorUser.clinicName || '',
         clinicAddress: doctorUser.clinicAddress || '',
+        clinicLatitude: doctorUser.clinicLatitude !== undefined ? Number(doctorUser.clinicLatitude) : undefined,
+        clinicLongitude: doctorUser.clinicLongitude !== undefined ? Number(doctorUser.clinicLongitude) : undefined,
+        clinicLocationAccuracy: doctorUser.clinicLocationAccuracy !== undefined ? Number(doctorUser.clinicLocationAccuracy) : undefined,
+        clinicPlaceName: doctorUser.clinicPlaceName || '',
         alternateEmail: doctorUser.alternateEmail || '',
         secondaryPhone: doctorUser.secondaryPhone || '',
         fax: doctorUser.fax || '',
@@ -139,6 +167,137 @@ const Profile = () => {
       });
     }
   }, [user]);
+
+  // Fetch DigiLocker status for doctors
+  useEffect(() => {
+    if (user?.role === 'doctor') {
+      digilockerAPI.getStatus()
+        .then(data => {
+          setDigilockerStatus({
+            verified: data.verified || false,
+            profile: data.profile || null
+          });
+        })
+        .catch(err => {
+          console.error('Failed to fetch DigiLocker status:', err);
+          setDigilockerStatus({ verified: false, profile: null });
+        });
+    }
+  }, [user]);
+
+  // Apply location fix coordinates and accuracy
+  const applyPosition = async (pos: GeolocationPosition) => {
+    const lat = Number(pos.coords.latitude.toFixed(6));
+    const lng = Number(pos.coords.longitude.toFixed(6));
+    const acc = Number(pos.coords.accuracy.toFixed(1));
+
+    setDoctorFormData(prev => ({
+      ...prev,
+      clinicLatitude: lat,
+      clinicLongitude: lng,
+      clinicLocationAccuracy: acc
+    }));
+    setLocating(false);
+
+    if (acc <= 50) {
+      setLocationNotice(`Exact location locked with ${acc}m accuracy (target within 50m met!).`);
+    } else {
+      setLocationNotice(`Location recorded with ${acc}m accuracy. For <50m accuracy, enable High Accuracy GPS or move near a window.`);
+    }
+
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.display_name) {
+          setDoctorFormData(prev => ({
+            ...prev,
+            clinicPlaceName: data.display_name,
+            clinicAddress: prev.clinicAddress || data.display_name
+          }));
+        }
+      }
+    } catch (e) {
+      // Ignore reverse geocode network error
+    }
+  };
+
+  // High Accuracy GPS location detector targeting <= 50m precision
+  const handleDetectLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationError('Geolocation is not supported by your browser or device.');
+      return;
+    }
+
+    setLocating(true);
+    setLocationError(null);
+    setLocationNotice('Acquiring high-precision GPS satellite fix... Please hold still.');
+
+    const options: PositionOptions = {
+      enableHighAccuracy: true,
+      timeout: 20000,
+      maximumAge: 0
+    };
+
+    let bestPosition: GeolocationPosition | null = null;
+    let attempts = 0;
+
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        attempts++;
+        const acc = pos.coords.accuracy;
+        if (!bestPosition || acc < bestPosition.coords.accuracy) {
+          bestPosition = pos;
+        }
+
+        if (acc <= 50 || attempts >= 6) {
+          navigator.geolocation.clearWatch(watchId);
+          applyPosition(bestPosition || pos);
+        }
+      },
+      (err) => {
+        navigator.geolocation.clearWatch(watchId);
+        navigator.geolocation.getCurrentPosition(
+          (pos) => applyPosition(pos),
+          (fallbackErr) => {
+            setLocating(false);
+            let msg = 'Failed to detect location.';
+            if (fallbackErr.code === fallbackErr.PERMISSION_DENIED) {
+              msg = 'Location access denied. Please allow location permissions in your browser/device.';
+            } else if (fallbackErr.code === fallbackErr.POSITION_UNAVAILABLE) {
+              msg = 'Position unavailable. Check your device GPS settings.';
+            } else if (fallbackErr.code === fallbackErr.TIMEOUT) {
+              msg = 'Location detection timed out. Please try again.';
+            }
+            setLocationError(msg);
+          },
+          options
+        );
+      },
+      options
+    );
+
+    setTimeout(() => {
+      navigator.geolocation.clearWatch(watchId);
+      if (bestPosition) {
+        applyPosition(bestPosition);
+      } else {
+        setLocating(false);
+      }
+    }, 12000);
+  };
+
+  const handleClearLocation = () => {
+    setDoctorFormData(prev => ({
+      ...prev,
+      clinicLatitude: undefined,
+      clinicLongitude: undefined,
+      clinicLocationAccuracy: undefined,
+      clinicPlaceName: ''
+    }));
+    setLocationNotice(null);
+    setLocationError(null);
+  };
   
   // Handle doctor form input changes
   const handleDoctorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -216,6 +375,26 @@ const Profile = () => {
     }
   };
   
+  // Handle doctor stamp upload
+  const handleStampUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    try {
+      setUploadingStamp(true);
+      setError(null);
+      const result = await uploadStamp(file);
+      setDoctorFormData(prev => ({ ...prev, stamp: result.url }));
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err) {
+      console.error('Error uploading doctor stamp:', err);
+      setError('Failed to upload doctor stamp');
+    } finally {
+      setUploadingStamp(false);
+    }
+  };
+  
   // Handle account deletion
   const handleDeleteAccount = async () => {
     if (deleteConfirmText !== 'DELETE') return;
@@ -237,7 +416,7 @@ const Profile = () => {
   };
   
   // Handle remove image
-  const handleRemoveImage = async (field: 'profileImage' | 'clinicLogo' | 'signature') => {
+  const handleRemoveImage = async (field: 'profileImage' | 'clinicLogo' | 'signature' | 'stamp') => {
     try {
       setError(null);
       setDoctorFormData(prev => ({ ...prev, [field]: '' }));
@@ -281,6 +460,24 @@ const Profile = () => {
     if (path.startsWith('http')) return path;
     const apiUrl = (process.env.NEXT_PUBLIC_API_URL || process.env.REACT_APP_API_URL || 'http://localhost:5000').replace(/\/api\/?$/, '');
     return `${apiUrl}${path}`;
+  };
+
+  // Calculate doctor profile completeness percentage
+  const calculateProfileCompleteness = () => {
+    if (user?.role !== 'doctor') return null;
+    const items = [
+      { label: 'Basic Info & Specialization', complete: Boolean(doctorFormData.firstName && doctorFormData.lastName && doctorFormData.specialization) },
+      { label: 'Medical License Number', complete: Boolean(doctorFormData.licenseNumber) },
+      { label: 'Doctor Avatar Photo', complete: Boolean(doctorFormData.profileImage) },
+      { label: 'Digital Rx Signature', complete: Boolean(doctorFormData.signature) },
+      { label: 'Clinic Name & Address', complete: Boolean(doctorFormData.clinicName && doctorFormData.clinicAddress) },
+      { label: 'Exact Clinic GPS Pin', complete: Boolean(doctorFormData.clinicLatitude !== undefined && doctorFormData.clinicLongitude !== undefined) },
+      { label: 'DigiLocker Identity Verification', complete: Boolean(digilockerStatus?.verified) }
+    ];
+    const completedCount = items.filter(i => i.complete).length;
+    const percent = Math.round((completedCount / items.length) * 100);
+    const missingItems = items.filter(i => !i.complete);
+    return { percent, completedCount, totalCount: items.length, missingItems };
   };
   
   if (!user) {
@@ -394,6 +591,176 @@ const Profile = () => {
         </Grid>
       </Paper>
 
+      {/* ─── Doctor Profile Completeness Progress Banner ─── */}
+      {user.role === 'doctor' && (() => {
+        const completeness = calculateProfileCompleteness();
+        if (!completeness) return null;
+        return (
+          <Paper
+            className={mode === 'dark' ? 'apple-glass-card-dark' : 'apple-glass-card'}
+            sx={{
+              mb: 3,
+              p: 2.5,
+              borderRadius: '24px !important',
+              border: '1px solid var(--glass-border)',
+              bgcolor: mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)'
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5, flexWrap: 'wrap', gap: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }}>
+                  📋 Profile Completeness Status
+                </Typography>
+                <Chip
+                  label={`${completeness.percent}% Complete`}
+                  color={completeness.percent === 100 ? 'success' : completeness.percent >= 70 ? 'info' : 'warning'}
+                  size="small"
+                  sx={{ fontWeight: 900, fontSize: '0.75rem' }}
+                />
+              </Box>
+              <Typography variant="caption" sx={{ fontWeight: 700, color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-teal)' }}>
+                {completeness.completedCount} of {completeness.totalCount} essential requirements met
+              </Typography>
+            </Box>
+
+            <LinearProgress
+              variant="determinate"
+              value={completeness.percent}
+              sx={{
+                height: 10,
+                borderRadius: 5,
+                mb: 2,
+                bgcolor: mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+                '& .MuiLinearProgress-bar': {
+                  borderRadius: 5,
+                  bgcolor: completeness.percent === 100 ? '#2e7d32' : completeness.percent >= 70 ? '#1976d2' : '#e65100'
+                }
+              }}
+            />
+
+            {completeness.missingItems.length > 0 && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FFB74D' : '#e65100' }}>
+                  Action Required to Complete Profile:
+                </Typography>
+                {completeness.missingItems.map((item, idx) => (
+                  <Chip
+                    key={idx}
+                    label={`+ ${item.label}`}
+                    size="small"
+                    variant="outlined"
+                    color="warning"
+                    sx={{ fontWeight: 700, fontSize: '0.7rem', borderRadius: '8px' }}
+                  />
+                ))}
+              </Box>
+            )}
+          </Paper>
+        );
+      })()}
+
+      {/* ─── DigiLocker Verified Identity Card (For Doctors) ─── */}
+      {user.role === 'doctor' && (
+        <Paper
+          className={mode === 'dark' ? 'apple-glass-card-dark' : 'apple-glass-card'}
+          sx={{
+            mb: 3,
+            p: 3,
+            borderRadius: '24px !important',
+            border: digilockerStatus?.verified 
+              ? '1.5px solid rgba(76, 175, 80, 0.4)' 
+              : '1.5px solid rgba(255, 152, 0, 0.4)',
+            background: mode === 'dark'
+              ? (digilockerStatus?.verified
+                  ? 'linear-gradient(135deg, rgba(46, 125, 50, 0.15) 0%, rgba(27, 94, 32, 0.08) 100%) !important'
+                  : 'linear-gradient(135deg, rgba(230, 81, 0, 0.15) 0%, rgba(191, 54, 12, 0.08) 100%) !important')
+              : (digilockerStatus?.verified
+                  ? 'linear-gradient(135deg, rgba(232, 245, 233, 0.95) 0%, rgba(200, 230, 201, 0.8) 100%) !important'
+                  : 'linear-gradient(135deg, rgba(255, 243, 224, 0.95) 0%, rgba(255, 224, 178, 0.8) 100%) !important')
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2, mb: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Box 
+                sx={{ 
+                  p: 1.2, 
+                  borderRadius: '14px', 
+                  bgcolor: digilockerStatus?.verified ? 'rgba(76, 175, 80, 0.2)' : 'rgba(230, 81, 0, 0.2)',
+                  color: digilockerStatus?.verified ? '#2e7d32' : '#e65100'
+                }}
+              >
+                <VerifiedIcon sx={{ fontSize: 26 }} />
+              </Box>
+              <Box>
+                <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', lineHeight: 1.2 }}>
+                  DigiLocker Identity Verification
+                </Typography>
+                <Typography variant="caption" sx={{ color: mode === 'dark' ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)', fontWeight: 600 }}>
+                  Government-backed digital identity & license verification for doctors
+                </Typography>
+              </Box>
+            </Box>
+
+            <Chip
+              label={digilockerStatus?.verified ? 'VERIFIED ✓' : 'UNVERIFIED'}
+              color={digilockerStatus?.verified ? 'success' : 'warning'}
+              sx={{ fontWeight: 900, fontSize: '0.78rem', px: 1, height: 30 }}
+            />
+          </Box>
+
+          {digilockerStatus?.verified ? (
+            <Box sx={{ p: 2, borderRadius: '16px', bgcolor: mode === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.6)', border: '1px solid rgba(76, 175, 80, 0.2)' }}>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 700, display: 'block' }}>Verified Doctor Name</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 800 }}>{digilockerStatus.profile?.name || `${user.firstName} ${user.lastName}`}</Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 700, display: 'block' }}>Masked Aadhaar / Identity ID</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 800 }}>{digilockerStatus.profile?.maskedAadhaar || digilockerStatus.profile?.digilockerid || 'Verified via DigiLocker PKCE'}</Typography>
+                </Grid>
+                {digilockerStatus.profile?.linkedAt && (
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 700, display: 'block' }}>Verification Date</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 800 }}>{new Date(digilockerStatus.profile.linkedAt).toLocaleDateString()}</Typography>
+                  </Grid>
+                )}
+              </Grid>
+            </Box>
+          ) : (
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2, mt: 1 }}>
+              <Typography variant="body2" sx={{ color: mode === 'dark' ? 'rgba(255,183,77,0.9)' : '#bf360c', fontWeight: 600, fontSize: '0.83rem' }}>
+                ⚠️ You have not verified your identity with DigiLocker. Verify now to enable official digital Rx signing and patient safety compliance.
+              </Typography>
+              <Button
+                variant="contained"
+                size="small"
+                onClick={() => {
+                  setDigilockerLoading(true);
+                  window.location.href = digilockerAPI.getAuthorizeUrl();
+                }}
+                disabled={digilockerLoading}
+                startIcon={digilockerLoading ? <CircularProgress size={16} color="inherit" /> : <VerifiedIcon sx={{ fontSize: 18 }} />}
+                sx={{
+                  bgcolor: '#e65100',
+                  color: '#ffffff',
+                  fontWeight: 800,
+                  fontSize: '0.8rem',
+                  textTransform: 'none',
+                  borderRadius: '12px',
+                  px: 2.5,
+                  py: 1,
+                  boxShadow: '0 4px 14px rgba(230, 81, 0, 0.3)',
+                  '&:hover': { bgcolor: '#bf360c' }
+                }}
+              >
+                {digilockerLoading ? 'Redirecting...' : 'Verify with DigiLocker'}
+              </Button>
+            </Box>
+          )}
+        </Paper>
+      )}
+
       <Paper elevation={0} className={mode === 'dark' ? 'apple-glass-card-dark' : 'apple-glass-card'} sx={{ p: 3, borderRadius: '24px !important', mb: 3 }}>
         <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 1 }}>
           <Box>
@@ -461,7 +828,7 @@ const Profile = () => {
                         Profile & Clinic Branding
                       </Typography>
                       <Typography variant="caption" sx={{ color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-teal)', fontWeight: 700 }}>
-                        High-resolution avatar, logo, and digital signature for prescriptions
+                        High-resolution avatar, logo, digital signature, and official stamp for prescriptions
                       </Typography>
                     </Box>
                   </Box>
@@ -469,7 +836,7 @@ const Profile = () => {
 
                 <Grid container spacing={{ xs: 1.2, sm: 2.5 }}>
                   {/* Profile Image */}
-                  <Grid item xs={4} sm={4}>
+                  <Grid item xs={6} sm={3}>
                     <Box 
                       sx={{ 
                         p: { xs: 1.2, sm: 2.2 }, 
@@ -545,7 +912,7 @@ const Profile = () => {
                   </Grid>
 
                   {/* Clinic Logo */}
-                  <Grid item xs={4} sm={4}>
+                  <Grid item xs={6} sm={3}>
                     <Box 
                       sx={{ 
                         p: { xs: 1.2, sm: 2.2 }, 
@@ -623,7 +990,7 @@ const Profile = () => {
                   </Grid>
 
                   {/* Signature */}
-                  <Grid item xs={4} sm={4}>
+                  <Grid item xs={6} sm={3}>
                     <Box 
                       sx={{ 
                         p: { xs: 1.2, sm: 2.2 }, 
@@ -691,6 +1058,84 @@ const Profile = () => {
                             color="error"
                             size="small"
                             onClick={() => handleRemoveImage('signature')}
+                            sx={{ borderRadius: '12px', fontWeight: 800, fontSize: { xs: '0.58rem', sm: '0.7rem' }, px: 0.8, minWidth: 'auto' }}
+                          >
+                            ×
+                          </Button>
+                        )}
+                      </Box>
+                    </Box>
+                  </Grid>
+
+                  {/* Doctor Stamp */}
+                  <Grid item xs={6} sm={3}>
+                    <Box 
+                      sx={{ 
+                        p: { xs: 1.2, sm: 2.2 }, 
+                        borderRadius: { xs: '16px', sm: '20px' }, 
+                        bgcolor: mode === 'dark' ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)', 
+                        border: '1px dashed var(--glass-border)',
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        alignItems: 'center',
+                        justify: 'space-between',
+                        height: '100%',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-forest)', textTransform: 'uppercase', letterSpacing: 0.3, mb: 1, fontSize: { xs: '0.58rem', sm: '0.72rem' }, textAlign: 'center', lineHeight: 1.1 }}>
+                        Doctor Stamp
+                      </Typography>
+                      <Avatar
+                        variant="rounded"
+                        src={getImageUrl(doctorFormData.stamp || '')}
+                        sx={{ 
+                          width: { xs: 72, sm: 120 }, 
+                          height: { xs: 44, sm: 65 }, 
+                          mb: 1.2, 
+                          borderRadius: '14px',
+                          p: '2px',
+                          bgcolor: '#ffffff',
+                          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)'
+                        }}
+                      >
+                        <Avatar variant="rounded" sx={{ width: '100%', height: '100%', borderRadius: '12px', bgcolor: '#ffffff', color: 'var(--color-forest)' }}>
+                          <PhotoCameraIcon sx={{ fontSize: { xs: 22, sm: 30 } }} />
+                        </Avatar>
+                      </Avatar>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        ref={stampRef}
+                        onChange={handleStampUpload}
+                        style={{ display: 'none' }}
+                      />
+                      <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', justifyContent: 'center', width: '100%' }}>
+                        <Button
+                          variant="contained"
+                          size="small"
+                          startIcon={uploadingStamp ? <CircularProgress size={12} color="inherit" /> : <PhotoCameraIcon sx={{ fontSize: { xs: 13, sm: 16 } }} />}
+                          onClick={() => stampRef.current?.click()}
+                          disabled={uploadingStamp}
+                          sx={{
+                            borderRadius: '14px',
+                            fontWeight: 800,
+                            fontSize: { xs: '0.62rem', sm: '0.75rem' },
+                            px: { xs: 1, sm: 2 },
+                            py: { xs: 0.3, sm: 0.7 },
+                            bgcolor: 'var(--color-forest)',
+                            color: '#ffffff',
+                            minWidth: 'auto'
+                          }}
+                        >
+                          {uploadingStamp ? '...' : 'Upload'}
+                        </Button>
+                        {doctorFormData.stamp && (
+                          <Button
+                            variant="outlined"
+                            color="error"
+                            size="small"
+                            onClick={() => handleRemoveImage('stamp')}
                             sx={{ borderRadius: '12px', fontWeight: 800, fontSize: { xs: '0.58rem', sm: '0.7rem' }, px: 0.8, minWidth: 'auto' }}
                           >
                             ×
@@ -783,8 +1228,9 @@ const Profile = () => {
                     <Grid item xs={12} sm={6}>
                       <TextField
                         fullWidth
-                        label="Clinic Name"
+                        label="Clinic or Hospital Name"
                         name="clinicName"
+                        placeholder="e.g., City Care Hospital / Apollo Health Clinic"
                         value={doctorFormData.clinicName}
                         onChange={handleDoctorChange}
                       />
@@ -809,6 +1255,163 @@ const Profile = () => {
                         value={doctorFormData.clinicAddress}
                         onChange={handleDoctorChange}
                       />
+                    </Grid>
+
+                    {/* Exact Clinic Location & GPS Coordinates (50m Precision) */}
+                    <Grid item xs={12}>
+                      <Box 
+                        sx={{ 
+                          p: 2.5, 
+                          borderRadius: 3, 
+                          bgcolor: mode === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,128,128,0.04)', 
+                          border: '1px solid',
+                          borderColor: mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,128,128,0.15)'
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1, color: mode === 'dark' ? '#FAF2F5' : '#0F4C3A' }}>
+                            <GpsFixedIcon color="primary" /> Exact Clinic GPS Location (50m Precision)
+                          </Typography>
+                          
+                          {doctorFormData.clinicLocationAccuracy !== undefined && (
+                            <Chip 
+                              icon={doctorFormData.clinicLocationAccuracy <= 50 ? <CheckCircleIcon /> : <WarningIcon />}
+                              label={doctorFormData.clinicLocationAccuracy <= 50 ? `${doctorFormData.clinicLocationAccuracy}m Accuracy (Target Met ≤50m)` : `${doctorFormData.clinicLocationAccuracy}m Accuracy (Above 50m)`}
+                              color={doctorFormData.clinicLocationAccuracy <= 50 ? "success" : "warning"}
+                              size="small"
+                              sx={{ fontWeight: 600 }}
+                            />
+                          )}
+                        </Box>
+
+                        {locationNotice && (
+                          <Alert severity={doctorFormData.clinicLocationAccuracy && doctorFormData.clinicLocationAccuracy <= 50 ? "success" : "info"} sx={{ mb: 2 }}>
+                            {locationNotice}
+                          </Alert>
+                        )}
+
+                        {locationError && (
+                          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setLocationError(null)}>
+                            {locationError}
+                          </Alert>
+                        )}
+
+                        <Grid container spacing={2} alignItems="center">
+                          <Grid item xs={12} sm={5}>
+                            <TextField
+                              fullWidth
+                              label="Latitude (°N/S)"
+                              name="clinicLatitude"
+                              type="number"
+                              inputProps={{ step: "any" }}
+                              value={doctorFormData.clinicLatitude !== undefined && doctorFormData.clinicLatitude !== null ? doctorFormData.clinicLatitude : ''}
+                              onChange={(e) => {
+                                const val = e.target.value === '' ? undefined : parseFloat(e.target.value);
+                                setDoctorFormData(prev => ({ ...prev, clinicLatitude: val }));
+                              }}
+                              placeholder="e.g. 28.613939"
+                              size="small"
+                            />
+                          </Grid>
+                          <Grid item xs={12} sm={5}>
+                            <TextField
+                              fullWidth
+                              label="Longitude (°E/W)"
+                              name="clinicLongitude"
+                              type="number"
+                              inputProps={{ step: "any" }}
+                              value={doctorFormData.clinicLongitude !== undefined && doctorFormData.clinicLongitude !== null ? doctorFormData.clinicLongitude : ''}
+                              onChange={(e) => {
+                                const val = e.target.value === '' ? undefined : parseFloat(e.target.value);
+                                setDoctorFormData(prev => ({ ...prev, clinicLongitude: val }));
+                              }}
+                              placeholder="e.g. 77.209021"
+                              size="small"
+                            />
+                          </Grid>
+                          <Grid item xs={12} sm={2}>
+                            <TextField
+                              fullWidth
+                              label="Accuracy (m)"
+                              name="clinicLocationAccuracy"
+                              type="number"
+                              disabled
+                              value={doctorFormData.clinicLocationAccuracy !== undefined && doctorFormData.clinicLocationAccuracy !== null ? doctorFormData.clinicLocationAccuracy : ''}
+                              placeholder="Auto GPS"
+                              size="small"
+                            />
+                          </Grid>
+
+                          {doctorFormData.clinicPlaceName && (
+                            <Grid item xs={12}>
+                              <Typography variant="caption" sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                <LocationOnIcon fontSize="small" /> <strong>Detected Area:</strong> {doctorFormData.clinicPlaceName}
+                              </Typography>
+                            </Grid>
+                          )}
+
+                          <Grid item xs={12} sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
+                            <Button
+                              variant="contained"
+                              color="primary"
+                              startIcon={locating ? <CircularProgress size={18} color="inherit" /> : <MyLocationIcon />}
+                              onClick={handleDetectLocation}
+                              disabled={locating}
+                              size="small"
+                              sx={{ textTransform: 'none', fontWeight: 600 }}
+                            >
+                              {locating ? 'Acquiring GPS Satellite Lock...' : 'Detect Exact GPS Location'}
+                            </Button>
+
+                            {doctorFormData.clinicLatitude !== undefined && doctorFormData.clinicLongitude !== undefined && (
+                              <>
+                                <Button
+                                  variant="outlined"
+                                  color="info"
+                                  startIcon={<OpenInNewIcon />}
+                                  component="a"
+                                  href={`https://www.google.com/maps?q=${doctorFormData.clinicLatitude},${doctorFormData.clinicLongitude}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  size="small"
+                                  sx={{ textTransform: 'none' }}
+                                >
+                                  View on Google Maps
+                                </Button>
+
+                                <Button
+                                  variant="outlined"
+                                  color="error"
+                                  startIcon={<ClearIcon />}
+                                  onClick={handleClearLocation}
+                                  size="small"
+                                  sx={{ textTransform: 'none' }}
+                                >
+                                  Clear GPS Pin
+                                </Button>
+                              </>
+                            )}
+                          </Grid>
+
+                          {/* OpenStreetMap Interactive Preview */}
+                          {doctorFormData.clinicLatitude !== undefined && doctorFormData.clinicLongitude !== undefined && (
+                            <Grid item xs={12} sx={{ mt: 1 }}>
+                              <Box sx={{ borderRadius: 2, overflow: 'hidden', height: 200, border: '1px solid rgba(0,0,0,0.12)' }}>
+                                <iframe
+                                  title="Clinic Location Map Preview"
+                                  width="100%"
+                                  height="100%"
+                                  frameBorder="0"
+                                  scrolling="no"
+                                  marginHeight={0}
+                                  marginWidth={0}
+                                  src={`https://www.openstreetmap.org/export/embed.html?bbox=${Number(doctorFormData.clinicLongitude) - 0.005}%2C${Number(doctorFormData.clinicLatitude) - 0.003}%2C${Number(doctorFormData.clinicLongitude) + 0.005}%2C${Number(doctorFormData.clinicLatitude) + 0.003}&layer=mapnik&marker=${doctorFormData.clinicLatitude}%2C${doctorFormData.clinicLongitude}`}
+                                />
+                              </Box>
+                            </Grid>
+                          )}
+                        </Grid>
+                      </Box>
                     </Grid>
                   </Grid>
                 </AccordionDetails>

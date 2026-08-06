@@ -228,7 +228,7 @@ export default function WallpaperCarouselHero({
           </Box>
 
           {/* Action Button or Date */}
-          {showCreateButton ? (
+          {showCreateButton && user?.role === 'doctor' ? (
             <Button
               variant="contained"
               onClick={() => navigate('/prescriptions/new')}

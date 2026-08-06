@@ -46,14 +46,15 @@ const Register = () => {
   const { authState, register, googleLogin, googleCompleteRegistration } = useAuth();
   const { loading, error, isAuthenticated } = authState;
   
-  // Check if we arrived from Google sign-in with pre-filled data
+  // Check if we arrived with pre-filled email from login or Google sign-in
   const googleData: GoogleData | null = (location.state as any)?.googleData || null;
+  const prefilledEmail: string = (location.state as any)?.prefilledEmail || '';
   const isGoogleSignUp = !!googleData;
   
   const [formData, setFormData] = useState({
     firstName: googleData?.firstName || '',
     lastName: googleData?.lastName || '',
-    email: googleData?.email || '',
+    email: googleData?.email || prefilledEmail || '',
     password: '',
     confirmPassword: '',
     role: '' as 'doctor' | 'patient' | 'pharmacist' | ''

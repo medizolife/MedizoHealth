@@ -24,9 +24,14 @@ export interface Doctor extends User {
   profileImage?: string;
   clinicLogo?: string;
   signature?: string;
+  stamp?: string;
   // Extended contact information
   clinicName?: string;
   clinicAddress?: string;
+  clinicLatitude?: number;
+  clinicLongitude?: number;
+  clinicLocationAccuracy?: number;
+  clinicPlaceName?: string;
   alternateEmail?: string;
   secondaryPhone?: string;
   fax?: string;
@@ -44,8 +49,11 @@ export interface Doctor extends User {
 export interface Patient extends User {
   role: 'patient';
   dateOfBirth?: string;
+  gender?: string;
   contactNumber?: string;
   address?: string;
+  bloodType?: string;
+  allergies?: string | string[];
   emergencyContact?: string;
   medicalHistory?: string;
 }
