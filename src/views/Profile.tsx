@@ -386,7 +386,6 @@ const Profile = () => {
       const result = await uploadStamp(file);
       const newStampUrl = result.url;
       setDoctorFormData(prev => ({ ...prev, stamp: newStampUrl }));
-      await updateDoctorProfile({ ...doctorFormData, stamp: newStampUrl });
       const storedUserStr = localStorage.getItem('user');
       if (storedUserStr) {
         try {
