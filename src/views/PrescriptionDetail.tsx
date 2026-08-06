@@ -90,10 +90,46 @@ const PrescriptionDetail = () => {
     fetchPrescriptionDetails();
   }, [id]);
   
-  const handlePrint = () => {
-    window.print();
+  const [printingPdf, setPrintingPdf] = useState(false);
+
+  const getImageUrl = (path: string) => {
+    if (!path) return '';
+    if (path.startsWith('http') || path.startsWith('data:image/')) return path;
+    const baseUrl = getApiBaseUrl().replace(/\/api\/?$/, '');
+    return `${baseUrl}${path}`;
   };
-  
+
+  const handlePrint = async () => {
+    if (!id) return;
+    try {
+      setPrintingPdf(true);
+      const blob = await prescriptionsAPI.downloadPrescription(id);
+      const blobUrl = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+      
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = '0';
+      iframe.src = blobUrl;
+      document.body.appendChild(iframe);
+
+      iframe.onload = () => {
+        setTimeout(() => {
+          iframe.contentWindow?.focus();
+          iframe.contentWindow?.print();
+          setPrintingPdf(false);
+        }, 400);
+      };
+    } catch (err) {
+      console.error('Error printing prescription PDF:', err);
+      window.print();
+      setPrintingPdf(false);
+    }
+  };
+
   const handleShare = async () => {
     // Share clean frontend link (e.g. https://m.medizo.life/prescriptions/share/:id)
     const shareUrl = `${window.location.origin}/prescriptions/share/${id}`;
@@ -162,24 +198,20 @@ const PrescriptionDetail = () => {
     <Container maxWidth="lg" sx={{ pt: { xs: 2, md: 3 }, pb: 6, px: { xs: 2, sm: 3, md: 4 } }}>
       <style>{`
         @media print {
-          body * {
-            visibility: hidden !important;
-          }
-          .printable-prescription, .printable-prescription * {
-            visibility: visible !important;
-          }
-          .printable-prescription {
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 100% !important;
-            margin: 0 !important;
-            padding: 16px !important;
-            box-shadow: none !important;
-            border: none !important;
+          body {
+            background: #ffffff !important;
           }
           .no-print {
             display: none !important;
+          }
+          .printable-prescription {
+            position: static !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            box-shadow: none !important;
+            border: none !important;
+            overflow: visible !important;
           }
         }
       `}</style>
@@ -463,7 +495,6 @@ const PrescriptionDetail = () => {
           </Grid>
           <Grid item xs={6}>
             <Paper variant="outlined" sx={{ p: 1.5, borderRadius: '12px', bgcolor: '#f1f5f9' }}>
-              <Typography variant="caption" color="text.secondary">PATIENT</Typography>
               <Typography variant="body2" sx={{ fontWeight: 700 }}>
                 {patient ? `${patient.firstName} ${patient.lastName}` : ((prescription as any).patientName || 'Registered Patient')}
               </Typography>
@@ -473,6 +504,51 @@ const PrescriptionDetail = () => {
             </Paper>
           </Grid>
         </Grid>
+
+        {/* Stamp, Signature & Security QR footer inside printable card */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', mt: 3, pt: 2, borderTop: '1px dashed #cbd5e1', flexWrap: 'wrap', gap: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <QRCode value={prescription.id || 'VALID-RX'} size={70} />
+            <Box>
+              <Typography variant="caption" sx={{ fontWeight: 800, color: '#134F4D', display: 'block' }}>
+                OFFICIAL DIGITAL PRESCRIPTION
+              </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.68rem', display: 'block' }}>
+                Token: #{prescription.id?.substring(0, 8).toUpperCase()}
+              </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', display: 'block' }}>
+                Scan QR to verify on Medizo Cloud
+              </Typography>
+            </Box>
+          </Box>
+
+          <Box sx={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+            {((prescription as any).doctorSignature || (prescription as any).signature) && (
+              <Box sx={{ textAlign: 'center' }}>
+                <img 
+                  src={getImageUrl((prescription as any).doctorSignature || (prescription as any).signature)} 
+                  alt="Doctor Signature" 
+                  style={{ maxHeight: 48, maxWidth: 140, objectFit: 'contain' }} 
+                />
+                <Typography variant="caption" sx={{ display: 'block', color: '#64748b', fontWeight: 700, fontSize: '0.68rem', mt: 0.3 }}>
+                  Digital Signature
+                </Typography>
+              </Box>
+            )}
+            {((prescription as any).doctorStamp || (prescription as any).stamp) && (
+              <Box sx={{ textAlign: 'center' }}>
+                <img 
+                  src={getImageUrl((prescription as any).doctorStamp || (prescription as any).stamp)} 
+                  alt="Official Stamp" 
+                  style={{ maxHeight: 56, maxWidth: 140, objectFit: 'contain' }} 
+                />
+                <Typography variant="caption" sx={{ display: 'block', color: '#64748b', fontWeight: 700, fontSize: '0.68rem', mt: 0.3 }}>
+                  Official Doctor Stamp
+                </Typography>
+              </Box>
+            )}
+          </Box>
+        </Box>
           </Paper>
         </Grid>
         {/* End Left Column */}
