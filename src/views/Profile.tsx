@@ -466,7 +466,7 @@ const Profile = () => {
   // Get full image URL
   const getImageUrl = (path: string) => {
     if (!path) return '';
-    if (path.startsWith('http')) return path;
+    if (path.startsWith('http') || path.startsWith('data:image/')) return path;
     const apiUrl = (process.env.NEXT_PUBLIC_API_URL || process.env.REACT_APP_API_URL || 'http://localhost:5000').replace(/\/api\/?$/, '');
     return `${apiUrl}${path}`;
   };
