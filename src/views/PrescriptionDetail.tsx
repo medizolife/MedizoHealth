@@ -143,7 +143,7 @@ const PrescriptionDetail = () => {
     if (!rx) return 'Medizo Prescription Document';
     const rxId = rx.id?.substring(0, 8).toUpperCase() || 'RX';
     const patientName = pat ? `${pat.firstName} ${pat.lastName}` : (rx.patientName || 'Patient');
-    const doctorName = rx.doctorName ? `Dr. ${rx.doctorName}` : 'Attending MD';
+    const doctorName = (rx as any).doctorName ? `Dr. ${(rx as any).doctorName}` : 'Attending MD';
 
     let medsText = '';
     if (rx.medications && rx.medications.length > 0) {
@@ -547,6 +547,8 @@ const PrescriptionDetail = () => {
               </Typography>
             </Paper>
           </Grid>
+        </Grid>
+
         {/* Verification & QR Code Footer (Included in Print) */}
         <Box sx={{ mt: 2.5, pt: 2, borderTop: '1px dashed #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
