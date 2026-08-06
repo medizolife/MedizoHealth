@@ -384,7 +384,17 @@ const Profile = () => {
       setUploadingStamp(true);
       setError(null);
       const result = await uploadStamp(file);
-      setDoctorFormData(prev => ({ ...prev, stamp: result.url }));
+      const newStampUrl = result.url;
+      setDoctorFormData(prev => ({ ...prev, stamp: newStampUrl }));
+      await updateDoctorProfile({ ...doctorFormData, stamp: newStampUrl });
+      const storedUserStr = localStorage.getItem('user');
+      if (storedUserStr) {
+        try {
+          const storedUser = JSON.parse(storedUserStr);
+          storedUser.stamp = newStampUrl;
+          localStorage.setItem('user', JSON.stringify(storedUser));
+        } catch (e) {}
+      }
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
