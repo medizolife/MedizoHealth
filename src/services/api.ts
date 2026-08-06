@@ -81,7 +81,7 @@ export const authAPI = {
     const response = await api.get('/auth/me');
     return response.data;
   },
-  googleLogin: async (credential: string, role = 'patient') => {
+  googleLogin: async (credential: string, role?: string) => {
     const response = await api.post('/auth/google', { credential, role });
     return response.data;
   },
@@ -204,8 +204,8 @@ export const register = async (data: RegisterData): Promise<{ user: User }> => {
   return response.data;
 };
 
-export const googleLogin = async (credential: string, role: string = 'patient'): Promise<{ user: User; token: string; isNewUser: boolean }> => {
-  const response = await api.post<{ user: User; token: string; isNewUser: boolean }>('/auth/google', { credential, role });
+export const googleLogin = async (credential: string, role?: string): Promise<{ user: User; token: string; isNewUser: boolean; requiresRoleSelection?: boolean; googleUserInfo?: any }> => {
+  const response = await api.post<{ user: User; token: string; isNewUser: boolean; requiresRoleSelection?: boolean; googleUserInfo?: any }>('/auth/google', { credential, role });
   return response.data;
 };
 

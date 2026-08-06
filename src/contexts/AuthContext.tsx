@@ -221,17 +221,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   // Google login function
-  const googleLogin = async (credential: string, role: string = 'patient') => {
+  const googleLogin = async (credential: string, role?: string) => {
     try {
       const data = await api.googleLogin(credential, role);
       
-      if (data.isNewUser) {
-        return { isNewUser: true, user: data.user, token: data.token };
+      if (data.requiresRoleSelection || (data.isNewUser && !data.token)) {
+        return { isNewUser: true, requiresRoleSelection: true, googleUserInfo: data.googleUserInfo };
       }
       
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
-      dispatch({ type: 'LOGIN_SUCCESS', payload: { user: data.user, token: data.token } });
+      if (data.token && data.user) {
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        dispatch({ type: 'LOGIN_SUCCESS', payload: { user: data.user, token: data.token } });
+      }
+      return { isNewUser: data.isNewUser, user: data.user, token: data.token };
     } catch (error: any) {
       const message = error.response?.data?.message || 'Google login failed';
       dispatch({ type: 'AUTH_ERROR', payload: message });

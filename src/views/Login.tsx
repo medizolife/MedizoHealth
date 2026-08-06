@@ -66,6 +66,12 @@ const Login = () => {
   const [googleProcessing, setGoogleProcessing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Google New User Role Selection Modal state
+  const [roleModalOpen, setRoleModalOpen] = useState(false);
+  const [pendingGoogleCredential, setPendingGoogleCredential] = useState<string | null>(null);
+  const [googleUserInfo, setGoogleUserInfo] = useState<{ email?: string; firstName?: string; lastName?: string } | null>(null);
+  const [submittingRole, setSubmittingRole] = useState(false);
+
   // Forgot Password Modal State
   const [forgotOpen, setForgotOpen] = useState(false);
   const [forgotInput, setForgotInput] = useState('');
@@ -192,22 +198,16 @@ const Login = () => {
   const handleGoogleSuccess = async (credentialResponse: any) => {
     setGoogleError(null);
     setGoogleProcessing(true);
+    const credential = credentialResponse.credential;
     
     try {
-      const result = await googleLogin(credentialResponse.credential);
+      const result: any = await googleLogin(credential);
       
-      if (result && result.isNewUser) {
-        navigate('/register', { 
-          state: { 
-            googleData: {
-              firstName: result.user.firstName,
-              lastName: result.user.lastName,
-              email: result.user.email,
-              token: result.token,
-              user: result.user
-            }
-          }
-        });
+      if (result && (result.requiresRoleSelection || (result.isNewUser && !result.token))) {
+        setPendingGoogleCredential(credential);
+        setGoogleUserInfo(result.googleUserInfo || null);
+        setRoleModalOpen(true);
+        setGoogleProcessing(false);
       } else {
         start3SecondHold(() => {
           navigate('/dashboard');
@@ -217,6 +217,26 @@ const Login = () => {
       console.error('Google login error:', err);
       setGoogleError(err.response?.data?.message || 'Failed to sign in with Google');
       setGoogleProcessing(false);
+    }
+  };
+
+  const handleSelectRoleAndComplete = async (role: 'doctor' | 'patient') => {
+    if (!pendingGoogleCredential) return;
+    setSubmittingRole(true);
+    setGoogleError(null);
+    try {
+      const result: any = await googleLogin(pendingGoogleCredential, role);
+      setRoleModalOpen(false);
+      if (result && result.token) {
+        start3SecondHold(() => {
+          navigate('/dashboard');
+        });
+      }
+    } catch (err: any) {
+      console.error('Role completion error:', err);
+      setGoogleError(err.response?.data?.message || 'Failed to complete registration with selected role');
+    } finally {
+      setSubmittingRole(false);
     }
   };
 
@@ -1101,6 +1121,114 @@ const Login = () => {
             {forgotLoading ? <CircularProgress size={20} sx={{ color: isDark ? '#0E1A17' : '#89D7B7' }} /> : 'Send Reset Email'}
           </Button>
         </DialogActions>
+      </Dialog>
+
+      {/* Google New User Role Selection Dialog */}
+      <Dialog 
+        open={roleModalOpen} 
+        onClose={() => !submittingRole && setRoleModalOpen(false)}
+        PaperProps={{
+          sx: {
+            borderRadius: '24px',
+            p: { xs: 2.5, sm: 3.5 },
+            maxWidth: 460,
+            width: '100%',
+            bgcolor: isDark ? '#142521' : '#ffffff',
+            border: isDark ? '1px solid rgba(102, 205, 170, 0.25)' : '1px solid rgba(19, 79, 77, 0.2)',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.25)'
+          }
+        }}
+      >
+        <Box sx={{ textAlign: 'center', mb: 2.5 }}>
+          <Box sx={{ width: 60, height: 60, borderRadius: '18px', bgcolor: isDark ? 'rgba(102, 205, 170, 0.15)' : 'rgba(19, 79, 77, 0.1)', color: isDark ? '#66CDAA' : '#134F4D', display: 'flex', alignItems: 'center', justifyContent: 'center', mx: 'auto', mb: 1.5, fontSize: '1.8rem' }}>
+            🩺
+          </Box>
+          <Typography variant="h6" sx={{ fontWeight: 800, color: isDark ? '#F2FAF7' : '#0f172a' }}>
+            Select Account Type
+          </Typography>
+          <Typography variant="body2" sx={{ color: isDark ? '#94A3B8' : '#64748b', mt: 0.5 }}>
+            {googleUserInfo?.email ? `Signed in as ${googleUserInfo.email}.` : 'Welcome to Medizo!'} Please choose your role to complete setup:
+          </Typography>
+        </Box>
+
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, my: 1 }}>
+          {/* Doctor Option */}
+          <Paper
+            elevation={0}
+            onClick={() => !submittingRole && handleSelectRoleAndComplete('doctor')}
+            sx={{
+              p: 2.5,
+              borderRadius: '16px',
+              border: isDark ? '2px solid rgba(102, 205, 170, 0.35)' : '2px solid rgba(19, 79, 77, 0.25)',
+              bgcolor: isDark ? '#1A312C' : '#ffffff',
+              cursor: submittingRole ? 'wait' : 'pointer',
+              transition: 'all 0.2s ease',
+              '&:hover': {
+                borderColor: isDark ? '#66CDAA' : '#134F4D',
+                bgcolor: isDark ? 'rgba(102, 205, 170, 0.12)' : 'rgba(19, 79, 77, 0.04)',
+                transform: 'translateY(-2px)'
+              },
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2
+            }}
+          >
+            <Box sx={{ width: 44, height: 44, borderRadius: '12px', bgcolor: isDark ? '#66CDAA' : '#134F4D', color: isDark ? '#0E1A17' : '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem' }}>
+              🩺
+            </Box>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 800, color: isDark ? '#66CDAA' : '#134F4D' }}>
+                Doctor / Healthcare Provider
+              </Typography>
+              <Typography variant="caption" sx={{ color: isDark ? '#94A3B8' : '#64748b', display: 'block' }}>
+                Create digital prescriptions, manage patient records & clinical tools.
+              </Typography>
+            </Box>
+          </Paper>
+
+          {/* Patient Option */}
+          <Paper
+            elevation={0}
+            onClick={() => !submittingRole && handleSelectRoleAndComplete('patient')}
+            sx={{
+              p: 2.5,
+              borderRadius: '16px',
+              border: isDark ? '2px solid rgba(102, 205, 170, 0.35)' : '2px solid rgba(15, 118, 110, 0.25)',
+              bgcolor: isDark ? '#1A312C' : '#ffffff',
+              cursor: submittingRole ? 'wait' : 'pointer',
+              transition: 'all 0.2s ease',
+              '&:hover': {
+                borderColor: isDark ? '#66CDAA' : '#0f766e',
+                bgcolor: isDark ? 'rgba(102, 205, 170, 0.12)' : 'rgba(15, 118, 110, 0.04)',
+                transform: 'translateY(-2px)'
+              },
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2
+            }}
+          >
+            <Box sx={{ width: 44, height: 44, borderRadius: '12px', bgcolor: isDark ? '#4D9B8C' : '#0f766e', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem' }}>
+              👤
+            </Box>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 800, color: isDark ? '#66CDAA' : '#0f766e' }}>
+                Patient Account
+              </Typography>
+              <Typography variant="caption" sx={{ color: isDark ? '#94A3B8' : '#64748b', display: 'block' }}>
+                View prescriptions, track medication schedules & health history.
+              </Typography>
+            </Box>
+          </Paper>
+        </Box>
+
+        {submittingRole && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 1, mt: 2 }}>
+            <CircularProgress size={20} sx={{ color: isDark ? '#66CDAA' : '#134F4D' }} />
+            <Typography variant="caption" sx={{ fontWeight: 700, color: isDark ? '#66CDAA' : '#134F4D' }}>
+              Setting up your account...
+            </Typography>
+          </Box>
+        )}
       </Dialog>
     </Box>
   );
