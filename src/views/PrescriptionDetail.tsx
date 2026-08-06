@@ -294,24 +294,6 @@ const PrescriptionDetail = () => {
           </Box>
           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
             <Button
-              variant="contained"
-              size="small"
-              startIcon={<PrintIcon />}
-              onClick={handlePrint}
-              sx={{
-                bgcolor: '#134F4D',
-                color: '#ffffff',
-                fontWeight: 800,
-                borderRadius: '12px',
-                px: 2,
-                py: 0.8,
-                boxShadow: '0 4px 12px rgba(19, 79, 77, 0.2)',
-                '&:hover': { bgcolor: '#0e3b3a' }
-              }}
-            >
-              Print Prescription
-            </Button>
-            <Button
               variant="outlined"
               size="small"
               startIcon={downloadingPdf ? <CircularProgress size={16} color="inherit" /> : <DownloadIcon />}
@@ -644,24 +626,7 @@ const PrescriptionDetail = () => {
                   {downloadingPdf ? 'Generating PDF...' : 'Download Full PDF'}
                 </Button>
 
-                {/* Print Prescription */}
-                <Button
-                  fullWidth
-                  variant="contained"
-                  startIcon={<PrintIcon />}
-                  onClick={handlePrint}
-                  sx={{ 
-                    height: 48, 
-                    borderRadius: '16px',
-                    bgcolor: '#0f766e', 
-                    color: '#ffffff',
-                    fontWeight: 800,
-                    boxShadow: '0 4px 14px rgba(15, 118, 110, 0.25)',
-                    '&:hover': { bgcolor: '#0d655e' }
-                  }}
-                >
-                  Print Prescription
-                </Button>
+
 
                 {/* Share Link */}
                 <Button
