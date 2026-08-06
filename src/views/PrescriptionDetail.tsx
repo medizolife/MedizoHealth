@@ -48,16 +48,8 @@ const PrescriptionDetail = () => {
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [copied, setCopied] = useState(false);
   
-  const isPublicShareRoute = location.pathname.includes('/prescriptions/share/') || location.pathname.includes('/prescriptions/public/');
-
   useEffect(() => {
     if (!id) return;
-
-    if (isPublicShareRoute) {
-      const publicPdfUrl = `${getApiBaseUrl()}/prescriptions/public/${id}/pdf`;
-      window.location.href = publicPdfUrl;
-      return;
-    }
 
     // 1. Instant Cache Hydration (0 spinner delay)
     const cachedRx = getCachedData<Prescription>(`prescription_${id}`) || findInCachedList<Prescription>('prescriptions_list', id);
@@ -96,26 +88,27 @@ const PrescriptionDetail = () => {
     };
     
     fetchPrescriptionDetails();
-  }, [id, isPublicShareRoute]);
+  }, [id]);
   
   const handlePrint = () => {
     window.print();
   };
   
   const handleShare = async () => {
-    const publicPdfUrl = `${getApiBaseUrl()}/prescriptions/public/${id}/pdf`;
+    // Share clean frontend link (e.g. https://m.medizo.life/prescriptions/share/:id)
+    const shareUrl = `${window.location.origin}/prescriptions/share/${id}`;
     if (navigator.share && prescription) {
       try {
         await navigator.share({
           title: `Medizo Digital Prescription #${id?.substring(0, 8).toUpperCase()}`,
-          text: `Print/View digital prescription for ${patient ? `${patient.firstName} ${patient.lastName}` : (prescription.patientName || 'Patient')}`,
-          url: publicPdfUrl,
+          text: `View & print digital prescription for ${patient ? `${patient.firstName} ${patient.lastName}` : (prescription.patientName || 'Patient')}`,
+          url: shareUrl,
         });
       } catch (err) {
         console.log('Share canceled');
       }
     } else {
-      navigator.clipboard?.writeText(publicPdfUrl);
+      navigator.clipboard?.writeText(shareUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 4000);
     }
