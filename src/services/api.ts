@@ -122,8 +122,13 @@ export const prescriptionsAPI = {
     return response.data;
   },
   downloadPrescription: async (id: string) => {
-    const response = await api.get(`/prescriptions/${id}/download`, { responseType: 'blob' });
-    return response.data;
+    try {
+      const response = await api.get(`/prescriptions/${id}/download`, { responseType: 'blob' });
+      return response.data;
+    } catch (err) {
+      const response = await api.get(`/prescriptions/public/${id}/download`, { responseType: 'blob' });
+      return response.data;
+    }
   },
 };
 

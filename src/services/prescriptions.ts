@@ -19,8 +19,13 @@ export const getPrescriptionById = async (id: string, forceRefresh = false): Pro
     const fromList = findInCachedList<Prescription>('prescriptions_list', id);
     if (fromList) return fromList;
   }
-  const response = await api.get<Prescription>(`/prescriptions/${id}`);
-  return setCachedData(`prescription_${id}`, response.data);
+  try {
+    const response = await api.get<Prescription>(`/prescriptions/${id}`);
+    return setCachedData(`prescription_${id}`, response.data);
+  } catch (err) {
+    const response = await api.get<Prescription>(`/prescriptions/public/${id}`);
+    return setCachedData(`prescription_${id}`, response.data);
+  }
 };
 
 export const createPrescription = async (data: CreatePrescriptionData): Promise<Prescription> => {

@@ -45,6 +45,7 @@ const PrescriptionDetail = () => {
   const [error, setError] = useState<string | null>(null);
   const [qrModalOpen, setQrModalOpen] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [copied, setCopied] = useState(false);
   
   useEffect(() => {
     if (!id) return;
@@ -93,19 +94,21 @@ const PrescriptionDetail = () => {
   };
   
   const handleShare = async () => {
+    const shareUrl = `${window.location.origin}/prescriptions/share/${id}`;
     if (navigator.share && prescription) {
       try {
         await navigator.share({
-          title: `Medizo Digital Prescription - ${prescription.medication || 'Medication'}`,
-          text: `View digital prescription for ${patient ? `${patient.firstName} ${patient.lastName}` : 'Patient'}`,
-          url: window.location.href,
+          title: `Medizo Digital Prescription #${id?.substring(0, 8).toUpperCase()}`,
+          text: `View digital prescription for ${patient ? `${patient.firstName} ${patient.lastName}` : (prescription.patientName || 'Patient')}`,
+          url: shareUrl,
         });
       } catch (err) {
         console.log('Share canceled');
       }
     } else {
-      navigator.clipboard?.writeText(window.location.href);
-      alert('Link copied to clipboard!');
+      navigator.clipboard?.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 4000);
     }
   };
 
@@ -155,10 +158,125 @@ const PrescriptionDetail = () => {
   
   return (
     <Container maxWidth="lg" sx={{ pt: { xs: 2, md: 3 }, pb: 6, px: { xs: 2, sm: 3, md: 4 } }}>
+      <style>{`
+        @media print {
+          body * {
+            visibility: hidden !important;
+          }
+          .printable-prescription, .printable-prescription * {
+            visibility: visible !important;
+          }
+          .printable-prescription {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 16px !important;
+            box-shadow: none !important;
+            border: none !important;
+          }
+          .no-print {
+            display: none !important;
+          }
+        }
+      `}</style>
+
+      {/* Top Action & Notice Bar */}
+      <Box className="no-print" sx={{ mb: 2.5 }}>
+        {copied && (
+          <Paper sx={{ p: 1.5, mb: 2, bgcolor: '#e6fffa', border: '1px solid #319795', borderRadius: '14px', display: 'flex', alignItems: 'center', gap: 1 }}>
+            <DoneIcon sx={{ color: '#234e52' }} />
+            <Typography variant="body2" sx={{ color: '#234e52', fontWeight: 700 }}>
+              Shareable prescription link copied! Anyone with this link can view & print this prescription without logging in.
+            </Typography>
+          </Paper>
+        )}
+
+        {!user && (
+          <Paper sx={{ p: 1.5, mb: 2, bgcolor: 'rgba(19, 79, 77, 0.08)', border: '1px solid rgba(19, 79, 77, 0.2)', borderRadius: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Chip label="PUBLIC VIEW" color="primary" size="small" sx={{ fontWeight: 800, borderRadius: '6px' }} />
+              <Typography variant="body2" sx={{ fontWeight: 700, color: '#134F4D' }}>
+                Official Medizo Digital Prescription — No Account Needed to View or Print
+              </Typography>
+            </Box>
+            <Button variant="outlined" size="small" onClick={() => navigate('/login')} sx={{ borderRadius: '10px', textTransform: 'none', fontWeight: 800 }}>
+              Sign In / Register
+            </Button>
+          </Paper>
+        )}
+
+        {/* Quick Action Bar (Print, Download, Share) */}
+        <Paper elevation={0} sx={{ p: 1.5, borderRadius: '18px', bgcolor: '#ffffff', border: '1px solid rgba(19, 79, 77, 0.15)', display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#134F4D' }}>
+              Prescription Document
+            </Typography>
+            <Chip label={prescription.status ? prescription.status.toUpperCase() : 'ACTIVE'} size="small" color={prescription.status === 'completed' ? 'success' : 'primary'} sx={{ fontWeight: 800, height: 22, fontSize: '0.7rem' }} />
+          </Box>
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+            <Button
+              variant="contained"
+              size="small"
+              startIcon={<PrintIcon />}
+              onClick={handlePrint}
+              sx={{
+                bgcolor: '#134F4D',
+                color: '#ffffff',
+                fontWeight: 800,
+                borderRadius: '12px',
+                px: 2,
+                py: 0.8,
+                boxShadow: '0 4px 12px rgba(19, 79, 77, 0.2)',
+                '&:hover': { bgcolor: '#0e3b3a' }
+              }}
+            >
+              Print Prescription
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={downloadingPdf ? <CircularProgress size={16} color="inherit" /> : <DownloadIcon />}
+              onClick={handleDownloadPdf}
+              disabled={downloadingPdf}
+              sx={{
+                borderColor: 'rgba(19, 79, 77, 0.4)',
+                color: '#134F4D',
+                fontWeight: 800,
+                borderRadius: '12px',
+                px: 2,
+                py: 0.8,
+                '&:hover': { bgcolor: 'rgba(19, 79, 77, 0.06)', borderColor: '#134F4D' }
+              }}
+            >
+              {downloadingPdf ? 'Downloading...' : 'Download PDF'}
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<ShareIcon />}
+              onClick={handleShare}
+              sx={{
+                borderColor: 'rgba(19, 79, 77, 0.4)',
+                color: '#134F4D',
+                fontWeight: 800,
+                borderRadius: '12px',
+                px: 2,
+                py: 0.8,
+                '&:hover': { bgcolor: 'rgba(19, 79, 77, 0.06)', borderColor: '#134F4D' }
+              }}
+            >
+              Share Link
+            </Button>
+          </Box>
+        </Paper>
+      </Box>
+
       <Grid container spacing={3}>
         {/* Left Column: Digital Prescription Paper Document */}
         <Grid item xs={12} md={7} lg={8}>
-          <Paper elevation={0} sx={{ p: { xs: 2.5, sm: 3.5 }, borderRadius: '24px', border: '1px solid rgba(19, 79, 77, 0.15)', bgcolor: '#ffffff' }}>
+          <Paper elevation={0} className="printable-prescription" sx={{ p: { xs: 2.5, sm: 3.5 }, borderRadius: '24px', border: '1px solid rgba(19, 79, 77, 0.15)', bgcolor: '#ffffff' }}>
             {/* Header Bar */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
               <Box>
@@ -357,8 +475,8 @@ const PrescriptionDetail = () => {
         </Grid>
         {/* End Left Column */}
 
-        {/* Right Column: Widescreen Actions & Verification QR Panel */}
-        <Grid item xs={12} md={5} lg={4}>
+        {/* Right Column: Actions & Verification */}
+        <Grid item xs={12} md={5} lg={4} className="no-print">
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, position: { md: 'sticky' }, top: { md: 84 } }}>
             {/* Widescreen Inline Verification QR Card */}
             <Paper 
@@ -424,16 +542,17 @@ const PrescriptionDetail = () => {
                 {/* Print Prescription */}
                 <Button
                   fullWidth
-                  variant="outlined"
+                  variant="contained"
                   startIcon={<PrintIcon />}
                   onClick={handlePrint}
                   sx={{ 
-                    height: 44, 
+                    height: 48, 
                     borderRadius: '16px',
-                    borderColor: 'rgba(19, 79, 77, 0.4)', 
-                    color: '#134F4D',
+                    bgcolor: '#0f766e', 
+                    color: '#ffffff',
                     fontWeight: 800,
-                    '&:hover': { bgcolor: 'rgba(19, 79, 77, 0.06)', borderColor: '#134F4D' }
+                    boxShadow: '0 4px 14px rgba(15, 118, 110, 0.25)',
+                    '&:hover': { bgcolor: '#0d655e' }
                   }}
                 >
                   Print Prescription
@@ -457,14 +576,25 @@ const PrescriptionDetail = () => {
                   Share Prescription
                 </Button>
 
-                <Button 
-                  fullWidth
-                  variant="text" 
-                  onClick={() => navigate('/dashboard')}
-                  sx={{ color: '#64748b', mt: 0.5, fontWeight: 700 }}
-                >
-                  Back to Dashboard
-                </Button>
+                {user ? (
+                  <Button 
+                    fullWidth
+                    variant="text" 
+                    onClick={() => navigate('/dashboard')}
+                    sx={{ color: '#64748b', mt: 0.5, fontWeight: 700 }}
+                  >
+                    Back to Dashboard
+                  </Button>
+                ) : (
+                  <Button 
+                    fullWidth
+                    variant="text" 
+                    onClick={() => navigate('/login')}
+                    sx={{ color: '#134F4D', mt: 0.5, fontWeight: 800 }}
+                  >
+                    Sign In / Create Account
+                  </Button>
+                )}
               </Box>
             </Paper>
           </Box>

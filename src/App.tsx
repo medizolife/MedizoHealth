@@ -91,14 +91,9 @@ const AnimatedRoutes = () => {
             </ProtectedRoute>
           } 
         />
-        <Route 
-          path="/prescriptions/:id" 
-          element={
-            <ProtectedRoute>
-              <PrescriptionDetail />
-            </ProtectedRoute>
-          } 
-        />
+        <Route path="/prescriptions/:id" element={<PrescriptionDetail />} />
+        <Route path="/prescriptions/share/:id" element={<PrescriptionDetail />} />
+        <Route path="/prescriptions/public/:id" element={<PrescriptionDetail />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/terms" element={<TermsOfService />} />
