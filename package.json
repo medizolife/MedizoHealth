@@ -12,13 +12,15 @@
     "start": "next start",
     "lint": "next lint",
     "dist:installer": "electron-builder --win nsis",
-    "dist:store": "electron-builder --win appx msix"
+    "dist:store": "electron-builder --win appx"
   },
   "build": {
     "appId": "com.medizolife.desktop",
     "productName": "Medizo Life",
+    "icon": "build/icon.png",
     "directories": {
-      "output": "dist-installer"
+      "output": "dist-installer",
+      "buildResources": "build"
     },
     "files": [
       "electron-main.js",
@@ -30,7 +32,8 @@
       "target": [
         "nsis",
         "appx"
-      ]
+      ],
+      "icon": "build/icon.png"
     },
     "asar": true,
     "npmRebuild": false,
@@ -49,7 +52,9 @@
       "identityName": "DevelopeFuture.MedizoLife",
       "publisher": "CN=2638D304-D136-4EC6-9ACF-5CD1BAB64110",
       "publisherDisplayName": "Develope Future",
-      "artifactName": "MedizoLife-Store.${ext}"
+      "artifactName": "MedizoLife-Store.${ext}",
+      "backgroundColor": "#0D1B2A",
+      "showNameOnTiles": true
     }
   },
   "devDependencies": {

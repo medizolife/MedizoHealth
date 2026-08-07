@@ -11,6 +11,7 @@ import MobileBottomNav from './components/MobileBottomNav';
 import ProtectedRoute from './components/ProtectedRoute';
 
 // Views
+import Home from './views/Home';
 import Login from './views/Login';
 import Register from './views/Register';
 import Dashboard from './views/Dashboard';
@@ -33,22 +34,8 @@ const AnimatedRoutes = () => {
   return (
     <Box key={location.pathname} className="page-transition-wrapper">
       <Routes location={location}>
-        <Route 
-          path="/" 
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/home" 
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          } 
-        />
+        <Route path="/" element={<Home />} />
+        <Route path="/home" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route 
