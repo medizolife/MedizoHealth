@@ -26,7 +26,12 @@ import {
   DialogContent,
   DialogActions,
   Chip,
-  LinearProgress
+  LinearProgress,
+  MenuItem,
+  Select,
+  InputLabel,
+  FormControl,
+  Tooltip
 } from '@mui/material';
 import { 
   PhotoCamera as PhotoCameraIcon,
@@ -45,13 +50,19 @@ import {
   GpsFixed as GpsFixedIcon,
   OpenInNew as OpenInNewIcon,
   Clear as ClearIcon,
-  Verified as VerifiedIcon
+  Verified as VerifiedIcon,
+  PersonAdd as PersonAddIcon,
+  Group as GroupIcon,
+  Edit as EditIcon,
+  Badge as BadgeIcon
 } from '@mui/icons-material';
 import { updateDoctorProfile, uploadProfileImage, uploadClinicLogo, uploadSignature, uploadStamp } from '../services/doctors';
 import { updatePatientProfile } from '../services/patients';
 import { Doctor, Patient } from '../types/auth';
 import { usersAPI, digilockerAPI } from '../services/api';
 import WallpaperCarouselHero from '../components/WallpaperCarouselHero';
+import { FamilyProfile, CreateFamilyProfileData, RELATIONSHIP_LABELS, RELATIONSHIP_ICONS } from '../types/familyProfile';
+import { getFamilyProfiles, createFamilyProfile, updateFamilyProfile, deleteFamilyProfile } from '../services/familyProfiles';
 
 const Profile = () => {
   const { authState, logout } = useAuth();
@@ -80,6 +91,28 @@ const Profile = () => {
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // Family profiles state
+  const [familyProfiles, setFamilyProfiles] = useState<FamilyProfile[]>([]);
+  const [loadingProfiles, setLoadingProfiles] = useState(false);
+  const [familyDialogOpen, setFamilyDialogOpen] = useState(false);
+  const [editingProfile, setEditingProfile] = useState<FamilyProfile | null>(null);
+  const [deletingProfileId, setDeletingProfileId] = useState<string | null>(null);
+  const [familyFormData, setFamilyFormData] = useState<CreateFamilyProfileData>({
+    relationship: 'spouse',
+    firstName: '',
+    lastName: '',
+    dateOfBirth: '',
+    gender: '',
+    phone: '',
+    address: '',
+    bloodType: '',
+  });
+  const [familyError, setFamilyError] = useState<string | null>(null);
+  const [familySuccess, setFamilySuccess] = useState<string | null>(null);
+  const [savingFamily, setSavingFamily] = useState(false);
+  const [deleteProfileDialogOpen, setDeleteProfileDialogOpen] = useState(false);
+  const [profileToDelete, setProfileToDelete] = useState<FamilyProfile | null>(null);
   
   const profileImageRef = useRef<HTMLInputElement>(null);
   const clinicLogoRef = useRef<HTMLInputElement>(null);
@@ -167,6 +200,108 @@ const Profile = () => {
       }));
     }
   }, [user]);
+
+  // Fetch family profiles for patients
+  const fetchFamilyProfiles = async () => {
+    if (user?.role !== 'patient') return;
+    try {
+      setLoadingProfiles(true);
+      const profiles = await getFamilyProfiles(true);
+      setFamilyProfiles(profiles);
+    } catch (err) {
+      console.error('Error fetching family profiles:', err);
+    } finally {
+      setLoadingProfiles(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user?.role === 'patient') {
+      fetchFamilyProfiles();
+    }
+  }, [user]);
+
+  // Family profile handlers
+  const handleOpenAddFamily = () => {
+    setEditingProfile(null);
+    setFamilyFormData({
+      relationship: 'spouse',
+      firstName: '',
+      lastName: '',
+      dateOfBirth: '',
+      gender: '',
+      phone: '',
+      address: '',
+      bloodType: '',
+    });
+    setFamilyError(null);
+    setFamilyDialogOpen(true);
+  };
+
+  const handleOpenEditFamily = (profile: FamilyProfile) => {
+    setEditingProfile(profile);
+    setFamilyFormData({
+      relationship: profile.relationship as any,
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+      dateOfBirth: profile.dateOfBirth || '',
+      gender: profile.gender || '',
+      phone: profile.phone || '',
+      address: profile.address || '',
+      bloodType: profile.bloodType || '',
+    });
+    setFamilyError(null);
+    setFamilyDialogOpen(true);
+  };
+
+  const handleFamilyFormChange = (e: React.ChangeEvent<HTMLInputElement | { name?: string; value: unknown }>) => {
+    const { name, value } = e.target;
+    if (name) {
+      setFamilyFormData(prev => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const handleSaveFamily = async () => {
+    if (!familyFormData.firstName?.trim() || !familyFormData.lastName?.trim()) {
+      setFamilyError('First name and last name are required');
+      return;
+    }
+    try {
+      setSavingFamily(true);
+      setFamilyError(null);
+      if (editingProfile) {
+        await updateFamilyProfile(editingProfile.id, familyFormData);
+        setFamilySuccess('Profile updated successfully!');
+      } else {
+        await createFamilyProfile(familyFormData);
+        setFamilySuccess('Family member added successfully!');
+      }
+      setFamilyDialogOpen(false);
+      await fetchFamilyProfiles();
+      setTimeout(() => setFamilySuccess(null), 3000);
+    } catch (err: any) {
+      setFamilyError(err.response?.data?.message || 'Failed to save profile');
+    } finally {
+      setSavingFamily(false);
+    }
+  };
+
+  const handleConfirmDeleteProfile = async () => {
+    if (!profileToDelete) return;
+    try {
+      setDeletingProfileId(profileToDelete.id);
+      await deleteFamilyProfile(profileToDelete.id);
+      setFamilySuccess('Family member removed successfully');
+      setDeleteProfileDialogOpen(false);
+      setProfileToDelete(null);
+      await fetchFamilyProfiles();
+      setTimeout(() => setFamilySuccess(null), 3000);
+    } catch (err: any) {
+      setFamilyError(err.response?.data?.message || 'Failed to remove profile');
+    } finally {
+      setDeletingProfileId(null);
+    }
+  };
 
   // Fetch DigiLocker status for doctors
   useEffect(() => {
@@ -1679,6 +1814,384 @@ const Profile = () => {
           </Box>
         </Box>
       </Paper>
+
+      {/* ═══ Family Members Section (Patient Only) ═══ */}
+      {user?.role === 'patient' && (
+        <Paper
+          elevation={0}
+          sx={{
+            mt: 3,
+            p: { xs: 2.5, sm: 3 },
+            borderRadius: '20px',
+            bgcolor: 'rgba(66, 132, 117, 0.04)',
+            border: '1.5px solid rgba(66, 132, 117, 0.15)',
+            backdropFilter: 'blur(12px)',
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Box sx={{ p: 1, borderRadius: '14px', bgcolor: 'rgba(66, 132, 117, 0.12)', display: 'flex' }}>
+                <GroupIcon sx={{ color: '#428475', fontSize: 26 }} />
+              </Box>
+              <Box>
+                <Typography variant="h6" sx={{ fontWeight: 800, fontSize: '1.1rem', color: '#1A312C' }}>
+                  Family Members
+                </Typography>
+                <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600 }}>
+                  {familyProfiles.length > 0 ? `${familyProfiles.length} profile${familyProfiles.length > 1 ? 's' : ''} (including you)` : 'Manage family & dependent profiles'}
+                </Typography>
+              </Box>
+            </Box>
+            <Button
+              variant="contained"
+              size="small"
+              startIcon={<PersonAddIcon />}
+              onClick={handleOpenAddFamily}
+              sx={{
+                bgcolor: '#428475',
+                color: '#fff',
+                fontWeight: 700,
+                fontSize: '0.78rem',
+                borderRadius: '14px',
+                textTransform: 'none',
+                px: 2,
+                boxShadow: '0 4px 16px rgba(66, 132, 117, 0.25)',
+                '&:hover': { bgcolor: '#1A312C' }
+              }}
+            >
+              Add Member
+            </Button>
+          </Box>
+
+          {familySuccess && (
+            <Alert severity="success" sx={{ mb: 2, borderRadius: '12px' }} onClose={() => setFamilySuccess(null)}>
+              {familySuccess}
+            </Alert>
+          )}
+          {familyError && !familyDialogOpen && (
+            <Alert severity="error" sx={{ mb: 2, borderRadius: '12px' }} onClose={() => setFamilyError(null)}>
+              {familyError}
+            </Alert>
+          )}
+
+          {loadingProfiles ? (
+            <Box sx={{ py: 4, textAlign: 'center' }}>
+              <CircularProgress size={32} sx={{ color: '#428475' }} />
+              <Typography variant="body2" sx={{ mt: 1, color: '#64748b' }}>Loading profiles...</Typography>
+            </Box>
+          ) : familyProfiles.length === 0 ? (
+            <Box sx={{ py: 4, textAlign: 'center' }}>
+              <GroupIcon sx={{ fontSize: 48, color: 'rgba(66, 132, 117, 0.3)', mb: 1 }} />
+              <Typography variant="body2" sx={{ color: '#64748b', fontWeight: 600 }}>
+                No family profiles yet. Click "Add Member" to add your spouse, parents, children, or dependents.
+              </Typography>
+            </Box>
+          ) : (
+            <Grid container spacing={2}>
+              {familyProfiles.map((profile) => (
+                <Grid item xs={12} sm={6} md={4} key={profile.id}>
+                  <Card
+                    elevation={0}
+                    sx={{
+                      borderRadius: '16px',
+                      border: profile.relationship === 'self'
+                        ? '2px solid rgba(66, 132, 117, 0.4)'
+                        : '1.5px solid rgba(0, 0, 0, 0.08)',
+                      bgcolor: profile.relationship === 'self'
+                        ? 'rgba(66, 132, 117, 0.06)'
+                        : 'rgba(255, 255, 255, 0.8)',
+                      transition: 'all 0.2s ease',
+                      '&:hover': {
+                        boxShadow: '0 6px 24px rgba(66, 132, 117, 0.12)',
+                        transform: 'translateY(-2px)'
+                      }
+                    }}
+                  >
+                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                      <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 1 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
+                          <Avatar
+                            sx={{
+                              width: 42,
+                              height: 42,
+                              bgcolor: profile.relationship === 'self' ? '#1A312C' : '#428475',
+                              color: '#89D7B7',
+                              fontWeight: 800,
+                              fontSize: '1rem'
+                            }}
+                          >
+                            {RELATIONSHIP_ICONS[profile.relationship] || '👤'}
+                          </Avatar>
+                          <Box>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#1A312C', lineHeight: 1.2 }}>
+                              {profile.firstName} {profile.lastName}
+                            </Typography>
+                            <Chip
+                              label={RELATIONSHIP_LABELS[profile.relationship] || profile.relationship}
+                              size="small"
+                              sx={{
+                                height: 20,
+                                fontSize: '0.65rem',
+                                fontWeight: 700,
+                                bgcolor: profile.relationship === 'self' ? 'rgba(26, 49, 44, 0.12)' : 'rgba(66, 132, 117, 0.1)',
+                                color: profile.relationship === 'self' ? '#1A312C' : '#428475'
+                              }}
+                            />
+                          </Box>
+                        </Box>
+                        {profile.relationship !== 'self' && (
+                          <Box sx={{ display: 'flex', gap: 0.5 }}>
+                            <Tooltip title="Edit">
+                              <IconButton size="small" onClick={() => handleOpenEditFamily(profile)} sx={{ color: '#428475' }}>
+                                <EditIcon sx={{ fontSize: 16 }} />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Remove">
+                              <IconButton
+                                size="small"
+                                onClick={() => { setProfileToDelete(profile); setDeleteProfileDialogOpen(true); }}
+                                sx={{ color: '#dc2626' }}
+                                disabled={deletingProfileId === profile.id}
+                              >
+                                {deletingProfileId === profile.id
+                                  ? <CircularProgress size={14} color="inherit" />
+                                  : <DeleteIcon sx={{ fontSize: 16 }} />}
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
+                        )}
+                        {profile.relationship === 'self' && (
+                          <Tooltip title="Edit via profile form above">
+                            <Chip label="You" size="small" sx={{ height: 20, fontSize: '0.62rem', fontWeight: 800, bgcolor: '#1A312C', color: '#89D7B7' }} />
+                          </Tooltip>
+                        )}
+                      </Box>
+
+                      {/* Patient Display ID */}
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.8 }}>
+                        <BadgeIcon sx={{ fontSize: 14, color: '#428475' }} />
+                        <Typography variant="caption" sx={{ fontWeight: 800, color: '#428475', fontFamily: 'monospace', fontSize: '0.72rem' }}>
+                          {profile.patientDisplayId}
+                        </Typography>
+                      </Box>
+
+                      {/* Quick info */}
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        {profile.dateOfBirth && (
+                          <Typography variant="caption" sx={{ color: '#64748b', fontSize: '0.68rem' }}>
+                            🎂 {new Date(profile.dateOfBirth).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </Typography>
+                        )}
+                        {profile.gender && (
+                          <Typography variant="caption" sx={{ color: '#64748b', fontSize: '0.68rem' }}>
+                            • {profile.gender.charAt(0).toUpperCase() + profile.gender.slice(1)}
+                          </Typography>
+                        )}
+                        {profile.bloodType && (
+                          <Typography variant="caption" sx={{ color: '#dc2626', fontWeight: 700, fontSize: '0.68rem' }}>
+                            • 🩸 {profile.bloodType}
+                          </Typography>
+                        )}
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+          )}
+        </Paper>
+      )}
+
+      {/* ═══ Add/Edit Family Member Dialog ═══ */}
+      <Dialog
+        open={familyDialogOpen}
+        onClose={() => setFamilyDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: '20px', p: 0.5 } }}
+      >
+        <DialogTitle sx={{ fontWeight: 800, color: '#1A312C', display: 'flex', alignItems: 'center', gap: 1 }}>
+          {editingProfile ? <EditIcon sx={{ color: '#428475' }} /> : <PersonAddIcon sx={{ color: '#428475' }} />}
+          {editingProfile ? 'Edit Family Member' : 'Add Family Member'}
+        </DialogTitle>
+        <DialogContent>
+          {familyError && (
+            <Alert severity="error" sx={{ mb: 2, borderRadius: '12px' }}>
+              {familyError}
+            </Alert>
+          )}
+          <Grid container spacing={2} sx={{ mt: 0.5 }}>
+            {!editingProfile && (
+              <Grid item xs={12}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>Relationship *</InputLabel>
+                  <Select
+                    name="relationship"
+                    value={familyFormData.relationship}
+                    label="Relationship *"
+                    onChange={(e) => setFamilyFormData(prev => ({ ...prev, relationship: e.target.value as any }))}
+                    sx={{ borderRadius: '12px' }}
+                  >
+                    <MenuItem value="spouse">👫 Spouse</MenuItem>
+                    <MenuItem value="parent">👴 Parent</MenuItem>
+                    <MenuItem value="child">👶 Child</MenuItem>
+                    <MenuItem value="sibling">🧑‍🤝‍🧑 Sibling</MenuItem>
+                    <MenuItem value="other">👤 Other</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+            )}
+            <Grid item xs={6}>
+              <TextField
+                fullWidth
+                size="small"
+                label="First Name *"
+                name="firstName"
+                value={familyFormData.firstName}
+                onChange={handleFamilyFormChange}
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Last Name *"
+                name="lastName"
+                value={familyFormData.lastName}
+                onChange={handleFamilyFormChange}
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Date of Birth"
+                name="dateOfBirth"
+                type="date"
+                value={familyFormData.dateOfBirth || ''}
+                onChange={handleFamilyFormChange}
+                InputLabelProps={{ shrink: true }}
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Gender</InputLabel>
+                <Select
+                  name="gender"
+                  value={familyFormData.gender || ''}
+                  label="Gender"
+                  onChange={(e) => setFamilyFormData(prev => ({ ...prev, gender: e.target.value as string }))}
+                  sx={{ borderRadius: '12px' }}
+                >
+                  <MenuItem value="male">Male</MenuItem>
+                  <MenuItem value="female">Female</MenuItem>
+                  <MenuItem value="other">Other</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={6}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Phone"
+                name="phone"
+                value={familyFormData.phone || ''}
+                onChange={handleFamilyFormChange}
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Blood Type</InputLabel>
+                <Select
+                  name="bloodType"
+                  value={familyFormData.bloodType || ''}
+                  label="Blood Type"
+                  onChange={(e) => setFamilyFormData(prev => ({ ...prev, bloodType: e.target.value as string }))}
+                  sx={{ borderRadius: '12px' }}
+                >
+                  <MenuItem value="">Unknown</MenuItem>
+                  <MenuItem value="A+">A+</MenuItem>
+                  <MenuItem value="A-">A-</MenuItem>
+                  <MenuItem value="B+">B+</MenuItem>
+                  <MenuItem value="B-">B-</MenuItem>
+                  <MenuItem value="AB+">AB+</MenuItem>
+                  <MenuItem value="AB-">AB-</MenuItem>
+                  <MenuItem value="O+">O+</MenuItem>
+                  <MenuItem value="O-">O-</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Address"
+                name="address"
+                multiline
+                rows={2}
+                value={familyFormData.address || ''}
+                onChange={handleFamilyFormChange}
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setFamilyDialogOpen(false)} sx={{ borderRadius: '12px', color: '#64748b', fontWeight: 700 }}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleSaveFamily}
+            disabled={savingFamily}
+            sx={{
+              bgcolor: '#428475',
+              color: '#fff',
+              fontWeight: 700,
+              borderRadius: '12px',
+              px: 3,
+              '&:hover': { bgcolor: '#1A312C' }
+            }}
+          >
+            {savingFamily ? <CircularProgress size={20} color="inherit" /> : (editingProfile ? 'Update' : 'Add Member')}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ═══ Delete Family Member Confirmation Dialog ═══ */}
+      <Dialog
+        open={deleteProfileDialogOpen}
+        onClose={() => { setDeleteProfileDialogOpen(false); setProfileToDelete(null); }}
+        PaperProps={{ sx: { borderRadius: '20px' } }}
+      >
+        <DialogTitle sx={{ fontWeight: 800, color: '#dc2626', display: 'flex', alignItems: 'center', gap: 1 }}>
+          <WarningIcon /> Remove Family Member
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ color: '#64748b', mb: 1 }}>
+            Are you sure you want to remove <strong>{profileToDelete?.firstName} {profileToDelete?.lastName}</strong> ({RELATIONSHIP_LABELS[profileToDelete?.relationship || '']}) from your family profiles?
+          </Typography>
+          <Typography variant="caption" sx={{ color: '#999' }}>
+            Existing prescriptions for this profile will not be deleted.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => { setDeleteProfileDialogOpen(false); setProfileToDelete(null); }} sx={{ borderRadius: '12px', fontWeight: 700 }}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleConfirmDeleteProfile}
+            sx={{ bgcolor: '#dc2626', color: '#fff', fontWeight: 700, borderRadius: '12px', '&:hover': { bgcolor: '#b91c1c' } }}
+          >
+            Remove
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Delete Account Section */}
       <Paper

@@ -14,18 +14,11 @@ import {
   Chip,
   Divider,
   Paper,
-  Tabs,
-  Tab,
-  IconButton,
-  Tooltip,
-  Snackbar,
-  Alert,
   keyframes,
   useMediaQuery,
   useTheme
 } from '@mui/material';
 import {
-  QrCodeScanner,
   LocalHospital,
   Security,
   Devices,
@@ -37,36 +30,32 @@ import {
   Person,
   Storefront,
   VerifiedUser,
-  Speed,
   AutoAwesome,
-  ContentCopy,
-  Check,
-  QrCode2,
-  Lock,
   HealthAndSafety,
-  ExpandMore,
   Shield,
   Smartphone,
-  AssignmentTurnedIn
+  AssignmentTurnedIn,
+  CheckCircle,
+  Lock,
+  Speed,
+  Analytics,
+  Inventory,
+  ReceiptLong,
+  FactCheck,
+  CloudDone
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 
-// Keyframe Animations for Glass UI Effects
-const scanAnimation = keyframes`
-  0% { top: 5%; opacity: 0.2; }
-  50% { top: 90%; opacity: 1; }
-  100% { top: 5%; opacity: 0.2; }
-`;
-
-const pulseGlow = keyframes`
-  0% { transform: scale(1); opacity: 0.6; }
-  50% { transform: scale(1.08); opacity: 0.9; }
-  100% { transform: scale(1); opacity: 0.6; }
+// Keyframe Animations for Crisp Vector UI
+const pulseDot = keyframes`
+  0% { opacity: 0.4; transform: scale(0.95); }
+  50% { opacity: 1; transform: scale(1.2); }
+  100% { opacity: 0.4; transform: scale(0.95); }
 `;
 
 const floatAnimation = keyframes`
   0% { transform: translateY(0px); }
-  50% { transform: translateY(-8px); }
+  50% { transform: translateY(-6px); }
   100% { transform: translateY(0px); }
 `;
 
@@ -74,19 +63,11 @@ const Home = () => {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
 
   // Auth state & direct workspace redirection
   const { authState } = useAuth();
   const isAuthenticated = authState?.isAuthenticated || (typeof window !== 'undefined' && Boolean(localStorage.getItem('token')));
   const user = authState?.user;
-
-  // Active Role Tab in Ecosystem section
-  const [activeRoleTab, setActiveRoleTab] = useState(0);
-
-  // Demo QR Scan verification state
-  const [scannedVerified, setScannedVerified] = useState(false);
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
 
   // If user is already authenticated, directly navigate to workspace/dashboard
   useEffect(() => {
@@ -95,63 +76,39 @@ const Home = () => {
     }
   }, [isAuthenticated, navigate]);
 
-  const handleSimulateScan = () => {
-    setScannedVerified(true);
-    setSnackbarOpen(true);
-    setTimeout(() => setScannedVerified(false), 4000);
-  };
-
   return (
-    <Box sx={{ minHeight: '100vh', backgroundColor: '#070D18', color: '#F8FAFC', overflowX: 'hidden' }}>
+    <Box 
+      sx={{ 
+        minHeight: '100vh', 
+        backgroundColor: '#F8FAFC', 
+        color: '#0F172A', 
+        overflowX: 'hidden',
+        position: 'relative'
+      }}
+    >
       
-      {/* Background Ambient Glass Glow Orbs */}
+      {/* Light Happy Mood Ambient Background Gradients */}
       <Box
         sx={{
           position: 'absolute',
-          top: -100,
-          left: '10%',
-          width: { xs: 280, md: 500 },
-          height: { xs: 280, md: 500 },
-          borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(16, 185, 129, 0.25) 0%, rgba(16, 185, 129, 0) 70%)',
-          filter: 'blur(80px)',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: '750px',
+          backgroundImage: `radial-gradient(circle at 15% 15%, rgba(16, 185, 129, 0.08) 0%, transparent 60%), radial-gradient(circle at 85% 25%, rgba(56, 189, 248, 0.1) 0%, transparent 60%), url('/images/hero_light_bg.png')`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          opacity: 0.85,
           pointerEvents: 'none',
-          animation: `${pulseGlow} 8s ease-in-out infinite`
-        }}
-      />
-      <Box
-        sx={{
-          position: 'absolute',
-          top: '25%',
-          right: '5%',
-          width: { xs: 300, md: 600 },
-          height: { xs: 300, md: 600 },
-          borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(59, 130, 246, 0.22) 0%, rgba(59, 130, 246, 0) 70%)',
-          filter: 'blur(90px)',
-          pointerEvents: 'none',
-          animation: `${pulseGlow} 10s ease-in-out infinite 2s`
-        }}
-      />
-      <Box
-        sx={{
-          position: 'absolute',
-          bottom: '20%',
-          left: '5%',
-          width: { xs: 250, md: 450 },
-          height: { xs: 250, md: 450 },
-          borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(139, 92, 246, 0.2) 0%, rgba(139, 92, 246, 0) 70%)',
-          filter: 'blur(85px)',
-          pointerEvents: 'none'
+          zIndex: 0
         }}
       />
 
       {/* Hero Section */}
       <Box
         sx={{
-          pt: { xs: 5, sm: 8, md: 12 },
-          pb: { xs: 8, sm: 10, md: 14 },
+          pt: { xs: 4, sm: 7, md: 10 },
+          pb: { xs: 8, sm: 10, md: 12 },
           position: 'relative',
           zIndex: 1
         }}
@@ -159,27 +116,25 @@ const Home = () => {
         <Container maxWidth="lg">
           <Grid container spacing={{ xs: 4, md: 6 }} alignItems="center">
             
-            {/* Left Hero Details */}
-            <Grid item xs={12} md={7}>
+            {/* Left Hero Content */}
+            <Grid item xs={12} md={6.5}>
               <Stack spacing={3}>
                 
-                {/* Glass Tag */}
+                {/* Cheerful Ecosystem Badge */}
                 <Box>
                   <Chip
-                    icon={<AutoAwesome sx={{ color: '#34D399 !important', fontSize: '18px' }} />}
-                    label="Medizo Life Healthcare Ecosystem v2.0"
+                    icon={<AutoAwesome sx={{ color: '#059669 !important', fontSize: '18px' }} />}
+                    label="Medizo Life • Modern Healthcare Ecosystem"
                     sx={{
-                      backgroundColor: 'rgba(255, 255, 255, 0.07)',
-                      backdropFilter: 'blur(16px)',
-                      WebkitBackdropFilter: 'blur(16px)',
-                      color: '#6EE7B7',
+                      backgroundColor: '#ECFDF5',
+                      color: '#047857',
                       fontWeight: 700,
-                      fontSize: { xs: '0.78rem', sm: '0.875rem' },
+                      fontSize: { xs: '0.8rem', sm: '0.875rem' },
                       py: 2.2,
                       px: 1,
                       borderRadius: '30px',
-                      border: '1px solid rgba(52, 211, 153, 0.3)',
-                      boxShadow: '0 4px 20px rgba(16, 185, 129, 0.15)'
+                      border: '1px solid #A7F3D0',
+                      boxShadow: '0 4px 14px rgba(16, 185, 129, 0.12)'
                     }}
                   />
                 </Box>
@@ -189,42 +144,42 @@ const Home = () => {
                   variant="h1"
                   sx={{
                     fontWeight: 900,
-                    fontSize: { xs: '2.1rem', sm: '3rem', md: '3.6rem' },
+                    fontSize: { xs: '2.2rem', sm: '3.1rem', md: '3.6rem' },
                     lineHeight: { xs: 1.2, md: 1.15 },
                     letterSpacing: '-0.02em',
-                    color: '#FFFFFF'
+                    color: '#0F172A'
                   }}
                 >
-                  Simplified Healthcare Management &{' '}
+                  Empowering Modern Healthcare with{' '}
                   <Box
                     component="span"
                     sx={{
-                      background: 'linear-gradient(90deg, #38BDF8 0%, #34D399 50%, #A7F3D0 100%)',
+                      background: 'linear-gradient(135deg, #059669 0%, #0284C7 100%)',
                       WebkitBackgroundClip: 'text',
                       WebkitTextFillColor: 'transparent',
                       display: 'inline'
                     }}
                   >
-                    Verified Digital Prescriptions
+                    Trust & Simplicity
                   </Box>
                 </Typography>
 
-                {/* Subtitle / Overview */}
+                {/* Clear & Understandable Subtitle */}
                 <Typography
                   variant="h6"
                   sx={{
-                    color: '#94A3B8',
+                    color: '#475569',
                     fontWeight: 400,
                     lineHeight: 1.65,
-                    fontSize: { xs: '0.98rem', sm: '1.1rem', md: '1.2rem' }
+                    fontSize: { xs: '1rem', sm: '1.125rem', md: '1.2rem' }
                   }}
                 >
-                  Medizo Life connects doctors, patients, and pharmacists on a single secure platform. 
-                  Generate verified digital prescriptions with cryptographic QR code authentication and access medical history effortlessly.
+                  Medizo Life connects doctors, patients, and pharmacies on one simple, secure, and encrypted digital network. 
+                  Streamline consultations, access health history, and verify care effortlessly.
                 </Typography>
 
                 {/* Action Buttons */}
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ pt: 1.5 }}>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ pt: 1 }}>
                   {isAuthenticated ? (
                     <Button
                       variant="contained"
@@ -233,14 +188,14 @@ const Home = () => {
                       onClick={() => navigate('/dashboard')}
                       sx={{
                         backgroundColor: '#10B981',
-                        '&:hover': { backgroundColor: '#059669', boxShadow: '0 8px 25px rgba(16, 185, 129, 0.4)' },
+                        '&:hover': { backgroundColor: '#059669', boxShadow: '0 8px 25px rgba(16, 185, 129, 0.35)' },
                         px: 4,
                         py: 1.8,
                         borderRadius: '14px',
                         fontSize: '1.05rem',
                         fontWeight: 700,
                         textTransform: 'none',
-                        boxShadow: '0 4px 20px rgba(16, 185, 129, 0.3)'
+                        boxShadow: '0 4px 20px rgba(16, 185, 129, 0.25)'
                       }}
                     >
                       Go to Workspace ({user?.firstName || 'Dashboard'})
@@ -253,10 +208,10 @@ const Home = () => {
                         endIcon={<ArrowForward />}
                         onClick={() => navigate('/dashboard')}
                         sx={{
-                          background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+                          background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)',
                           '&:hover': {
-                            background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
-                            boxShadow: '0 8px 30px rgba(16, 185, 129, 0.45)',
+                            background: 'linear-gradient(135deg, #047857 0%, #059669 100%)',
+                            boxShadow: '0 8px 30px rgba(16, 185, 129, 0.35)',
                             transform: 'translateY(-2px)'
                           },
                           px: 4,
@@ -265,7 +220,7 @@ const Home = () => {
                           fontSize: '1.05rem',
                           fontWeight: 700,
                           textTransform: 'none',
-                          boxShadow: '0 4px 20px rgba(16, 185, 129, 0.3)',
+                          boxShadow: '0 4px 20px rgba(16, 185, 129, 0.25)',
                           transition: 'all 0.25s ease'
                         }}
                       >
@@ -277,14 +232,12 @@ const Home = () => {
                         startIcon={<Login />}
                         onClick={() => navigate('/login')}
                         sx={{
-                          color: '#FFFFFF',
-                          borderColor: 'rgba(255, 255, 255, 0.25)',
-                          backgroundColor: 'rgba(255, 255, 255, 0.04)',
-                          backdropFilter: 'blur(12px)',
-                          WebkitBackdropFilter: 'blur(12px)',
+                          color: '#0F172A',
+                          borderColor: '#CBD5E1',
+                          backgroundColor: '#FFFFFF',
                           '&:hover': {
-                            borderColor: '#38BDF8',
-                            backgroundColor: 'rgba(56, 189, 248, 0.1)',
+                            borderColor: '#0284C7',
+                            backgroundColor: '#F0F9FF',
                             transform: 'translateY(-2px)'
                           },
                           px: 4,
@@ -293,6 +246,7 @@ const Home = () => {
                           fontSize: '1.05rem',
                           fontWeight: 600,
                           textTransform: 'none',
+                          boxShadow: '0 2px 10px rgba(0, 0, 0, 0.04)',
                           transition: 'all 0.25s ease'
                         }}
                       >
@@ -306,233 +260,151 @@ const Home = () => {
                 <Stack
                   direction={{ xs: 'column', sm: 'row' }}
                   spacing={{ xs: 1.5, sm: 3 }}
-                  sx={{ pt: 2, color: '#CBD5E1' }}
+                  sx={{ pt: 2, color: '#475569' }}
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <CheckCircleOutline sx={{ color: '#34D399', fontSize: 20 }} />
-                    <Typography variant="body2" fontWeight={500}>Instant QR Verification</Typography>
+                    <CheckCircleOutline sx={{ color: '#059669', fontSize: 20 }} />
+                    <Typography variant="body2" fontWeight={600}>Verified Healthcare Portal</Typography>
                   </Box>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <CheckCircleOutline sx={{ color: '#34D399', fontSize: 20 }} />
-                    <Typography variant="body2" fontWeight={500}>Windows & Mobile Native</Typography>
+                    <CheckCircleOutline sx={{ color: '#059669', fontSize: 20 }} />
+                    <Typography variant="body2" fontWeight={600}>Windows & Mobile Native</Typography>
                   </Box>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <CheckCircleOutline sx={{ color: '#34D399', fontSize: 20 }} />
-                    <Typography variant="body2" fontWeight={500}>256-bit Encrypted Vault</Typography>
+                    <CheckCircleOutline sx={{ color: '#059669', fontSize: 20 }} />
+                    <Typography variant="body2" fontWeight={600}>256-bit Encrypted Vault</Typography>
                   </Box>
                 </Stack>
 
               </Stack>
             </Grid>
 
-            {/* Right Hero Frosted Glass Preview Widget */}
-            <Grid item xs={12} md={5}>
+            {/* Right Hero Crisp 3D Animated UI Card */}
+            <Grid item xs={12} md={5.5}>
               <Paper
                 elevation={0}
                 sx={{
-                  p: { xs: 2.5, sm: 3.5 },
+                  p: 3,
                   borderRadius: '24px',
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                  backdropFilter: 'blur(20px) saturate(180%)',
-                  WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.2)',
-                  color: 'white',
+                  backgroundColor: '#FFFFFF',
+                  border: '1px solid #E2E8F0',
+                  boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(16, 185, 129, 0.1)',
                   position: 'relative',
                   overflow: 'hidden',
                   animation: `${floatAnimation} 6s ease-in-out infinite`
                 }}
               >
-                {/* Prescription Glass Header */}
+                {/* Header Status Bar */}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                   <Stack direction="row" spacing={1.5} alignItems="center">
                     <Box
                       sx={{
-                        width: 38,
-                        height: 38,
-                        borderRadius: '10px',
-                        backgroundColor: 'rgba(16, 185, 129, 0.15)',
-                        border: '1px solid rgba(16, 185, 129, 0.3)',
+                        width: 42,
+                        height: 42,
+                        borderRadius: '12px',
+                        backgroundColor: '#ECFDF5',
+                        border: '1px solid #A7F3D0',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center'
                       }}
                     >
-                      <MedicalServices sx={{ color: '#34D399', fontSize: 22 }} />
+                      <HealthAndSafety sx={{ color: '#059669', fontSize: 24 }} />
                     </Box>
                     <Box>
-                      <Typography variant="subtitle2" fontWeight={800} color="#FFFFFF">
-                        Medizo Verified Rx
+                      <Typography variant="subtitle1" fontWeight={800} color="#0F172A">
+                        Medizo Platform Suite
                       </Typography>
-                      <Typography variant="caption" sx={{ color: '#94A3B8' }}>
-                        ID: #RX-2026-948102
+                      <Typography variant="caption" sx={{ color: '#64748B' }}>
+                        Enterprise Digital Care Ecosystem
                       </Typography>
                     </Box>
                   </Stack>
 
-                  <Chip
-                    icon={<VerifiedUser sx={{ color: '#34D399 !important', fontSize: '14px' }} />}
-                    label={scannedVerified ? "Verified Active" : "Cryptographic Seal"}
-                    color={scannedVerified ? "success" : "default"}
-                    size="small"
-                    sx={{
-                      backgroundColor: scannedVerified ? 'rgba(16, 185, 129, 0.25)' : 'rgba(255, 255, 255, 0.08)',
-                      color: scannedVerified ? '#6EE7B7' : '#CBD5E1',
-                      border: scannedVerified ? '1px solid #10B981' : '1px solid rgba(255,255,255,0.15)',
-                      fontWeight: 600
-                    }}
-                  />
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box
+                      sx={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: '50%',
+                        backgroundColor: '#10B981',
+                        animation: `${pulseDot} 2s infinite ease-in-out`
+                      }}
+                    />
+                    <Chip
+                      icon={<VerifiedUser sx={{ color: '#059669 !important', fontSize: '15px' }} />}
+                      label="Certified Secure"
+                      size="small"
+                      sx={{
+                        backgroundColor: '#ECFDF5',
+                        color: '#047857',
+                        border: '1px solid #A7F3D0',
+                        fontWeight: 700
+                      }}
+                    />
+                  </Box>
                 </Box>
 
-                <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.1)', my: 2 }} />
+                <Divider sx={{ borderColor: '#F1F5F9', my: 2 }} />
 
-                {/* Doctor & Patient Info Box */}
+                {/* Gorgeous 3D Animated Illustration */}
                 <Box
                   sx={{
-                    p: 2,
-                    borderRadius: '14px',
-                    backgroundColor: 'rgba(15, 23, 42, 0.6)',
-                    border: '1px solid rgba(255, 255, 255, 0.08)',
-                    mb: 2.5
-                  }}
-                >
-                  <Grid container spacing={2}>
-                    <Grid item xs={6}>
-                      <Typography variant="caption" color="#94A3B8" display="block">
-                        DOCTOR
-                      </Typography>
-                      <Typography variant="body2" fontWeight={700} color="#F1F5F9">
-                        Dr. Ananya Sharma
-                      </Typography>
-                      <Typography variant="caption" color="#64748B">
-                        Lic: DL-49201 MD
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={6}>
-                      <Typography variant="caption" color="#94A3B8" display="block">
-                        PATIENT
-                      </Typography>
-                      <Typography variant="body2" fontWeight={700} color="#F1F5F9">
-                        Rajesh Kumar
-                      </Typography>
-                      <Typography variant="caption" color="#64748B">
-                        Age: 38 (Male)
-                      </Typography>
-                    </Grid>
-                  </Grid>
-                </Box>
-
-                {/* Medications Table Mock */}
-                <Stack spacing={1.2} sx={{ mb: 3 }}>
-                  <Typography variant="caption" color="#94A3B8" fontWeight={700}>
-                    PRESCRIBED MEDICATIONS
-                  </Typography>
-
-                  <Box
-                    sx={{
-                      p: 1.5,
-                      borderRadius: '10px',
-                      backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                      border: '1px solid rgba(255, 255, 255, 0.06)',
-                      display: 'flex',
-                      justify: 'space-between',
-                      alignItems: 'center'
-                    }}
-                  >
-                    <Box>
-                      <Typography variant="body2" fontWeight={600} color="#38BDF8">
-                        Amoxicillin 500mg
-                      </Typography>
-                      <Typography variant="caption" color="#94A3B8">
-                        1 Capsule (1-0-1) | After Meal | 5 Days
-                      </Typography>
-                    </Box>
-                    <Chip label="Dispensed" size="small" sx={{ height: 20, fontSize: '0.65rem', backgroundColor: 'rgba(52, 211, 153, 0.2)', color: '#34D399' }} />
-                  </Box>
-
-                  <Box
-                    sx={{
-                      p: 1.5,
-                      borderRadius: '10px',
-                      backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                      border: '1px solid rgba(255, 255, 255, 0.06)',
-                      display: 'flex',
-                      justify: 'space-between',
-                      alignItems: 'center'
-                    }}
-                  >
-                    <Box>
-                      <Typography variant="body2" fontWeight={600} color="#38BDF8">
-                        Paracetamol 650mg
-                      </Typography>
-                      <Typography variant="caption" color="#94A3B8">
-                        1 Tablet (SOS) | As Needed
-                      </Typography>
-                    </Box>
-                    <Chip label="Ready" size="small" sx={{ height: 20, fontSize: '0.65rem', backgroundColor: 'rgba(56, 189, 248, 0.2)', color: '#38BDF8' }} />
-                  </Box>
-                </Stack>
-
-                {/* Animated Interactive QR Code Authentication Box */}
-                <Box
-                  onClick={handleSimulateScan}
-                  sx={{
-                    p: 2,
+                    width: '100%',
+                    height: { xs: 220, sm: 260 },
                     borderRadius: '16px',
-                    background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%)',
-                    border: '1px dashed rgba(52, 211, 153, 0.4)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 2.5,
-                    cursor: 'pointer',
-                    position: 'relative',
                     overflow: 'hidden',
-                    transition: 'all 0.2s ease',
-                    '&:hover': {
-                      backgroundColor: 'rgba(16, 185, 129, 0.15)',
-                      borderColor: '#34D399'
-                    }
+                    mb: 2.5,
+                    border: '1px solid #F1F5F9',
+                    backgroundColor: '#F8FAFC'
                   }}
                 >
-                  {/* Laser Scan Line Overlay */}
                   <Box
-                    sx={{
-                      position: 'absolute',
-                      left: 0,
-                      right: 0,
-                      height: '2px',
-                      backgroundColor: '#34D399',
-                      boxShadow: '0 0 10px #34D399, 0 0 20px #34D399',
-                      animation: `${scanAnimation} 3s ease-in-out infinite`
-                    }}
+                    component="img"
+                    src="/images/hero_medical_portal.png"
+                    alt="Medizo Healthcare Suite"
+                    sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   />
-
-                  <Box
-                    sx={{
-                      p: 1,
-                      borderRadius: '12px',
-                      backgroundColor: '#FFFFFF',
-                      boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                  >
-                    <QrCode2 sx={{ fontSize: 50, color: '#0F172A' }} />
-                  </Box>
-
-                  <Box sx={{ flex: 1 }}>
-                    <Typography variant="body2" fontWeight={700} color="#FFFFFF">
-                      Cryptographic QR Code
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: '#94A3B8', display: 'block', mb: 0.5 }}>
-                      Pharmacists scan this code to verify authenticity instantly.
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: '#34D399', fontWeight: 600 }}>
-                      ⚡ Click to simulate live QR scan
-                    </Typography>
-                  </Box>
                 </Box>
+
+                {/* Bottom Highlight Statistics */}
+                <Grid container spacing={1.5}>
+                  <Grid item xs={6}>
+                    <Box
+                      sx={{
+                        p: 1.5,
+                        borderRadius: '12px',
+                        backgroundColor: '#F8FAFC',
+                        border: '1px solid #E2E8F0'
+                      }}
+                    >
+                      <Typography variant="caption" color="#059669" fontWeight={700} display="block">
+                        AUTHENTICATION
+                      </Typography>
+                      <Typography variant="body2" fontWeight={700} color="#0F172A">
+                        100% Tamper-Proof
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Box
+                      sx={{
+                        p: 1.5,
+                        borderRadius: '12px',
+                        backgroundColor: '#F8FAFC',
+                        border: '1px solid #E2E8F0'
+                      }}
+                    >
+                      <Typography variant="caption" color="#0284C7" fontWeight={700} display="block">
+                        CROSS-PLATFORM
+                      </Typography>
+                      <Typography variant="body2" fontWeight={700} color="#0F172A">
+                        Desktop & Mobile
+                      </Typography>
+                    </Box>
+                  </Grid>
+                </Grid>
+
               </Paper>
             </Grid>
 
@@ -540,219 +412,242 @@ const Home = () => {
         </Container>
       </Box>
 
-      {/* Section 2: Ecosystem Breakdown for Doctors, Patients, and Pharmacists */}
+      {/* Section 2: Professional Ecosystem Roles (With Clean 3D Animated Feature Graphics) */}
       <Box
         sx={{
           py: { xs: 8, md: 12 },
-          backgroundColor: 'rgba(15, 23, 42, 0.5)',
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
-          borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+          backgroundColor: '#FFFFFF',
+          borderTop: '1px solid #E2E8F0',
+          borderBottom: '1px solid #E2E8F0',
           position: 'relative'
         }}
       >
         <Container maxWidth="lg">
           <Box sx={{ textAlign: 'center', mb: { xs: 5, md: 8 } }}>
             <Chip
-              label="Connected Healthcare Network"
+              label="Unified Healthcare Network"
               size="small"
               sx={{
-                backgroundColor: 'rgba(56, 189, 248, 0.12)',
-                color: '#38BDF8',
+                backgroundColor: '#F0F9FF',
+                color: '#0284C7',
                 fontWeight: 700,
                 mb: 2,
-                border: '1px solid rgba(56, 189, 248, 0.3)'
+                border: '1px solid #BAE6FD'
               }}
             />
-            <Typography variant="h2" component="h2" fontWeight={800} color="#FFFFFF" gutterBottom sx={{ fontSize: { xs: '1.8rem', sm: '2.5rem', md: '2.8rem' } }}>
-              Designed for Every Healthcare Role
+            <Typography 
+              variant="h2" 
+              component="h2" 
+              fontWeight={900} 
+              color="#0F172A" 
+              gutterBottom 
+              sx={{ fontSize: { xs: '1.8rem', sm: '2.5rem', md: '2.8rem' } }}
+            >
+              Built for Every Healthcare Role
             </Typography>
-            <Typography variant="body1" color="#94A3B8" maxWidth="700px" mx="auto" sx={{ fontSize: { xs: '0.95rem', md: '1.1rem' } }}>
-              Medizo Life seamlessly integrates doctor workflows, patient prescription access, and pharmacist verification into one cohesive digital ecosystem.
+            <Typography variant="body1" color="#475569" maxWidth="700px" mx="auto" sx={{ fontSize: { xs: '1rem', md: '1.1rem' } }}>
+              Medizo Life brings together medical consultations, patient history management, and pharmacy verification into one smooth and accessible platform.
             </Typography>
           </Box>
 
           <Grid container spacing={4}>
             
-            {/* Card 1: Doctors */}
+            {/* Card 1: Doctor Studio Card */}
             <Grid item xs={12} md={4}>
               <Paper
                 elevation={0}
                 sx={{
-                  p: 4,
+                  p: 3.5,
                   height: '100%',
                   borderRadius: '20px',
-                  backgroundColor: 'rgba(255, 255, 255, 0.04)',
-                  backdropFilter: 'blur(16px)',
-                  WebkitBackdropFilter: 'blur(16px)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  backgroundColor: '#F8FAFC',
+                  border: '1px solid #E2E8F0',
+                  display: 'flex',
+                  flexDirection: 'column',
                   transition: 'all 0.3s ease',
                   '&:hover': {
                     transform: 'translateY(-6px)',
-                    borderColor: 'rgba(56, 189, 248, 0.5)',
-                    backgroundColor: 'rgba(56, 189, 248, 0.06)',
-                    boxShadow: '0 16px 35px rgba(56, 189, 248, 0.15)'
+                    borderColor: '#0284C7',
+                    boxShadow: '0 20px 40px -15px rgba(2, 132, 199, 0.15)',
+                    backgroundColor: '#FFFFFF'
                   }
                 }}
               >
+                {/* 3D Animated Illustration for Doctor Studio */}
                 <Box
                   sx={{
-                    width: 56,
-                    height: 56,
-                    borderRadius: '14px',
-                    backgroundColor: 'rgba(56, 189, 248, 0.15)',
-                    border: '1px solid rgba(56, 189, 248, 0.3)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    mb: 3
+                    width: '100%',
+                    height: 200,
+                    borderRadius: '16px',
+                    overflow: 'hidden',
+                    mb: 3,
+                    border: '1px solid #E2E8F0',
+                    backgroundColor: '#F0F9FF'
                   }}
                 >
-                  <LocalHospital sx={{ fontSize: 32, color: '#38BDF8' }} />
+                  <Box
+                    component="img"
+                    src="/images/doctor_care_feature.png"
+                    alt="Doctor Studio Workspace"
+                    sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
                 </Box>
-                <Chip label="For Doctors" size="small" sx={{ backgroundColor: 'rgba(56, 189, 248, 0.15)', color: '#38BDF8', fontWeight: 700, mb: 1.5 }} />
-                <Typography variant="h5" fontWeight={800} color="#FFFFFF" gutterBottom>
-                  Digital Prescription Studio
+
+                <Chip label="For Doctors" size="small" sx={{ backgroundColor: '#E0F2FE', color: '#0369A1', fontWeight: 700, mb: 1.5, alignSelf: 'flex-start' }} />
+                
+                <Typography variant="h5" fontWeight={800} color="#0F172A" gutterBottom>
+                  Doctor Studio
                 </Typography>
-                <Typography variant="body2" color="#94A3B8" sx={{ mb: 3, lineHeight: 1.7 }}>
-                  Create error-free digital prescriptions in seconds. Search pre-loaded Indian & global medicine databases, customize dosage instructions, and auto-generate QR verification stamps.
+                <Typography variant="body2" color="#475569" sx={{ mb: 3, lineHeight: 1.7, flexGrow: 1 }}>
+                  Create accurate digital records in seconds. Access pre-loaded medicine directories, customize treatment instructions, and manage patient care history seamlessly.
                 </Typography>
 
                 <Stack spacing={1.5}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    <CheckCircleOutline sx={{ color: '#38BDF8', fontSize: 18 }} />
-                    <Typography variant="body2" color="#CBD5E1">Instant Medicine Search & Dosage Presets</Typography>
+                    <CheckCircleOutline sx={{ color: '#0284C7', fontSize: 18 }} />
+                    <Typography variant="body2" color="#334155" fontWeight={500}>Fast Medicine Search & Presets</Typography>
                   </Box>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    <CheckCircleOutline sx={{ color: '#38BDF8', fontSize: 18 }} />
-                    <Typography variant="body2" color="#CBD5E1">PDF Generation & Official Digital Signature</Typography>
+                    <CheckCircleOutline sx={{ color: '#0284C7', fontSize: 18 }} />
+                    <Typography variant="body2" color="#334155" fontWeight={500}>Digital Document Generation & Signature</Typography>
                   </Box>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    <CheckCircleOutline sx={{ color: '#38BDF8', fontSize: 18 }} />
-                    <Typography variant="body2" color="#CBD5E1">Search Patients by Mobile Number or ID</Typography>
+                    <CheckCircleOutline sx={{ color: '#0284C7', fontSize: 18 }} />
+                    <Typography variant="body2" color="#334155" fontWeight={500}>Patient History Lookup by Mobile or ID</Typography>
                   </Box>
                 </Stack>
               </Paper>
             </Grid>
 
-            {/* Card 2: Patients */}
+            {/* Card 2: Patient Vault Card */}
             <Grid item xs={12} md={4}>
               <Paper
                 elevation={0}
                 sx={{
-                  p: 4,
+                  p: 3.5,
                   height: '100%',
                   borderRadius: '20px',
-                  backgroundColor: 'rgba(255, 255, 255, 0.04)',
-                  backdropFilter: 'blur(16px)',
-                  WebkitBackdropFilter: 'blur(16px)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  backgroundColor: '#F8FAFC',
+                  border: '1px solid #E2E8F0',
+                  display: 'flex',
+                  flexDirection: 'column',
                   transition: 'all 0.3s ease',
                   '&:hover': {
                     transform: 'translateY(-6px)',
-                    borderColor: 'rgba(52, 211, 153, 0.5)',
-                    backgroundColor: 'rgba(52, 211, 153, 0.06)',
-                    boxShadow: '0 16px 35px rgba(52, 211, 153, 0.15)'
+                    borderColor: '#059669',
+                    boxShadow: '0 20px 40px -15px rgba(5, 150, 105, 0.15)',
+                    backgroundColor: '#FFFFFF'
                   }
                 }}
               >
+                {/* 3D Animated Illustration for Patient Vault */}
                 <Box
                   sx={{
-                    width: 56,
-                    height: 56,
-                    borderRadius: '14px',
-                    backgroundColor: 'rgba(52, 211, 153, 0.15)',
-                    border: '1px solid rgba(52, 211, 153, 0.3)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    mb: 3
+                    width: '100%',
+                    height: 200,
+                    borderRadius: '16px',
+                    overflow: 'hidden',
+                    mb: 3,
+                    border: '1px solid #E2E8F0',
+                    backgroundColor: '#ECFDF5'
                   }}
                 >
-                  <Person sx={{ fontSize: 32, color: '#34D399' }} />
+                  <Box
+                    component="img"
+                    src="/images/patient_wellness_feature.png"
+                    alt="Personal Health Vault"
+                    sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
                 </Box>
-                <Chip label="For Patients" size="small" sx={{ backgroundColor: 'rgba(52, 211, 153, 0.15)', color: '#34D399', fontWeight: 700, mb: 1.5 }} />
-                <Typography variant="h5" fontWeight={800} color="#FFFFFF" gutterBottom>
-                  Lifetime Health Vault
+
+                <Chip label="For Patients" size="small" sx={{ backgroundColor: '#ECFDF5', color: '#047857', fontWeight: 700, mb: 1.5, alignSelf: 'flex-start' }} />
+                
+                <Typography variant="h5" fontWeight={800} color="#0F172A" gutterBottom>
+                  Personal Health Vault
                 </Typography>
-                <Typography variant="body2" color="#94A3B8" sx={{ mb: 3, lineHeight: 1.7 }}>
-                  Never lose a prescription again. Access your entire medical history from any phone, desktop, or tablet anytime. Present your QR code at pharmacies with total peace of mind.
+                <Typography variant="body2" color="#475569" sx={{ mb: 3, lineHeight: 1.7, flexGrow: 1 }}>
+                  Keep all your medical records safe and organized in one spot. Access your health history anytime from your smartphone, tablet, or PC with total security.
                 </Typography>
 
                 <Stack spacing={1.5}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    <CheckCircleOutline sx={{ color: '#34D399', fontSize: 18 }} />
-                    <Typography variant="body2" color="#CBD5E1">Complete Prescription History Cloud Storage</Typography>
+                    <CheckCircleOutline sx={{ color: '#059669', fontSize: 18 }} />
+                    <Typography variant="body2" color="#334155" fontWeight={500}>Lifetime Digital Record Access</Typography>
                   </Box>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    <CheckCircleOutline sx={{ color: '#34D399', fontSize: 18 }} />
-                    <Typography variant="body2" color="#CBD5E1">1-Tap PDF Download & WhatsApp Share</Typography>
+                    <CheckCircleOutline sx={{ color: '#059669', fontSize: 18 }} />
+                    <Typography variant="body2" color="#334155" fontWeight={500}>1-Tap PDF Download & Sharing</Typography>
                   </Box>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    <CheckCircleOutline sx={{ color: '#34D399', fontSize: 18 }} />
-                    <Typography variant="body2" color="#CBD5E1">Secure Access via Mobile OTP or Password</Typography>
+                    <CheckCircleOutline sx={{ color: '#059669', fontSize: 18 }} />
+                    <Typography variant="body2" color="#334155" fontWeight={500}>Secure Mobile OTP & Password Login</Typography>
                   </Box>
                 </Stack>
               </Paper>
             </Grid>
 
-            {/* Card 3: Pharmacists */}
+            {/* Card 3: Pharmacy Fulfillment Card */}
             <Grid item xs={12} md={4}>
               <Paper
                 elevation={0}
                 sx={{
-                  p: 4,
+                  p: 3.5,
                   height: '100%',
                   borderRadius: '20px',
-                  backgroundColor: 'rgba(255, 255, 255, 0.04)',
-                  backdropFilter: 'blur(16px)',
-                  WebkitBackdropFilter: 'blur(16px)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  backgroundColor: '#F8FAFC',
+                  border: '1px solid #E2E8F0',
+                  display: 'flex',
+                  flexDirection: 'column',
                   transition: 'all 0.3s ease',
                   '&:hover': {
                     transform: 'translateY(-6px)',
-                    borderColor: 'rgba(251, 191, 36, 0.5)',
-                    backgroundColor: 'rgba(251, 191, 36, 0.06)',
-                    boxShadow: '0 16px 35px rgba(251, 191, 36, 0.15)'
+                    borderColor: '#7C3AED',
+                    boxShadow: '0 20px 40px -15px rgba(124, 58, 237, 0.15)',
+                    backgroundColor: '#FFFFFF'
                   }
                 }}
               >
+                {/* 3D Animated Illustration for Pharmacy Fulfillment */}
                 <Box
                   sx={{
-                    width: 56,
-                    height: 56,
-                    borderRadius: '14px',
-                    backgroundColor: 'rgba(251, 191, 36, 0.15)',
-                    border: '1px solid rgba(251, 191, 36, 0.3)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    mb: 3
+                    width: '100%',
+                    height: 200,
+                    borderRadius: '16px',
+                    overflow: 'hidden',
+                    mb: 3,
+                    border: '1px solid #E2E8F0',
+                    backgroundColor: '#F3E8FF'
                   }}
                 >
-                  <Storefront sx={{ fontSize: 32, color: '#FBBF24' }} />
+                  <Box
+                    component="img"
+                    src="/images/pharmacy_verification_feature.png"
+                    alt="Pharmacy Verification"
+                    sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
                 </Box>
-                <Chip label="For Pharmacists" size="small" sx={{ backgroundColor: 'rgba(251, 191, 36, 0.15)', color: '#FBBF24', fontWeight: 700, mb: 1.5 }} />
-                <Typography variant="h5" fontWeight={800} color="#FFFFFF" gutterBottom>
-                  Instant QR Dispensing
+
+                <Chip label="For Pharmacies" size="small" sx={{ backgroundColor: '#F3E8FF', color: '#6B21A8', fontWeight: 700, mb: 1.5, alignSelf: 'flex-start' }} />
+                
+                <Typography variant="h5" fontWeight={800} color="#0F172A" gutterBottom>
+                  Pharmacy Fulfillment
                 </Typography>
-                <Typography variant="body2" color="#94A3B8" sx={{ mb: 3, lineHeight: 1.7 }}>
-                  Prevent counterfeit prescriptions and dispensing errors. Scan patient QR codes using any camera or webcam to instantly verify doctor signature, authenticity, and dosage.
+                <Typography variant="body2" color="#475569" sx={{ mb: 3, lineHeight: 1.7, flexGrow: 1 }}>
+                  Ensure accurate medicine fulfillment and prevent errors. Quickly check prescription authenticity and track fulfillment status with simple digital tools.
                 </Typography>
 
                 <Stack spacing={1.5}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    <CheckCircleOutline sx={{ color: '#FBBF24', fontSize: 18 }} />
-                    <Typography variant="body2" color="#CBD5E1">Sub-second QR Code Scanner & Hash Check</Typography>
+                    <CheckCircleOutline sx={{ color: '#7C3AED', fontSize: 18 }} />
+                    <Typography variant="body2" color="#334155" fontWeight={500}>Fast Digital Verification</Typography>
                   </Box>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    <CheckCircleOutline sx={{ color: '#FBBF24', fontSize: 18 }} />
-                    <Typography variant="body2" color="#CBD5E1">Zero Paperwork Fraud Prevention</Typography>
+                    <CheckCircleOutline sx={{ color: '#7C3AED', fontSize: 18 }} />
+                    <Typography variant="body2" color="#334155" fontWeight={500}>Clear Dosage & Instruction Checks</Typography>
                   </Box>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    <CheckCircleOutline sx={{ color: '#FBBF24', fontSize: 18 }} />
-                    <Typography variant="body2" color="#CBD5E1">One-click Dispensing Log Confirmation</Typography>
+                    <CheckCircleOutline sx={{ color: '#7C3AED', fontSize: 18 }} />
+                    <Typography variant="body2" color="#334155" fontWeight={500}>One-Click Fulfillment Logging</Typography>
                   </Box>
                 </Stack>
               </Paper>
@@ -762,25 +657,25 @@ const Home = () => {
         </Container>
       </Box>
 
-      {/* Section 3: Visual 3-Step Workflow ("How Medizo Works") */}
+      {/* Section 3: Simple 3-Step Workflow ("How Medizo Works") */}
       <Container maxWidth="lg" sx={{ py: { xs: 8, md: 12 } }}>
         <Box sx={{ textAlign: 'center', mb: { xs: 5, md: 8 } }}>
           <Chip
             label="Simple 3-Step Workflow"
             size="small"
             sx={{
-              backgroundColor: 'rgba(16, 185, 129, 0.12)',
-              color: '#34D399',
+              backgroundColor: '#ECFDF5',
+              color: '#047857',
               fontWeight: 700,
               mb: 2,
-              border: '1px solid rgba(52, 211, 153, 0.3)'
+              border: '1px solid #A7F3D0'
             }}
           />
-          <Typography variant="h2" component="h2" fontWeight={800} color="#FFFFFF" gutterBottom sx={{ fontSize: { xs: '1.8rem', sm: '2.5rem', md: '2.8rem' } }}>
-            How Medizo Simplifies Healthcare
+          <Typography variant="h2" component="h2" fontWeight={900} color="#0F172A" gutterBottom sx={{ fontSize: { xs: '1.8rem', sm: '2.5rem', md: '2.8rem' } }}>
+            How Medizo Simplifies Care
           </Typography>
-          <Typography variant="body1" color="#94A3B8" maxWidth="650px" mx="auto" sx={{ fontSize: { xs: '0.95rem', md: '1.1rem' } }}>
-            From clinical consultation to pharmacy fulfillment in three effortless steps.
+          <Typography variant="body1" color="#475569" maxWidth="650px" mx="auto" sx={{ fontSize: { xs: '1rem', md: '1.1rem' } }}>
+            From clinical consultation to medicine fulfillment in three clear, hassle-free steps.
           </Typography>
         </Box>
 
@@ -791,25 +686,26 @@ const Home = () => {
             <Paper
               elevation={0}
               sx={{
-                p: 3.5,
+                p: 4,
+                height: '100%',
                 borderRadius: '20px',
-                backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
+                backgroundColor: '#FFFFFF',
+                border: '1px solid #E2E8F0',
                 position: 'relative',
-                overflow: 'hidden'
+                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.05)'
               }}
             >
-              <Typography variant="h1" sx={{ position: 'absolute', top: -15, right: 15, fontSize: '5rem', fontWeight: 900, color: 'rgba(255, 255, 255, 0.05)', userSelect: 'none' }}>
+              <Typography variant="h1" sx={{ position: 'absolute', top: -10, right: 20, fontSize: '4.5rem', fontWeight: 900, color: '#F1F5F9', userSelect: 'none' }}>
                 01
               </Typography>
-              <Box sx={{ width: 44, height: 44, borderRadius: '12px', backgroundColor: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2 }}>
-                <MedicalServices sx={{ color: '#FFFFFF', fontSize: 24 }} />
+              <Box sx={{ width: 48, height: 48, borderRadius: '12px', backgroundColor: '#0284C7', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2.5 }}>
+                <MedicalServices sx={{ color: '#FFFFFF', fontSize: 26 }} />
               </Box>
-              <Typography variant="h6" fontWeight={700} color="#FFFFFF" gutterBottom>
-                1. Doctor Issues Prescription
+              <Typography variant="h6" fontWeight={800} color="#0F172A" gutterBottom>
+                1. Doctor Consultation
               </Typography>
-              <Typography variant="body2" color="#94A3B8" sx={{ lineHeight: 1.6 }}>
-                Doctor enters diagnosis, selects medicines from built-in directory, adds advice, and signs digitally.
+              <Typography variant="body2" color="#475569" sx={{ lineHeight: 1.6 }}>
+                The doctor completes the examination, selects prescribed items from the built-in database, adds advice, and creates a clean digital record.
               </Typography>
             </Paper>
           </Grid>
@@ -819,25 +715,26 @@ const Home = () => {
             <Paper
               elevation={0}
               sx={{
-                p: 3.5,
+                p: 4,
+                height: '100%',
                 borderRadius: '20px',
-                backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
+                backgroundColor: '#FFFFFF',
+                border: '1px solid #E2E8F0',
                 position: 'relative',
-                overflow: 'hidden'
+                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.05)'
               }}
             >
-              <Typography variant="h1" sx={{ position: 'absolute', top: -15, right: 15, fontSize: '5rem', fontWeight: 900, color: 'rgba(255, 255, 255, 0.05)', userSelect: 'none' }}>
+              <Typography variant="h1" sx={{ position: 'absolute', top: -10, right: 20, fontSize: '4.5rem', fontWeight: 900, color: '#F1F5F9', userSelect: 'none' }}>
                 02
               </Typography>
-              <Box sx={{ width: 44, height: 44, borderRadius: '12px', backgroundColor: '#10B981', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2 }}>
-                <QrCodeScanner sx={{ color: '#FFFFFF', fontSize: 24 }} />
+              <Box sx={{ width: 48, height: 48, borderRadius: '12px', backgroundColor: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2.5 }}>
+                <Lock sx={{ color: '#FFFFFF', fontSize: 26 }} />
               </Box>
-              <Typography variant="h6" fontWeight={700} color="#FFFFFF" gutterBottom>
-                2. Cryptographic QR Auth
+              <Typography variant="h6" fontWeight={800} color="#0F172A" gutterBottom>
+                2. Encrypted Vault Sync
               </Typography>
-              <Typography variant="body2" color="#94A3B8" sx={{ lineHeight: 1.6 }}>
-                System instantly generates a tamper-proof QR code & cryptographic token embedded directly in the prescription.
+              <Typography variant="body2" color="#475569" sx={{ lineHeight: 1.6 }}>
+                Records are instantly protected with 256-bit encryption and synced safely to the patient’s personal healthcare vault.
               </Typography>
             </Paper>
           </Grid>
@@ -847,25 +744,26 @@ const Home = () => {
             <Paper
               elevation={0}
               sx={{
-                p: 3.5,
+                p: 4,
+                height: '100%',
                 borderRadius: '20px',
-                backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
+                backgroundColor: '#FFFFFF',
+                border: '1px solid #E2E8F0',
                 position: 'relative',
-                overflow: 'hidden'
+                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.05)'
               }}
             >
-              <Typography variant="h1" sx={{ position: 'absolute', top: -15, right: 15, fontSize: '5rem', fontWeight: 900, color: 'rgba(255, 255, 255, 0.05)', userSelect: 'none' }}>
+              <Typography variant="h1" sx={{ position: 'absolute', top: -10, right: 20, fontSize: '4.5rem', fontWeight: 900, color: '#F1F5F9', userSelect: 'none' }}>
                 03
               </Typography>
-              <Box sx={{ width: 44, height: 44, borderRadius: '12px', backgroundColor: '#F59E0B', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2 }}>
-                <AssignmentTurnedIn sx={{ color: '#FFFFFF', fontSize: 24 }} />
+              <Box sx={{ width: 48, height: 48, borderRadius: '12px', backgroundColor: '#7C3AED', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2.5 }}>
+                <AssignmentTurnedIn sx={{ color: '#FFFFFF', fontSize: 26 }} />
               </Box>
-              <Typography variant="h6" fontWeight={700} color="#FFFFFF" gutterBottom>
-                3. Pharmacist Scans & Dispenses
+              <Typography variant="h6" fontWeight={800} color="#0F172A" gutterBottom>
+                3. Seamless Care Delivery
               </Typography>
-              <Typography variant="body2" color="#94A3B8" sx={{ lineHeight: 1.6 }}>
-                Pharmacist scans the QR code from patient’s smartphone screen to verify authenticity in real-time.
+              <Typography variant="body2" color="#475569" sx={{ lineHeight: 1.6 }}>
+                Patients can review details or share records with their chosen pharmacist for easy, accurate medicine dispensing.
               </Typography>
             </Paper>
           </Grid>
@@ -873,23 +771,21 @@ const Home = () => {
         </Grid>
       </Container>
 
-      {/* Section 4: Key Platform Features Grid */}
+      {/* Section 4: Key Platform Capabilities Grid */}
       <Box
         sx={{
           py: { xs: 8, md: 10 },
-          backgroundColor: 'rgba(15, 23, 42, 0.7)',
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
-          borderTop: '1px solid rgba(255, 255, 255, 0.08)'
+          backgroundColor: '#FFFFFF',
+          borderTop: '1px solid #E2E8F0'
         }}
       >
         <Container maxWidth="lg">
           <Box sx={{ textAlign: 'center', mb: { xs: 5, md: 8 } }}>
-            <Typography variant="h3" component="h2" fontWeight={800} color="#FFFFFF" gutterBottom sx={{ fontSize: { xs: '1.75rem', sm: '2.2rem', md: '2.5rem' } }}>
+            <Typography variant="h3" component="h2" fontWeight={800} color="#0F172A" gutterBottom sx={{ fontSize: { xs: '1.75rem', sm: '2.2rem', md: '2.5rem' } }}>
               Key Platform Capabilities
             </Typography>
-            <Typography variant="body1" color="#94A3B8" maxWidth="600px" mx="auto">
-              Built for precision, high performance, and compliance across desktop and mobile devices.
+            <Typography variant="body1" color="#475569" maxWidth="600px" mx="auto">
+              Built for speed, accuracy, and maximum privacy across desktop and mobile devices.
             </Typography>
           </Box>
 
@@ -903,24 +799,23 @@ const Home = () => {
                   height: '100%',
                   p: 2.5,
                   borderRadius: '16px',
-                  backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                  backdropFilter: 'blur(12px)',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  backgroundColor: '#F8FAFC',
+                  border: '1px solid #E2E8F0',
                   transition: 'all 0.25s ease',
                   '&:hover': {
                     transform: 'translateY(-4px)',
-                    borderColor: 'rgba(56, 189, 248, 0.4)',
-                    boxShadow: '0 12px 24px rgba(0,0,0,0.3)'
+                    borderColor: '#0284C7',
+                    boxShadow: '0 12px 24px rgba(0,0,0,0.06)'
                   }
                 }}
               >
                 <CardContent sx={{ p: 1 }}>
-                  <QrCodeScanner sx={{ fontSize: 40, color: '#38BDF8', mb: 2 }} />
-                  <Typography variant="h6" fontWeight={700} color="#FFFFFF" gutterBottom>
-                    QR Verification
+                  <Shield sx={{ fontSize: 40, color: '#0284C7', mb: 2 }} />
+                  <Typography variant="h6" fontWeight={700} color="#0F172A" gutterBottom>
+                    Verified Care
                   </Typography>
-                  <Typography variant="body2" color="#94A3B8" sx={{ lineHeight: 1.6 }}>
-                    Every prescription carries a cryptographic QR code for fraud prevention and sub-second authenticity checks.
+                  <Typography variant="body2" color="#475569" sx={{ lineHeight: 1.6 }}>
+                    Guarantees medical record authenticity and prevents prescription errors across clinics.
                   </Typography>
                 </CardContent>
               </Card>
@@ -934,24 +829,23 @@ const Home = () => {
                   height: '100%',
                   p: 2.5,
                   borderRadius: '16px',
-                  backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                  backdropFilter: 'blur(12px)',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  backgroundColor: '#F8FAFC',
+                  border: '1px solid #E2E8F0',
                   transition: 'all 0.25s ease',
                   '&:hover': {
                     transform: 'translateY(-4px)',
-                    borderColor: 'rgba(52, 211, 153, 0.4)',
-                    boxShadow: '0 12px 24px rgba(0,0,0,0.3)'
+                    borderColor: '#059669',
+                    boxShadow: '0 12px 24px rgba(0,0,0,0.06)'
                   }
                 }}
               >
                 <CardContent sx={{ p: 1 }}>
-                  <LocalHospital sx={{ fontSize: 40, color: '#34D399', mb: 2 }} />
-                  <Typography variant="h6" fontWeight={700} color="#FFFFFF" gutterBottom>
+                  <LocalHospital sx={{ fontSize: 40, color: '#059669', mb: 2 }} />
+                  <Typography variant="h6" fontWeight={700} color="#0F172A" gutterBottom>
                     Doctor Management
                   </Typography>
-                  <Typography variant="body2" color="#94A3B8" sx={{ lineHeight: 1.6 }}>
-                    Streamlined prescription generation, medical history search, and customized clinic header branding.
+                  <Typography variant="body2" color="#475569" sx={{ lineHeight: 1.6 }}>
+                    Fast record entry, patient directory lookup, and customized header branding for clinics.
                   </Typography>
                 </CardContent>
               </Card>
@@ -965,24 +859,23 @@ const Home = () => {
                   height: '100%',
                   p: 2.5,
                   borderRadius: '16px',
-                  backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                  backdropFilter: 'blur(12px)',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  backgroundColor: '#F8FAFC',
+                  border: '1px solid #E2E8F0',
                   transition: 'all 0.25s ease',
                   '&:hover': {
                     transform: 'translateY(-4px)',
-                    borderColor: 'rgba(167, 139, 250, 0.4)',
-                    boxShadow: '0 12px 24px rgba(0,0,0,0.3)'
+                    borderColor: '#7C3AED',
+                    boxShadow: '0 12px 24px rgba(0,0,0,0.06)'
                   }
                 }}
               >
                 <CardContent sx={{ p: 1 }}>
-                  <Devices sx={{ fontSize: 40, color: '#A78BFA', mb: 2 }} />
-                  <Typography variant="h6" fontWeight={700} color="#FFFFFF" gutterBottom>
-                    Multi-Device Apps
+                  <Devices sx={{ fontSize: 40, color: '#7C3AED', mb: 2 }} />
+                  <Typography variant="h6" fontWeight={700} color="#0F172A" gutterBottom>
+                    Multi-Device Access
                   </Typography>
-                  <Typography variant="body2" color="#94A3B8" sx={{ lineHeight: 1.6 }}>
-                    Native Windows Desktop app installer, Web Application, and mobile-friendly responsive experience.
+                  <Typography variant="body2" color="#475569" sx={{ lineHeight: 1.6 }}>
+                    Native Windows Desktop app, Web Application, and mobile-responsive layout for any device.
                   </Typography>
                 </CardContent>
               </Card>
@@ -996,24 +889,23 @@ const Home = () => {
                   height: '100%',
                   p: 2.5,
                   borderRadius: '16px',
-                  backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                  backdropFilter: 'blur(12px)',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  backgroundColor: '#F8FAFC',
+                  border: '1px solid #E2E8F0',
                   transition: 'all 0.25s ease',
                   '&:hover': {
                     transform: 'translateY(-4px)',
-                    borderColor: 'rgba(251, 191, 36, 0.4)',
-                    boxShadow: '0 12px 24px rgba(0,0,0,0.3)'
+                    borderColor: '#D97706',
+                    boxShadow: '0 12px 24px rgba(0,0,0,0.06)'
                   }
                 }}
               >
                 <CardContent sx={{ p: 1 }}>
-                  <Security sx={{ fontSize: 40, color: '#FBBF24', mb: 2 }} />
-                  <Typography variant="h6" fontWeight={700} color="#FFFFFF" gutterBottom>
-                    Privacy & Vault
+                  <Security sx={{ fontSize: 40, color: '#D97706', mb: 2 }} />
+                  <Typography variant="h6" fontWeight={700} color="#0F172A" gutterBottom>
+                    Encrypted Privacy
                   </Typography>
-                  <Typography variant="body2" color="#94A3B8" sx={{ lineHeight: 1.6 }}>
-                    256-bit encrypted data storage protecting patient records and doctor medical credentials.
+                  <Typography variant="body2" color="#475569" sx={{ lineHeight: 1.6 }}>
+                    Industry-standard 256-bit encryption safeguards sensitive health records and credentials.
                   </Typography>
                 </CardContent>
               </Card>
@@ -1023,80 +915,10 @@ const Home = () => {
         </Container>
       </Box>
 
-      {/* Sticky Mobile Floating Action Bar */}
-      {isMobile && !isAuthenticated && (
-        <Box
-          sx={{
-            position: 'fixed',
-            bottom: 16,
-            left: 16,
-            right: 16,
-            zIndex: 1100,
-            p: 1.5,
-            borderRadius: '20px',
-            backgroundColor: 'rgba(15, 23, 42, 0.88)',
-            backdropFilter: 'blur(20px) saturate(180%)',
-            WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
-            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.6)',
-            display: 'flex',
-            gap: 1.5
-          }}
-        >
-          <Button
-            fullWidth
-            variant="contained"
-            onClick={() => navigate('/dashboard')}
-            sx={{
-              background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
-              color: '#FFFFFF',
-              fontWeight: 700,
-              py: 1.2,
-              borderRadius: '12px',
-              textTransform: 'none',
-              fontSize: '0.95rem'
-            }}
-          >
-            Launch Workspace
-          </Button>
-          <Button
-            fullWidth
-            variant="outlined"
-            onClick={() => navigate('/login')}
-            sx={{
-              borderColor: 'rgba(255, 255, 255, 0.3)',
-              color: '#FFFFFF',
-              fontWeight: 600,
-              py: 1.2,
-              borderRadius: '12px',
-              textTransform: 'none',
-              fontSize: '0.95rem'
-            }}
-          >
-            Sign In
-          </Button>
-        </Box>
-      )}
 
-      {/* Snackbar Notification for Interactive Demo */}
-      <Snackbar
-        open={snackbarOpen}
-        autoHideDuration={3500}
-        onClose={() => setSnackbarOpen(false)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert
-          onClose={() => setSnackbarOpen(false)}
-          severity="success"
-          variant="filled"
-          sx={{ width: '100%', fontWeight: 700, backgroundColor: '#059669', color: '#FFFFFF' }}
-        >
-          ✅ Prescription Cryptographic QR Code Verified!
-        </Alert>
-      </Snackbar>
 
       {/* Footer Section */}
-      <Box sx={{ backgroundColor: '#040812', color: '#94A3B8', py: 6, borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+      <Box sx={{ backgroundColor: '#0F172A', color: '#94A3B8', pt: 6, pb: { xs: '100px', md: 6 } }}>
         <Container maxWidth="lg">
           <Grid container spacing={4} justifyContent="space-between">
             
@@ -1114,10 +936,10 @@ const Home = () => {
                 </Typography>
               </Stack>
               <Typography variant="body2" sx={{ mb: 2, color: '#94A3B8', lineHeight: 1.6 }}>
-                Published by Develope Future. Standardized digital healthcare platform for verified digital prescriptions and secure patient data management.
+                Published by Develope Future. Standardized digital healthcare platform for verified digital care records and secure patient management.
               </Typography>
               <Typography variant="body2" color="#64748B">
-                Support: contact@medizo.life
+                Support: info@medizo.life
               </Typography>
             </Grid>
 
@@ -1167,7 +989,7 @@ const Home = () => {
 
           </Grid>
 
-          <Divider sx={{ my: 4, borderColor: 'rgba(255, 255, 255, 0.08)' }} />
+          <Divider sx={{ my: 4, borderColor: '#334155' }} />
           <Typography variant="body2" textAlign="center" color="#64748B">
             © {new Date().getFullYear()} Medizo Life (Develope Future). All rights reserved.
           </Typography>

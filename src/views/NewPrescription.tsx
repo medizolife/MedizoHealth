@@ -9,6 +9,8 @@ import { digilockerAPI } from '../services/api';
 import { Patient } from '../types/auth';
 import { Prescription } from '../types/prescription';
 import QrScannerModal from '../components/QrScannerModal';
+import { FamilyProfile, RELATIONSHIP_LABELS, RELATIONSHIP_ICONS } from '../types/familyProfile';
+import { getProfilesByAccountId } from '../services/familyProfiles';
 import { 
   Container,
   Typography,
@@ -167,6 +169,11 @@ const NewPrescription = () => {
   const [loadingPastRx, setLoadingPastRx] = useState(false);
   const [expandedPastRxId, setExpandedPastRxId] = useState<string | null>(null);
   const [downloadingPdfRxId, setDownloadingPdfRxId] = useState<string | null>(null);
+
+  // Family profile state for prescription targeting
+  const [familyProfiles, setFamilyProfiles] = useState<FamilyProfile[]>([]);
+  const [selectedProfile, setSelectedProfile] = useState<FamilyProfile | null>(null);
+  const [loadingProfiles, setLoadingProfiles] = useState(false);
 
   const handleDownloadPastRxPdf = async (rxId: string) => {
     try {
@@ -506,6 +513,24 @@ const NewPrescription = () => {
     if (formData.patientId) {
       const patient = patients.find(p => p.id === formData.patientId);
       setSelectedPatient(patient || null);
+
+      // Fetch family profiles for this patient account
+      setLoadingProfiles(true);
+      setFamilyProfiles([]);
+      setSelectedProfile(null);
+      getProfilesByAccountId(formData.patientId)
+        .then((profiles) => {
+          setFamilyProfiles(profiles);
+          // Auto-select if only one profile (self)
+          if (profiles.length === 1) {
+            setSelectedProfile(profiles[0]);
+          }
+        })
+        .catch(err => {
+          console.error('Error fetching family profiles:', err);
+          // If profiles API fails, still allow prescription with just the account
+        })
+        .finally(() => setLoadingProfiles(false));
       
       // Fetch this doctor's past prescriptions for the selected patient
       setLoadingPastRx(true);
@@ -530,6 +555,8 @@ const NewPrescription = () => {
         .finally(() => setLoadingPastRx(false));
     } else {
       setSelectedPatient(null);
+      setFamilyProfiles([]);
+      setSelectedProfile(null);
       setPastDoctorPrescriptions([]);
       setScannedExternalPrescriptions([]);
     }
@@ -760,6 +787,12 @@ const NewPrescription = () => {
       return;
     }
 
+    // If multiple profiles exist, require profile selection
+    if (familyProfiles.length > 1 && !selectedProfile) {
+      setError('Please select which family member this prescription is for');
+      return;
+    }
+
     if (!formData.medications || formData.medications.length === 0) {
       setError('Please add at least one prescribed medication');
       return;
@@ -769,7 +802,15 @@ const NewPrescription = () => {
       setLoading(true);
       setError(null);
       
-      const prescription = await createPrescription(formData);
+      // Build prescription data with profile info if available
+      const prescriptionData: any = { ...formData };
+      if (selectedProfile) {
+        prescriptionData.familyProfileId = selectedProfile.id;
+        prescriptionData.accountId = selectedProfile.accountId;
+        prescriptionData.patientDisplayId = selectedProfile.patientDisplayId;
+      }
+      
+      const prescription = await createPrescription(prescriptionData);
       
       setSuccess(true);
       
@@ -1006,6 +1047,92 @@ const NewPrescription = () => {
                 </Typography>
               </FormControl>
             </Grid>
+
+            {/* ═══ Family Profile Selector ═══ */}
+            {selectedPatient && familyProfiles.length > 1 && (
+              <Grid item xs={12}>
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 2,
+                    borderRadius: '18px',
+                    border: mode === 'dark' ? '1.5px solid rgba(137, 215, 183, 0.25)' : '1.5px solid rgba(66, 132, 117, 0.2)',
+                    bgcolor: mode === 'dark' ? 'rgba(17, 29, 26, 0.7)' : 'rgba(66, 132, 117, 0.04)',
+                  }}
+                >
+                  <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', textTransform: 'uppercase', fontSize: '0.68rem', display: 'block', mb: 1.2 }}>
+                    👥 Select Profile for Prescription *
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1.2, flexWrap: 'wrap' }}>
+                    {familyProfiles.map((profile) => (
+                      <Paper
+                        key={profile.id}
+                        elevation={0}
+                        onClick={() => setSelectedProfile(profile)}
+                        sx={{
+                          p: 1.5,
+                          borderRadius: '14px',
+                          cursor: 'pointer',
+                          border: selectedProfile?.id === profile.id
+                            ? (mode === 'dark' ? '2px solid #89D7B7' : '2px solid #428475')
+                            : (mode === 'dark' ? '1.5px solid rgba(137, 215, 183, 0.15)' : '1.5px solid rgba(0,0,0,0.08)'),
+                          bgcolor: selectedProfile?.id === profile.id
+                            ? (mode === 'dark' ? 'rgba(137, 215, 183, 0.12)' : 'rgba(66, 132, 117, 0.08)')
+                            : (mode === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.8)'),
+                          transition: 'all 0.2s ease',
+                          minWidth: 120,
+                          '&:hover': {
+                            borderColor: mode === 'dark' ? '#89D7B7' : '#428475',
+                            transform: 'translateY(-1px)',
+                            boxShadow: '0 4px 12px rgba(66, 132, 117, 0.15)'
+                          }
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                          <Avatar
+                            sx={{
+                              width: 28,
+                              height: 28,
+                              bgcolor: selectedProfile?.id === profile.id ? '#1A312C' : '#428475',
+                              color: '#89D7B7',
+                              fontSize: '0.8rem',
+                              fontWeight: 800
+                            }}
+                          >
+                            {RELATIONSHIP_ICONS[profile.relationship] || '👤'}
+                          </Avatar>
+                          <Box>
+                            <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', display: 'block', lineHeight: 1.2, fontSize: '0.76rem' }}>
+                              {profile.firstName}
+                            </Typography>
+                            <Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b', fontSize: '0.62rem' }}>
+                              {RELATIONSHIP_LABELS[profile.relationship]}
+                            </Typography>
+                          </Box>
+                        </Box>
+                        <Typography variant="caption" sx={{ fontWeight: 800, fontFamily: 'monospace', color: '#428475', fontSize: '0.65rem' }}>
+                          {profile.patientDisplayId}
+                        </Typography>
+                      </Paper>
+                    ))}
+                  </Box>
+                  {!selectedProfile && (
+                    <Typography variant="caption" sx={{ color: '#dc2626', fontWeight: 600, mt: 1, display: 'block', fontSize: '0.7rem' }}>
+                      ⚠️ Please select which family member this prescription is for
+                    </Typography>
+                  )}
+                </Paper>
+              </Grid>
+            )}
+
+            {loadingProfiles && (
+              <Grid item xs={12}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1 }}>
+                  <CircularProgress size={16} sx={{ color: '#428475' }} />
+                  <Typography variant="caption" sx={{ color: '#64748b' }}>Loading family profiles...</Typography>
+                </Box>
+              </Grid>
+            )}
             
             {selectedPatient && (
               <Grid item xs={12}>

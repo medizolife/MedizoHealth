@@ -2,6 +2,7 @@
 import React from 'react';
 import { Paper, BottomNavigation, BottomNavigationAction, Box } from '@mui/material';
 import { 
+  Home as HomeIcon,
   LocalHospital as DashboardIcon, 
   Medication as PrescriptionsIcon, 
   AddCircle as CreateIcon, 
@@ -27,18 +28,22 @@ const MobileBottomNav = () => {
 
   const getActiveTab = () => {
     const path = location.pathname;
-    if (path === '/' || path === '/dashboard') return 'dashboard';
+    if (path === '/' || path === '/home') return 'home';
+    if (path === '/dashboard') return 'dashboard';
     if (path.startsWith('/prescriptions/new')) return 'new-rx';
     if (path.startsWith('/prescriptions')) return 'prescriptions';
     if (path.startsWith('/patients')) return 'patients';
     if (path === '/profile') return 'profile';
     if (path === '/login') return 'login';
     if (path === '/register') return 'register';
-    return 'dashboard';
+    return isAuthenticated ? 'dashboard' : 'home';
   };
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: string) => {
     switch (newValue) {
+      case 'home':
+        navigate('/');
+        break;
       case 'dashboard':
         navigate('/dashboard');
         break;
@@ -61,15 +66,13 @@ const MobileBottomNav = () => {
         navigate('/register');
         break;
       case 'dispense':
-        // Navigate to dashboard (pharmacist dashboard) and trigger QR scanner
         navigate('/dashboard');
-        // Dispatch custom event to open QR scanner from PharmacistDashboard
         setTimeout(() => {
           window.dispatchEvent(new CustomEvent('open-qr-scanner'));
         }, 300);
         break;
       default:
-        navigate('/dashboard');
+        navigate(isAuthenticated ? '/dashboard' : '/');
     }
   };
 
@@ -80,20 +83,20 @@ const MobileBottomNav = () => {
       sx={{ 
         display: { xs: 'block', md: 'none' },
         position: 'fixed', 
-        bottom: { xs: 12, sm: 24 }, 
+        bottom: { xs: 12, sm: 20 }, 
         left: '50% !important', 
         right: 'auto !important',
         transform: 'translateX(-50%) !important',
         width: { xs: 'calc(100% - 24px)', sm: '480px' },
         maxWidth: '480px',
-        zIndex: 1300,
+        zIndex: 1400,
         borderRadius: '36px !important',
         overflow: 'hidden',
-        border: '1px solid var(--glass-border)',
-        bgcolor: mode === 'dark' ? 'rgba(20, 20, 20, 0.94) !important' : 'rgba(255, 255, 255, 0.94) !important',
+        border: mode === 'dark' ? '1px solid rgba(255, 255, 255, 0.15)' : '1px solid rgba(0, 0, 0, 0.1)',
+        bgcolor: mode === 'dark' ? 'rgba(15, 23, 42, 0.94) !important' : 'rgba(255, 255, 255, 0.96) !important',
         backdropFilter: 'blur(30px) saturate(220%)',
         WebkitBackdropFilter: 'blur(30px) saturate(220%)',
-        boxShadow: '0 20px 50px rgba(0, 0, 0, 0.12)'
+        boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)'
       }}
     >
       <BottomNavigation
@@ -106,7 +109,7 @@ const MobileBottomNav = () => {
           px: 0.5,
           alignItems: 'center',
           '& .MuiBottomNavigationAction-root': {
-            color: mode === 'dark' ? 'rgba(255, 255, 255, 0.65)' : 'var(--color-teal)',
+            color: mode === 'dark' ? 'rgba(255, 255, 255, 0.65)' : '#475569',
             py: 0.25,
             px: 0.25,
             minWidth: 0,
@@ -114,23 +117,23 @@ const MobileBottomNav = () => {
             transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
             borderRadius: '24px',
             '& .MuiBottomNavigationAction-label': {
-              fontSize: '0.65rem',
+              fontSize: '0.68rem',
               fontWeight: 700,
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               mt: 0.2,
               '&.Mui-selected': {
-                fontSize: '0.68rem',
+                fontSize: '0.72rem',
                 fontWeight: 800
               }
             },
             '&.Mui-selected': {
-              color: 'var(--color-forest)',
+              color: mode === 'dark' ? '#34D399' : '#059669',
               '& .MuiSvgIcon-root': {
                 transform: 'translateY(-1px) scale(1.1)',
-                color: 'var(--color-forest)',
-                filter: 'drop-shadow(0 0 8px var(--glass-glow))'
+                color: mode === 'dark' ? '#34D399' : '#059669',
+                filter: 'drop-shadow(0 0 8px rgba(16, 185, 129, 0.3))'
               }
             }
           }
@@ -145,7 +148,7 @@ const MobileBottomNav = () => {
               label="New Rx" 
               value="new-rx" 
               icon={
-                <Box sx={{ p: 0.45, borderRadius: '50%', bgcolor: 'var(--color-forest)', color: '#ffffff', display: 'flex', boxShadow: '0 0 12px var(--glass-glow)' }}>
+                <Box sx={{ p: 0.45, borderRadius: '50%', bgcolor: '#059669', color: '#ffffff', display: 'flex', boxShadow: '0 0 12px rgba(5, 150, 105, 0.4)' }}>
                   <CreateIcon sx={{ fontSize: '1.4rem' }} />
                 </Box>
               } 
@@ -172,7 +175,7 @@ const MobileBottomNav = () => {
             <BottomNavigationAction key="profile" label="Profile" value="profile" icon={<ProfileIcon />} />
           ]
         ) : [
-          <BottomNavigationAction key="dashboard" label="Home" value="dashboard" icon={<DashboardIcon />} />,
+          <BottomNavigationAction key="home" label="Home" value="home" icon={<HomeIcon />} />,
           <BottomNavigationAction key="login" label="Login" value="login" icon={<LoginIcon />} />,
           <BottomNavigationAction key="register" label="Register" value="register" icon={<RegisterIcon />} />
         ]}

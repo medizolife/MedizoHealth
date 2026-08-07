@@ -63,6 +63,14 @@ const AnimatedRoutes = () => {
           } 
         />
         <Route 
+          path="/prescriptions" 
+          element={
+            <ProtectedRoute>
+              <DoctorPrescriptions />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
           path="/prescriptions/all" 
           element={
             <ProtectedRoute>
@@ -96,7 +104,7 @@ const App = () => {
       <CustomThemeProvider>
         <AuthProvider>
           <Router>
-            <Box sx={{ minHeight: '100dvh', pb: { xs: '84px', md: '32px' }, boxSizing: 'border-box' }}>
+            <Box sx={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column' }}>
               <Header />
               <AnimatedRoutes />
               <MobileBottomNav />
