@@ -108,7 +108,7 @@ const Home = () => {
                         textTransform: 'none'
                       }}
                     >
-                      Go to Dashboard ({user?.name || user?.role})
+                      Go to Dashboard ({user?.firstName || user?.role})
                     </Button>
                   ) : (
                     <>

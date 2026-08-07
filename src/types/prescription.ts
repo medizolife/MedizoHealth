@@ -62,6 +62,10 @@ export interface Prescription {
   // Basic Info
   medication: string;
   patientName?: string;
+  patientEmail?: string;
+  patientMobile?: string;
+  patientPhone?: string;
+  contactNumber?: string;
   dosage: string;
   frequency: string;
   duration: string;

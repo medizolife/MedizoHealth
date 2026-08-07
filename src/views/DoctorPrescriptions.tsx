@@ -34,7 +34,6 @@ import {
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { getPrescriptions } from '../services/prescriptions';
-import { getCachedData } from '../services/apiCache';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -60,21 +59,9 @@ export default function DoctorPrescriptions() {
   const [stats, setStats] = useState<Stats | null>(null);
 
   useEffect(() => {
-    // 1. Instant Synchronous Cache Check (0 spinner delay)
-    const cachedList = getCachedData<Prescription[]>('prescriptions_list');
-    if (Array.isArray(cachedList)) {
-      let filtered = cachedList;
-      if (statusFilter !== 'all') {
-        filtered = filtered.filter(p => p.status === statusFilter);
-      }
-      setPrescriptions(filtered);
-      setLoading(false);
-    } else {
-      setLoading(true);
-    }
-
-    // 2. Background Revalidation (Stale-While-Revalidate)
-    fetchPrescriptions(Boolean(cachedList));
+    fetchPrescriptions();
+    const timer = setTimeout(() => fetchPrescriptions(true), 150);
+    return () => clearTimeout(timer);
   }, [statusFilter]);
 
   const fetchPrescriptions = async (isBackgroundRefresh = false) => {
@@ -143,8 +130,14 @@ export default function DoctorPrescriptions() {
   const filteredPrescriptions = prescriptions.filter(p => {
     if (!searchQuery || !searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase().trim();
+    const cleanDigits = query.replace(/[^\d]/g, '');
+
     const patientName = (p.patientName || '').toLowerCase();
     const patientEmail = ((p as any).patientEmail || '').toLowerCase();
+    const patientMobile = String(p.patientMobile || (p as any).patientPhone || (p as any).contactNumber || (p as any).mobile || '').toLowerCase();
+    const mobileDigits = patientMobile.replace(/[^\d]/g, '');
+    const mobileMatch = patientMobile.includes(query) || (cleanDigits.length >= 3 && mobileDigits.includes(cleanDigits));
+
     const diagnosis = ((p as any).diagnosis || (Array.isArray(p.provisionalDiagnosis) ? p.provisionalDiagnosis.join(' ') : '')).toLowerCase();
     const notes = (p.notes || '').toLowerCase();
     const medMatch = Array.isArray(p.medications) && p.medications.some(m => (m?.name || '').toLowerCase().includes(query));
@@ -152,6 +145,7 @@ export default function DoctorPrescriptions() {
     return (
       patientName.includes(query) ||
       patientEmail.includes(query) ||
+      mobileMatch ||
       diagnosis.includes(query) ||
       notes.includes(query) ||
       medMatch
@@ -304,7 +298,7 @@ export default function DoctorPrescriptions() {
             <TextField
               fullWidth
               size="small"
-              placeholder="Search patient name, diagnosis, or medication..."
+              placeholder="Search patient name, mobile number, diagnosis, or medication..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               InputProps={{

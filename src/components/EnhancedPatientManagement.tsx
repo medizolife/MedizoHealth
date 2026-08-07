@@ -200,14 +200,21 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
   // Filter patients by search query
   const filteredPatients = React.useMemo(() => {
     if (!searchQuery.trim()) return patients;
-    const q = searchQuery.toLowerCase();
-    return patients.filter(p =>
-      `${p.firstName || ''} ${p.lastName || ''}`.toLowerCase().includes(q) ||
-      (p.email || '').toLowerCase().includes(q) ||
-      (p.contactNumber || '').toLowerCase().includes(q) ||
-      (p.diagnoses && p.diagnoses.some((d: string) => d.toLowerCase().includes(q))) ||
-      (p.latestPrescription?.medication && p.latestPrescription.medication.toLowerCase().includes(q))
-    );
+    const q = searchQuery.toLowerCase().trim();
+    const cleanDigits = q.replace(/[^\d]/g, '');
+    return patients.filter(p => {
+      const pMobile = String(p.contactNumber || (p as any).phone || (p as any).mobile || '');
+      const pMobileDigits = pMobile.replace(/[^\d]/g, '');
+      const mobileMatch = (pMobile && pMobile.toLowerCase().includes(q)) || (cleanDigits.length >= 3 && pMobileDigits.includes(cleanDigits));
+
+      return (
+        `${p.firstName || ''} ${p.lastName || ''}`.toLowerCase().includes(q) ||
+        (p.email || '').toLowerCase().includes(q) ||
+        mobileMatch ||
+        (p.diagnoses && p.diagnoses.some((d: string) => d.toLowerCase().includes(q))) ||
+        (p.latestPrescription?.medication && p.latestPrescription.medication.toLowerCase().includes(q))
+      );
+    });
   }, [patients, searchQuery]);
 
   const handleViewMedicalDetails = async (patient: EnhancedPatient) => {

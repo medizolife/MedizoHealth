@@ -958,98 +958,53 @@ const NewPrescription = () => {
           
           <Grid container spacing={2}>
             <Grid item xs={12}>
-              <Box sx={{ width: '100%' }}>
-                <Autocomplete
-                  options={patients}
-                  getOptionLabel={(patient) => 
-                    typeof patient === 'string' 
-                      ? patient 
-                      : `${patient.firstName || ''} ${patient.lastName || ''} (${patient.email || patient.contactNumber || patient.phone || ''})`.trim()
-                  }
-                  value={patients.find((p) => p.id === formData.patientId) || null}
-                  onChange={(_e, newValue) => {
-                    setFormData((prev) => ({
-                      ...prev,
-                      patientId: newValue ? newValue.id : ''
-                    }));
+              <FormControl fullWidth required size="small">
+                <InputLabel id="patient-select-label" sx={{ color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)', fontWeight: 700 }}>Select Patient *</InputLabel>
+                <Select
+                  labelId="patient-select-label"
+                  name="patientId"
+                  value={formData.patientId}
+                  label="Select Patient *"
+                  onChange={handleSelectChange}
+                  MenuProps={{
+                    PaperProps: {
+                      sx: {
+                        maxHeight: 260,
+                        overflowY: 'auto',
+                        borderRadius: '14px',
+                        '&::-webkit-scrollbar': { width: 6 },
+                        '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(66,132,117,0.3)', borderRadius: 3 }
+                      }
+                    }
                   }}
-                  isOptionEqualToValue={(option, value) => option.id === value.id}
-                  filterOptions={(options, state) => {
-                    const query = state.inputValue.toLowerCase().trim();
-                    if (!query) return options;
-                    return options.filter((patient) => {
-                      const name = `${patient.firstName || ''} ${patient.lastName || ''}`.toLowerCase();
-                      const email = (patient.email || '').toLowerCase();
-                      const phone = (patient.phone || patient.contactNumber || '').toLowerCase();
-                      return name.includes(query) || email.includes(query) || phone.includes(query);
-                    });
+                  sx={{ 
+                    borderRadius: '16px',
+                    bgcolor: mode === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(255, 255, 255, 0.9)',
+                    fontWeight: 700,
+                    color: mode === 'dark' ? '#FAF2F5' : '#123029',
+                    '& fieldset': { borderColor: 'var(--glass-border)' }
                   }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Search & Select Patient *"
-                      placeholder="Type patient name, email, or phone to search..."
-                      required={!formData.patientId}
-                      size="small"
-                      InputProps={{
-                        ...params.InputProps,
-                        startAdornment: (
-                          <>
-                            <InputAdornment position="start">
-                              <SearchIcon sx={{ color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-forest)', fontSize: 20 }} />
-                            </InputAdornment>
-                            {params.InputProps.startAdornment}
-                          </>
-                        ),
-                        sx: {
-                          borderRadius: '16px',
-                          bgcolor: mode === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(255, 255, 255, 0.9)',
-                          fontWeight: 700,
-                          color: mode === 'dark' ? '#FAF2F5' : '#123029',
-                          '& fieldset': { borderColor: 'var(--glass-border)' }
-                        }
-                      }}
-                      InputLabelProps={{
-                        sx: { color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)', fontWeight: 700 }
-                      }}
-                    />
+                >
+                  {patients.length === 0 && (
+                    <MenuItem disabled value="" sx={{ fontStyle: 'italic', color: '#999' }}>
+                      No linked patients yet — use + NEW or + ADD EXISTING
+                    </MenuItem>
                   )}
-                  renderOption={(props, patient) => (
-                    <Box 
-                      component="li" 
-                      {...props} 
-                      key={patient.id}
-                      sx={{ 
-                        py: 1, 
-                        px: 2, 
-                        display: 'flex', 
-                        flexDirection: 'column', 
-                        alignItems: 'flex-start',
-                        borderBottom: '1px solid rgba(0,0,0,0.04)',
-                        '&:hover': { bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.15)' : 'rgba(42, 107, 93, 0.08)' }
-                      }}
-                    >
-                      <Typography variant="body2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#123029' }}>
-                        {patient.firstName} {patient.lastName}
-                      </Typography>
-                      <Typography variant="caption" sx={{ color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-teal)', fontWeight: 600 }}>
-                        📧 {patient.email || 'No email'} {patient.contactNumber || patient.phone ? ` • 📱 ${patient.contactNumber || patient.phone}` : ''}
-                      </Typography>
-                    </Box>
-                  )}
-                  noOptionsText={
-                    patients.length === 0 
-                      ? 'No linked patients yet — use + NEW PATIENT or + ADD EXISTING' 
-                      : 'No patient matching search'
-                  }
-                  sx={{ width: '100%' }}
-                />
+                  {patients.map(patient => {
+                    const phone = (patient as any).contactNumber || (patient as any).phone || (patient as any).mobile || '';
+                    return (
+                      <MenuItem key={patient.id} value={patient.id} sx={{ fontWeight: 600 }}>
+                        {patient.firstName} {patient.lastName} {phone ? `(Mobile: ${phone})` : `(${patient.email})`}
+                      </MenuItem>
+                    );
+                  })}
+                </Select>
                 <Typography variant="caption" sx={{ color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-teal)', mt: 0.8, display: 'block', fontWeight: 600 }}>
                   {patients.length > 0 
-                    ? `Showing ${patients.length} linked patient${patients.length > 1 ? 's' : ''} (Search by name, email, or phone)`
+                    ? `Showing ${patients.length} linked patient${patients.length > 1 ? 's' : ''} (latest activity first)`
                     : 'Add patients using + NEW PATIENT or + ADD EXISTING above'}
                 </Typography>
-              </Box>
+              </FormControl>
             </Grid>
             
             {selectedPatient && (
@@ -3425,14 +3380,14 @@ const NewPrescription = () => {
                   <TextField
                     fullWidth
                     size="small"
-                    label="Patient ID *"
-                    placeholder="Enter patient ID"
+                    label="Patient ID, Mobile Number or Email *"
+                    placeholder="Enter Patient ID, 10-digit Mobile Number, or Email"
                     value={patientIdToLookup}
                     onChange={(e) => {
                       setPatientIdToLookup(e.target.value);
                       setLookupError('');
                     }}
-                    helperText="Ask the patient to share their Patient ID from their profile"
+                    helperText="Search patient by ID, 10-digit mobile number, or email address"
                     InputProps={{ sx: { borderRadius: '14px' } }}
                   />
                 </Grid>
@@ -3446,11 +3401,19 @@ const NewPrescription = () => {
                       setLookupError('');
                       setTimeout(() => {
                         const query = patientIdToLookup.trim().toLowerCase();
-                        const match = patients.find(p => 
-                          (p?.id || '').toLowerCase().includes(query) || 
-                          (p?.email || '').toLowerCase().includes(query) || 
-                          `${p?.firstName || ''} ${p?.lastName || ''}`.toLowerCase().includes(query)
-                        );
+                        const cleanDigits = query.replace(/[^\d]/g, '');
+                        const match = patients.find(p => {
+                          const pMobile = String((p as any)?.contactNumber || (p as any)?.phone || (p as any)?.mobile || '');
+                          const pMobileDigits = pMobile.replace(/[^\d]/g, '');
+                          const mobileMatch = pMobile.toLowerCase().includes(query) || (cleanDigits.length >= 3 && pMobileDigits.includes(cleanDigits));
+
+                          return (
+                            (p?.id || '').toLowerCase().includes(query) || 
+                            (p?.email || '').toLowerCase().includes(query) || 
+                            mobileMatch ||
+                            `${p?.firstName || ''} ${p?.lastName || ''}`.toLowerCase().includes(query)
+                          );
+                        });
                         if (match) {
                           setFoundPatient(match);
                         } else {
@@ -3589,7 +3552,7 @@ const NewPrescription = () => {
                     {foundPatient.firstName} {foundPatient.lastName}
                   </Typography>
                   <Typography variant="caption" sx={{ color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-teal)', display: 'block', fontWeight: 600 }}>
-                    ID: {foundPatient.id?.toUpperCase()} • {foundPatient.email}
+                    ID: {foundPatient.id} • {foundPatient.email}
                   </Typography>
                 </Box>
               </Box>

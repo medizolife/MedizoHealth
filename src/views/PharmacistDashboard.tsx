@@ -139,8 +139,15 @@ export default function PharmacistDashboard() {
 
   const filteredPrescriptions = prescriptions.filter(p => {
     if (!search) return true;
-    const q = search.toLowerCase();
+    const q = search.toLowerCase().trim();
+    const cleanDigits = q.replace(/[^\d]/g, '');
+
+    const pMobile = String((p as any).patientMobile || (p as any).patientPhone || (p as any).contactNumber || (p as any).mobile || '');
+    const pMobileDigits = pMobile.replace(/[^\d]/g, '');
+    const mobileMatch = (pMobile && pMobile.toLowerCase().includes(q)) || (cleanDigits.length >= 3 && pMobileDigits.includes(cleanDigits));
+
     return (
+      mobileMatch ||
       String(p.id).toLowerCase().includes(q) ||
       String((p as any).patientName || '').toLowerCase().includes(q) ||
       String((p as any).doctorName || '').toLowerCase().includes(q) ||
@@ -465,7 +472,7 @@ export default function PharmacistDashboard() {
             <TextField
               fullWidth
               size="medium"
-              placeholder="Paste Rx ID (e.g. 6a6b1f13477f4d601be568b9) or URL..."
+              placeholder="Paste Rx ID, Mobile Number (e.g. 9876543210), or URL..."
               value={rxIdInput}
               onChange={(e) => setRxIdInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') handleIdValidation(rxIdInput); }}

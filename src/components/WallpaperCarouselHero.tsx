@@ -270,7 +270,7 @@ export default function WallpaperCarouselHero({
           <Box sx={{ mt: 2, display: 'flex', gap: 1, alignItems: 'center' }}>
             <TextField 
               fullWidth
-              placeholder="Search prescriptions, diagnosis or patients..."
+              placeholder="Search by name, mobile number, prescription or diagnosis..."
               value={searchQuery}
               onChange={(e) => onSearchChange?.(e.target.value)}
               variant="outlined"
