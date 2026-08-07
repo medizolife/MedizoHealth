@@ -144,20 +144,21 @@ const Register = () => {
       const result = await googleLogin(credentialResponse.credential, formData.role);
       
       if (result && result.isNewUser && result.user) {
+        const googleUser = result.user;
         setFormData(prev => ({
           ...prev,
-          firstName: result.user.firstName || prev.firstName,
-          lastName: result.user.lastName || prev.lastName,
-          email: result.user.email || prev.email,
+          firstName: googleUser.firstName || prev.firstName,
+          lastName: googleUser.lastName || prev.lastName,
+          email: googleUser.email || prev.email,
         }));
         navigate('/register', { 
           state: { 
             googleData: {
-              firstName: result.user.firstName,
-              lastName: result.user.lastName,
-              email: result.user.email,
+              firstName: googleUser.firstName,
+              lastName: googleUser.lastName,
+              email: googleUser.email,
               token: result.token,
-              user: result.user
+              user: googleUser
             }
           },
           replace: true 
