@@ -576,7 +576,7 @@ const Dashboard = () => {
             <Typography variant="h4" sx={{ fontWeight: 800, color: '#ffffff !important', letterSpacing: '-0.03em', fontSize: { xs: '1.4rem', sm: '2rem' } }}>
               {activePrescriptions.length}
             </Typography>
-            <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.95) !important', fontWeight: 800, fontSize: { xs: '0.68rem', sm: '0.75rem' }, display: 'block', noWrap: true }}>
+            <Typography variant="caption" noWrap sx={{ color: 'rgba(255, 255, 255, 0.95) !important', fontWeight: 800, fontSize: { xs: '0.68rem', sm: '0.75rem' }, display: 'block' }}>
               Active Prescriptions
             </Typography>
           </Card>
