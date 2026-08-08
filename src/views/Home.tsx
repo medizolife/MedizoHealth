@@ -42,7 +42,10 @@ import {
   Inventory,
   ReceiptLong,
   FactCheck,
-  CloudDone
+  CloudDone,
+  PersonAdd,
+  RocketLaunch,
+  HowToReg
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -205,7 +208,8 @@ const Home = () => {
                       <Button
                         variant="contained"
                         size="large"
-                        endIcon={<ArrowForward />}
+                        startIcon={<RocketLaunch sx={{ fontSize: 20 }} />}
+                        endIcon={<ArrowForward sx={{ fontSize: 18 }} />}
                         onClick={() => navigate('/dashboard')}
                         sx={{
                           background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)',
@@ -214,7 +218,7 @@ const Home = () => {
                             boxShadow: '0 8px 30px rgba(16, 185, 129, 0.35)',
                             transform: 'translateY(-2px)'
                           },
-                          px: 4,
+                          px: 3.5,
                           py: 1.8,
                           borderRadius: '14px',
                           fontSize: '1.05rem',
@@ -229,28 +233,29 @@ const Home = () => {
                       <Button
                         variant="outlined"
                         size="large"
-                        startIcon={<Login />}
-                        onClick={() => navigate('/login')}
+                        startIcon={<PersonAdd sx={{ fontSize: 20 }} />}
+                        onClick={() => navigate('/register')}
                         sx={{
                           color: '#0F172A',
                           borderColor: '#CBD5E1',
                           backgroundColor: '#FFFFFF',
                           '&:hover': {
-                            borderColor: '#0284C7',
-                            backgroundColor: '#F0F9FF',
+                            borderColor: '#059669',
+                            backgroundColor: '#F0FDF4',
+                            color: '#059669',
                             transform: 'translateY(-2px)'
                           },
-                          px: 4,
+                          px: 3.5,
                           py: 1.8,
                           borderRadius: '14px',
                           fontSize: '1.05rem',
-                          fontWeight: 600,
+                          fontWeight: 700,
                           textTransform: 'none',
                           boxShadow: '0 2px 10px rgba(0, 0, 0, 0.04)',
                           transition: 'all 0.25s ease'
                         }}
                       >
-                        Sign In to Workspace
+                        Sign Up
                       </Button>
                     </>
                   )}
@@ -347,23 +352,24 @@ const Home = () => {
 
                 <Divider sx={{ borderColor: '#F1F5F9', my: 2 }} />
 
-                {/* Gorgeous 3D Animated Illustration */}
+                {/* Doctor Endorsement Photo Card */}
                 <Box
                   sx={{
                     width: '100%',
-                    height: { xs: 220, sm: 260 },
-                    borderRadius: '16px',
+                    height: { xs: 240, sm: 300, md: 320 },
+                    borderRadius: '18px',
                     overflow: 'hidden',
                     mb: 2.5,
-                    border: '1px solid #F1F5F9',
-                    backgroundColor: '#F8FAFC'
+                    border: '1px solid #E2E8F0',
+                    backgroundColor: '#F8FAFC',
+                    boxShadow: '0 8px 24px rgba(15, 23, 42, 0.06)'
                   }}
                 >
                   <Box
                     component="img"
                     src="/images/hero_medical_portal.png"
-                    alt="Medizo Healthcare Suite"
-                    sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    alt="Verified Doctor Endorsement"
+                    sx={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 20%' }}
                   />
                 </Box>
 

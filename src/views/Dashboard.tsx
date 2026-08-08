@@ -87,6 +87,9 @@ const Dashboard = () => {
   }
   const { mode } = useThemeContext();
   
+  // Detect if running on mobile portal (m.medio.life) - hide sidebar features on mobile portal
+  const isMobilePortal = typeof window !== 'undefined' && window.location.hostname === 'm.medio.life';
+  
   const [tabValue, setTabValue] = useState(0);
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [loading, setLoading] = useState(true);
@@ -192,7 +195,7 @@ const Dashboard = () => {
     if (touchStartX === null || touchEndX === null) return;
     const distance = touchStartX - touchEndX;
     const minSwipeDistance = 40;
-    const totalTabs = user?.role === 'doctor' ? 4 : 3;
+    const totalTabs = 3;
 
     if (distance > minSwipeDistance) {
       setTabValue(prev => Math.min(prev + 1, totalTabs - 1));
@@ -469,8 +472,8 @@ const Dashboard = () => {
 
   return (
     <>
-    <Container maxWidth="xl" sx={{ pt: { xs: 2, md: 3 }, pb: 6, px: { xs: 2, sm: 3, md: 4 } }}>
-      <Grid container spacing={3}>
+    <Container maxWidth="xl" sx={{ pt: { xs: 1.5, md: 3 }, pb: { xs: 12, md: 6 }, px: { xs: 1.2, sm: 2.5, md: 4 } }}>
+      <Grid container spacing={{ xs: 1.8, sm: 2.5, md: 3 }}>
         <Grid item xs={12} md={7} lg={8}>
           <WallpaperCarouselHero 
             searchQuery={searchQuery} 
@@ -507,7 +510,7 @@ const Dashboard = () => {
           className="glass-card-cream"
           sx={{ 
             mb: 3, 
-            p: 2.5,
+            p: { xs: 2, sm: 2.5 },
             border: '1.5px solid rgba(255, 152, 0, 0.4)',
             background: mode === 'dark' 
               ? 'linear-gradient(135deg, rgba(255, 152, 0, 0.12) 0%, rgba(230, 81, 0, 0.08) 100%) !important'
@@ -555,111 +558,167 @@ const Dashboard = () => {
         </Card>
       )}
 
-      <Grid container spacing={2} sx={{ mb: 3 }} className="animate-slide-up">
+      {/* ═══ Stats Cards ═══ */}
+      <Grid container spacing={{ xs: 1.2, sm: 2 }} sx={{ mb: 3 }} className="animate-slide-up">
+        {/* Card 1: Active Prescriptions */}
         <Grid item xs={6} sm={user?.role === 'doctor' ? 3 : 4}>
           <Card 
             className="glass-card-teal touch-active shimmer-card"
             onClick={() => setTabValue(0)}
-            sx={{ cursor: 'pointer', p: 2, height: '100%', position: 'relative', overflow: 'hidden' }}
+            sx={{ cursor: 'pointer', p: { xs: 1.5, sm: 2 }, height: '100%', position: 'relative', overflow: 'hidden', borderRadius: '18px' }}
           >
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-              <Box sx={{ p: 1, borderRadius: '12px', bgcolor: 'rgba(255, 255, 255, 0.25)', display: 'flex' }}>
-                <MedicationIcon sx={{ color: '#ffffff', fontSize: 22 }} />
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.8 }}>
+              <Box sx={{ p: 0.8, borderRadius: '10px', bgcolor: 'rgba(255, 255, 255, 0.25)', display: 'flex' }}>
+                <MedicationIcon sx={{ color: '#ffffff', fontSize: { xs: 18, sm: 22 } }} />
               </Box>
-              <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#66CDAA' }} className="pulse-glowing" />
+              <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: '#66CDAA' }} className="pulse-glowing" />
             </Box>
-            <Typography variant="h4" sx={{ fontWeight: 800, color: '#ffffff !important', letterSpacing: '-0.03em' }}>
+            <Typography variant="h4" sx={{ fontWeight: 800, color: '#ffffff !important', letterSpacing: '-0.03em', fontSize: { xs: '1.4rem', sm: '2rem' } }}>
               {activePrescriptions.length}
             </Typography>
-            <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.95) !important', fontWeight: 800, fontSize: '0.75rem' }}>
+            <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.95) !important', fontWeight: 800, fontSize: { xs: '0.68rem', sm: '0.75rem' }, display: 'block', noWrap: true }}>
               Active Prescriptions
             </Typography>
           </Card>
         </Grid>
 
+        {/* Card 2 (Doctor only): Total Patients */}
         {user?.role === 'doctor' && (
           <Grid item xs={6} sm={3}>
             <Card 
               className="glass-card-cream touch-active shimmer-card"
-              onClick={() => setTabValue(3)}
-              sx={{ cursor: 'pointer', p: 2, height: '100%' }}
+              onClick={() => setTabValue(2)}
+              sx={{ cursor: 'pointer', p: { xs: 1.5, sm: 2 }, height: '100%', borderRadius: '18px' }}
             >
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-                <Box sx={{ p: 1, borderRadius: '12px', bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.2)' : 'rgba(42, 107, 93, 0.12)', display: 'flex' }}>
-                  <PeopleIcon sx={{ color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-forest)', fontSize: 22 }} />
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.8 }}>
+                <Box sx={{ p: 0.8, borderRadius: '10px', bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.2)' : 'rgba(42, 107, 93, 0.12)', display: 'flex' }}>
+                  <PeopleIcon sx={{ color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-forest)', fontSize: { xs: 18, sm: 22 } }} />
                 </Box>
-                <Chip label="Live" size="small" sx={{ height: 18, fontSize: '0.65rem', fontWeight: 800, bgcolor: 'var(--color-forest)', color: '#ffffff' }} />
+                <Chip label="Live" size="small" sx={{ height: 16, fontSize: '0.6rem', fontWeight: 800, bgcolor: 'var(--color-forest)', color: '#ffffff', px: 0.5 }} />
               </Box>
-              <Typography variant="h4" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#123029', letterSpacing: '-0.03em' }}>
+              <Typography variant="h4" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#123029', letterSpacing: '-0.03em', fontSize: { xs: '1.4rem', sm: '2rem' } }}>
                 {prescriptions.length > 0 ? Array.from(new Set(prescriptions.map((p: any) => p.patientId || p.patientName))).length : 0}
               </Typography>
-              <Typography variant="caption" sx={{ color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-forest)', fontWeight: 800, fontSize: '0.75rem' }}>
+              <Typography variant="caption" sx={{ color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-forest)', fontWeight: 800, fontSize: { xs: '0.68rem', sm: '0.75rem' }, display: 'block' }}>
                 Total Patients
               </Typography>
             </Card>
           </Grid>
         )}
 
+        {/* Card 3: Completed Records */}
         <Grid item xs={6} sm={user?.role === 'doctor' ? 3 : 4}>
           <Card 
             className="glass-card-cream touch-active shimmer-card"
             onClick={() => setTabValue(1)}
-            sx={{ cursor: 'pointer', p: 2, height: '100%' }}
+            sx={{ cursor: 'pointer', p: { xs: 1.5, sm: 2 }, height: '100%', borderRadius: '18px' }}
           >
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-              <Box sx={{ p: 1, borderRadius: '12px', bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.2)' : 'rgba(42, 107, 93, 0.12)', display: 'flex' }}>
-                <HistoryIcon sx={{ color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-forest)', fontSize: 22 }} />
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.8 }}>
+              <Box sx={{ p: 0.8, borderRadius: '10px', bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.2)' : 'rgba(42, 107, 93, 0.12)', display: 'flex' }}>
+                <HistoryIcon sx={{ color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-forest)', fontSize: { xs: 18, sm: 22 } }} />
               </Box>
             </Box>
-            <Typography variant="h4" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#123029', letterSpacing: '-0.03em' }}>
+            <Typography variant="h4" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#123029', letterSpacing: '-0.03em', fontSize: { xs: '1.4rem', sm: '2rem' } }}>
               {completedPrescriptions.length}
             </Typography>
-            <Typography variant="caption" sx={{ color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-forest)', fontWeight: 800, fontSize: '0.75rem' }}>
+            <Typography variant="caption" sx={{ color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-forest)', fontWeight: 800, fontSize: { xs: '0.68rem', sm: '0.75rem' }, display: 'block' }}>
               Completed Records
             </Typography>
           </Card>
         </Grid>
 
-        <Grid item xs={6} sm={user?.role === 'doctor' ? 3 : 4}>
-          <Card 
-            className="glass-card-cream touch-active shimmer-card"
-            onClick={() => setTabValue(2)}
-            sx={{ cursor: 'pointer', p: 2, height: '100%' }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-              <Box sx={{ p: 1, borderRadius: '12px', bgcolor: 'rgba(19, 79, 77, 0.12)', color: '#134F4D', display: 'flex' }}>
-                <UploadIcon sx={{ fontSize: 22 }} />
+        {/* Card 4 (Patient only): Past Records */}
+        {user?.role !== 'doctor' && (
+          <Grid item xs={12} sm={4}>
+            <Card 
+              className="glass-card-cream touch-active shimmer-card"
+              onClick={() => setTabValue(2)}
+              sx={{ cursor: 'pointer', p: { xs: 1.5, sm: 2 }, height: '100%', borderRadius: '18px' }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.8 }}>
+                <Box sx={{ p: 0.8, borderRadius: '10px', bgcolor: 'rgba(19, 79, 77, 0.12)', color: '#134F4D', display: 'flex' }}>
+                  <UploadIcon sx={{ fontSize: { xs: 18, sm: 22 } }} />
+                </Box>
               </Box>
-            </Box>
-            <Typography variant="h4" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#123029', letterSpacing: '-0.03em' }}>
-              {externalRecords.length}
-            </Typography>
-            <Typography variant="caption" sx={{ color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-forest)', fontWeight: 800, fontSize: '0.75rem' }}>
-              Past Records
-            </Typography>
-          </Card>
-        </Grid>
+              <Typography variant="h4" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#123029', letterSpacing: '-0.03em', fontSize: { xs: '1.4rem', sm: '2rem' } }}>
+                {externalRecords.length}
+              </Typography>
+              <Typography variant="caption" sx={{ color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-forest)', fontWeight: 800, fontSize: { xs: '0.68rem', sm: '0.75rem' }, display: 'block' }}>
+                Past Records
+              </Typography>
+            </Card>
+          </Grid>
+        )}
+
+        {/* Card 4 (Doctor only): + New Prescription */}
+        {user?.role === 'doctor' && (
+          <Grid item xs={6} sm={3}>
+            <Card 
+              className="glass-card-teal touch-active shimmer-card"
+              onClick={() => navigate('/prescriptions/new')}
+              sx={{ 
+                cursor: 'pointer', 
+                p: { xs: 1.5, sm: 2 }, 
+                height: '100%',
+                borderRadius: '18px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: mode === 'dark'
+                  ? 'linear-gradient(135deg, rgba(26, 49, 44, 0.9), rgba(42, 107, 93, 0.7)) !important'
+                  : 'linear-gradient(135deg, rgba(137, 215, 183, 0.35), rgba(102, 205, 170, 0.25)) !important',
+                border: `2px dashed ${mode === 'dark' ? 'rgba(102, 205, 170, 0.4)' : 'rgba(42, 107, 93, 0.3)'}`,
+                transition: 'all 0.25s ease',
+                '&:hover': {
+                  transform: 'translateY(-2px)',
+                  boxShadow: '0 8px 24px rgba(42, 107, 93, 0.2)',
+                  borderColor: mode === 'dark' ? '#66CDAA' : '#1A312C'
+                }
+              }}
+            >
+              <Box sx={{ 
+                p: 1, 
+                borderRadius: '50%', 
+                bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.2)' : 'rgba(42, 107, 93, 0.12)', 
+                display: 'flex', 
+                mb: 0.5 
+              }}>
+                <AddIcon sx={{ color: mode === 'dark' ? '#66CDAA' : '#1A312C', fontSize: { xs: 22, sm: 26 } }} />
+              </Box>
+              <Typography variant="caption" sx={{ 
+                color: mode === 'dark' ? '#89D7B7' : '#1A312C', 
+                fontWeight: 800, 
+                fontSize: { xs: '0.68rem', sm: '0.75rem' },
+                textAlign: 'center',
+                lineHeight: 1.2
+              }}>
+                + New Prescription
+              </Typography>
+            </Card>
+          </Grid>
+        )}
       </Grid>
 
-      {/* ΓöÇΓöÇΓöÇ Control Action Bar ΓöÇΓöÇΓöÇ */}
+      {/* ═══ Control Action Bar ═══ */}
       <Paper 
         className="glass-panel animate-slide-up"
         sx={{ 
-          p: 1.2, 
+          p: { xs: 1, sm: 1.5 }, 
           mb: 3, 
           display: 'flex', 
-          gap: 1, 
-          overflowX: 'auto',
+          flexWrap: 'wrap',
+          gap: { xs: 0.8, sm: 1 }, 
           alignItems: 'center',
-          justify: 'space-between',
           bgcolor: mode === 'dark' ? 'rgba(20, 38, 34, 0.94) !important' : 'rgba(255, 255, 255, 0.94) !important',
-          border: '1px solid var(--glass-border) !important'
+          border: '1px solid var(--glass-border) !important',
+          borderRadius: { xs: '18px', sm: '22px' }
         }}
       >
-        <Box sx={{ display: 'flex', gap: 1, overflowX: 'auto', py: 0.5, px: 0.5, width: '100%' }}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: { xs: 0.8, sm: 1 }, py: 0.3, px: 0.3, width: '100%', alignItems: 'center' }}>
           {user?.role === 'doctor' && (
             <Chip 
-              icon={<StethoscopeIcon sx={{ color: '#ffffff !important' }} />}
+              icon={<StethoscopeIcon sx={{ color: '#ffffff !important', fontSize: { xs: 16, sm: 18 } }} />}
               label="Create Prescription"
               clickable
               onClick={() => navigate('/prescriptions/new')}
@@ -667,58 +726,86 @@ const Dashboard = () => {
                 bgcolor: 'var(--color-forest)', 
                 color: '#ffffff', 
                 fontWeight: 800, 
-                px: 1,
-                py: 2.2,
-                borderRadius: '16px',
+                fontSize: { xs: '0.76rem', sm: '0.84rem' },
+                px: { xs: 0.5, sm: 1 },
+                py: { xs: 1.8, sm: 2.2 },
+                borderRadius: '14px',
+                flex: { xs: '1 1 auto', sm: 'initial' },
                 boxShadow: '0 4px 14px rgba(42, 107, 93, 0.3)',
                 '&:hover': { bgcolor: '#1d4b41' }
               }} 
             />
           )}
 
-          <Chip 
-            icon={<UploadIcon sx={{ color: '#ffffff !important' }} />}
-            label="Upload Past Prescription"
-            clickable
-            onClick={() => setUploadPastRxModalOpen(true)}
-            sx={{ 
-              bgcolor: '#134F4D', 
-              color: '#ffffff', 
-              fontWeight: 800, 
-              px: 1,
-              py: 2.2,
-              borderRadius: '16px',
-              boxShadow: '0 4px 14px rgba(19, 79, 77, 0.3)',
-              '&:hover': { bgcolor: '#0e3b3a' }
-            }} 
-          />
+          {user?.role !== 'doctor' && (
+            <Chip 
+              icon={<UploadIcon sx={{ color: '#ffffff !important', fontSize: { xs: 16, sm: 18 } }} />}
+              label="Upload Past Prescription"
+              clickable
+              onClick={() => setUploadPastRxModalOpen(true)}
+              sx={{ 
+                bgcolor: '#134F4D', 
+                color: '#ffffff', 
+                fontWeight: 800, 
+                fontSize: { xs: '0.76rem', sm: '0.84rem' },
+                px: { xs: 0.5, sm: 1 },
+                py: { xs: 1.8, sm: 2.2 },
+                borderRadius: '14px',
+                flex: { xs: '1 1 auto', sm: 'initial' },
+                boxShadow: '0 4px 14px rgba(19, 79, 77, 0.3)',
+                '&:hover': { bgcolor: '#0e3b3a' }
+              }} 
+            />
+          )}
 
           {user?.role === 'doctor' && (
             <Chip 
-              icon={<PersonAddIcon sx={{ color: mode === 'dark' ? '#FAF2F5 !important' : '#123029 !important' }} />}
+              icon={<PersonAddIcon sx={{ color: mode === 'dark' ? '#FAF2F5 !important' : '#123029 !important', fontSize: { xs: 16, sm: 18 } }} />}
               label="Manage Patients"
               clickable
-              onClick={() => setTabValue(3)}
+              onClick={() => setTabValue(2)}
               sx={{ 
                 bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.25)' : 'rgba(42, 107, 93, 0.12)', 
                 color: mode === 'dark' ? '#FAF2F5' : '#123029', 
                 fontWeight: 800, 
-                px: 1,
-                py: 2.2,
-                borderRadius: '16px',
+                fontSize: { xs: '0.76rem', sm: '0.84rem' },
+                px: { xs: 0.5, sm: 1 },
+                py: { xs: 1.8, sm: 2.2 },
+                borderRadius: '14px',
+                flex: { xs: '1 1 auto', sm: 'initial' },
                 border: '1px solid var(--color-mint)',
                 '&:hover': { bgcolor: 'rgba(102, 205, 170, 0.3)' }
               }} 
             />
           )}
+
+          <Chip 
+            icon={<MedicalInfoIcon sx={{ color: mode === 'dark' ? '#FAF2F5 !important' : '#123029 !important', fontSize: { xs: 16, sm: 18 } }} />}
+            label="All Records"
+            clickable
+            onClick={() => setTabValue(0)}
+            sx={{ 
+              bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.15)' : 'rgba(42, 107, 93, 0.08)', 
+              color: mode === 'dark' ? '#FAF2F5' : '#123029', 
+              fontWeight: 800, 
+              fontSize: { xs: '0.76rem', sm: '0.84rem' },
+              px: { xs: 0.5, sm: 1 },
+              py: { xs: 1.8, sm: 2.2 },
+              borderRadius: '14px',
+              flex: { xs: '1 1 auto', sm: 'initial' },
+              border: `1px solid ${mode === 'dark' ? 'rgba(102, 205, 170, 0.2)' : 'rgba(42, 107, 93, 0.15)'}`,
+              '&:hover': { bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.25)' : 'rgba(42, 107, 93, 0.12)' }
+            }} 
+          />
         </Box>
       </Paper>
 
-      {/* ΓöÇΓöÇΓöÇ Segmented Glass Tabs & Content List ΓöÇΓöÇΓöÇ */}
+      {/* ═══ Segmented Glass Tabs & Content List ═══ */}
       <Paper 
         className="glass-panel animate-slide-up" 
         sx={{ 
           overflow: 'hidden',
+          borderRadius: { xs: '20px', sm: '24px' },
           bgcolor: mode === 'dark' ? 'rgba(20, 38, 34, 0.94) !important' : 'rgba(255, 255, 255, 0.94) !important',
           color: mode === 'dark' ? '#FAF2F5 !important' : '#1A312C !important'
         }}
@@ -732,9 +819,11 @@ const Dashboard = () => {
             bgcolor: mode === 'dark' ? 'rgba(0, 0, 0, 0.2)' : 'rgba(26, 49, 44, 0.04)',
             '& .MuiTab-root': { 
               fontWeight: 800, 
-              fontSize: '0.875rem',
+              fontSize: { xs: '0.78rem', sm: '0.875rem' },
               color: mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : '#428475',
-              py: 2,
+              py: { xs: 1.4, sm: 2 },
+              px: { xs: 0.5, sm: 2 },
+              minHeight: { xs: 46, sm: 54 },
               transition: 'all 0.2s ease',
               '&.Mui-selected': { 
                 color: mode === 'dark' ? '#66CDAA !important' : '#1A312C !important',
@@ -750,22 +839,24 @@ const Dashboard = () => {
         >
           <Tab label={`Active (${activePrescriptions.length})`} />
           <Tab label={`Completed (${completedPrescriptions.length})`} />
-          <Tab 
-            label={`Past Records (${externalRecords.length})`} 
-            icon={<UploadIcon sx={{ fontSize: 18, color: tabValue === 2 ? (mode === 'dark' ? '#66CDAA' : '#1A312C') : (mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : '#428475') }} />} 
-            iconPosition="start" 
-          />
+          {user?.role !== 'doctor' && (
+            <Tab 
+              label={`Past Records (${externalRecords.length})`} 
+              icon={<UploadIcon sx={{ fontSize: { xs: 15, sm: 18 }, color: tabValue === 2 ? (mode === 'dark' ? '#66CDAA' : '#1A312C') : (mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : '#428475') }} />} 
+              iconPosition="start" 
+            />
+          )}
           {user?.role === 'doctor' && (
             <Tab 
               label="Patients" 
-              icon={<PeopleIcon sx={{ fontSize: 18, color: tabValue === 3 ? (mode === 'dark' ? '#66CDAA' : '#1A312C') : (mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : '#428475') }} />} 
+              icon={<PeopleIcon sx={{ fontSize: { xs: 15, sm: 18 }, color: tabValue === 2 ? (mode === 'dark' ? '#66CDAA' : '#1A312C') : (mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : '#428475') }} />} 
               iconPosition="start" 
             />
           )}
         </Tabs>
         
         {loading ? (
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 6 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: { xs: 4, sm: 6 } }}>
             <CircularProgress size={36} sx={{ color: '#428475', mb: 2 }} />
             <Typography variant="caption" sx={{ fontWeight: 700, color: '#428475' }}>
               Loading health records...
@@ -776,33 +867,20 @@ const Dashboard = () => {
             <Typography color="error" variant="body2" sx={{ fontWeight: 600 }}>{error}</Typography>
           </Box>
         ) : (
-          <Box 
-            sx={{ overflow: 'hidden', width: '100%', position: 'relative', touchAction: 'pan-y' }}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-          >
-            <Box
-              sx={{
-                display: 'flex',
-                width: user?.role === 'doctor' ? '400%' : '300%',
-                transform: `translateX(-${(tabValue * 100) / (user?.role === 'doctor' ? 4 : 3)}%)`,
-                transition: 'transform 0.35s cubic-bezier(0.25, 1, 0.5, 1)',
-                willChange: 'transform'
-              }}
-            >
-              {/* Pane 0: Active Prescriptions */}
-              <Box sx={{ width: user?.role === 'doctor' ? '25%' : '33.3333%', p: { xs: 1.5, sm: 2 }, flexShrink: 0, boxSizing: 'border-box' }}>
+          <Box sx={{ width: '100%', p: { xs: 1.2, sm: 2 } }}>
+            {/* Tab 0: Active Prescriptions */}
+            {tabValue === 0 && (
+              <Box className="animate-fade-in">
                 {activePrescriptions.length === 0 ? (
-                  <Box sx={{ py: 6, textAlign: 'center' }}>
-                    <Box sx={{ p: 2, borderRadius: '50%', bgcolor: 'rgba(137, 215, 183, 0.2)', width: 72, height: 72, mx: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2 }}>
-                      <MedicationIcon sx={{ fontSize: 36, color: '#428475' }} />
+                  <Box sx={{ py: { xs: 4, sm: 6 }, textAlign: 'center' }}>
+                    <Box sx={{ p: 2, borderRadius: '50%', bgcolor: 'rgba(137, 215, 183, 0.2)', width: 64, height: 64, mx: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2 }}>
+                      <MedicationIcon sx={{ fontSize: 32, color: '#428475' }} />
                     </Box>
-                    <Typography variant="h6" sx={{ fontWeight: 800, color: '#1A312C', mb: 0.5 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 800, color: '#1A312C', mb: 0.5, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
                       No Active Prescriptions
                     </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 300, mx: 'auto', mb: 2.5 }}>
-                      {searchQuery ? 'No records match your search criteria.' : 'Create a new digital prescription or upload a past prescription record.'}
+                    <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 300, mx: 'auto', mb: 2.5, fontSize: '0.82rem' }}>
+                      {searchQuery ? 'No records match your search criteria.' : 'Create a new digital prescription or view upcoming appointments.'}
                     </Typography>
                     <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', flexWrap: 'wrap' }}>
                       {user?.role === 'doctor' && (
@@ -812,28 +890,30 @@ const Dashboard = () => {
                           sx={{ bgcolor: '#1A312C', color: '#89D7B7', fontWeight: 800, cursor: 'pointer', px: 1, py: 2 }}
                         />
                       )}
-                      <Button
-                        variant="contained"
-                        size="small"
-                        startIcon={<UploadIcon />}
-                        onClick={() => setUploadPastRxModalOpen(true)}
-                        sx={{
-                          borderRadius: '14px',
-                          bgcolor: '#134F4D',
-                          color: '#ffffff',
-                          fontWeight: 800,
-                          textTransform: 'none',
-                          px: 2.5,
-                          py: 1
-                        }}
-                      >
-                        Upload Past Prescription
-                      </Button>
+                      {user?.role !== 'doctor' && (
+                        <Button
+                          variant="contained"
+                          size="small"
+                          startIcon={<UploadIcon />}
+                          onClick={() => setUploadPastRxModalOpen(true)}
+                          sx={{
+                            borderRadius: '14px',
+                            bgcolor: '#134F4D',
+                            color: '#ffffff',
+                            fontWeight: 800,
+                            textTransform: 'none',
+                            px: 2.5,
+                            py: 1
+                          }}
+                        >
+                          Upload Past Prescription
+                        </Button>
+                      )}
                     </Box>
                   </Box>
                 ) : (
                   <List disablePadding>
-                    {activePrescriptions.slice(0, 5).map((prescription, idx) => (
+                    {activePrescriptions.slice(0, 8).map((prescription, idx) => (
                       <ListItem 
                         key={prescription.id || idx}
                         button 
@@ -842,56 +922,103 @@ const Dashboard = () => {
                         sx={{ 
                           borderRadius: '16px', 
                           my: 1, 
-                          p: 2,
-                          bgcolor: 'rgba(255, 255, 255, 0.75)',
-                          border: '1px solid rgba(137, 215, 183, 0.4)'
+                          p: { xs: 1.2, sm: 2 },
+                          bgcolor: mode === 'dark' ? 'rgba(20, 38, 34, 0.6)' : 'rgba(255, 255, 255, 0.75)',
+                          border: `1px solid ${mode === 'dark' ? 'rgba(102, 205, 170, 0.2)' : 'rgba(137, 215, 183, 0.4)'}`,
+                          '&:hover': { bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.08)' : 'rgba(255, 255, 255, 0.95)' }
                         }}
                       >
-                        <Box sx={{ p: 1.5, borderRadius: '14px', bgcolor: 'rgba(66, 132, 117, 0.12)', mr: 2, display: 'flex', alignItems: 'center' }}>
-                          <MedicationIcon sx={{ color: '#428475', fontSize: 26 }} />
+                        <Box sx={{ p: { xs: 1, sm: 1.5 }, borderRadius: '14px', bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.12)' : 'rgba(66, 132, 117, 0.12)', mr: { xs: 1.2, sm: 2 }, display: 'flex', alignItems: 'center' }}>
+                          <MedicationIcon sx={{ color: mode === 'dark' ? '#66CDAA' : '#428475', fontSize: { xs: 22, sm: 26 } }} />
                         </Box>
                         <ListItemText
                           primary={
-                            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#1A312C' }}>
-                              {prescription.medication || (prescription.provisionalDiagnosis && prescription.provisionalDiagnosis[0]) || 'Prescription Document'}
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                              <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: { xs: '0.88rem', sm: '1rem' } }}>
+                                {prescription.medication || (prescription.provisionalDiagnosis && prescription.provisionalDiagnosis[0]) || 'Prescription Document'}
+                              </Typography>
+                              <Chip 
+                                label="Active" 
+                                size="small" 
+                                sx={{ 
+                                  height: 18, 
+                                  fontSize: '0.62rem', 
+                                  fontWeight: 800,
+                                  bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.2)' : 'rgba(42, 107, 93, 0.12)',
+                                  color: mode === 'dark' ? '#66CDAA' : '#1A312C'
+                                }} 
+                              />
+                            </Box>
+                          }
+                          secondary={
+                            <Typography variant="caption" sx={{ color: mode === 'dark' ? 'rgba(255,255,255,0.6)' : '#64748b', fontSize: { xs: '0.72rem', sm: '0.78rem' }, display: 'block', mt: 0.3 }}>
+                              Patient: {(prescription as any).patientName || 'Linked Patient'}
+                              {(prescription as any).dosage ? ` • Dosage: ${(prescription as any).dosage}` : 
+                               (prescription as any).medications && (prescription as any).medications[0] ? ` • Dosage: ${(prescription as any).medications[0].dosage || 'As directed'}` : ' • Dosage: As directed'}
+                              {'\n'}Issued: {prescription.createdAt ? new Date(prescription.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}
                             </Typography>
                           }
-                          secondary={`Patient: ${(prescription as any).patientName || 'Linked Patient'}`}
                         />
-                        <ChevronRightIcon sx={{ color: '#428475' }} />
+                        <ChevronRightIcon sx={{ color: mode === 'dark' ? '#66CDAA' : '#428475', fontSize: { xs: 20, sm: 24 } }} />
                       </ListItem>
                     ))}
                   </List>
                 )}
               </Box>
+            )}
 
-              {/* Pane 1: Completed Prescriptions */}
-              <Box sx={{ width: user?.role === 'doctor' ? '25%' : '33.3333%', p: { xs: 1.5, sm: 2 }, flexShrink: 0, boxSizing: 'border-box' }}>
+            {/* Tab 1: Completed Prescriptions */}
+            {tabValue === 1 && (
+              <Box className="animate-fade-in">
                 {completedPrescriptions.length === 0 ? (
-                  <Box sx={{ py: 6, textAlign: 'center' }}>
-                    <Typography variant="h6" sx={{ fontWeight: 800, color: '#1A312C', mb: 0.5 }}>
+                  <Box sx={{ py: { xs: 4, sm: 6 }, textAlign: 'center' }}>
+                    <Typography variant="h6" sx={{ fontWeight: 800, color: '#1A312C', mb: 0.5, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
                       No Completed Records
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.82rem' }}>
+                      Completed prescription treatments will appear here.
                     </Typography>
                   </Box>
                 ) : (
                   <List disablePadding>
-                    {completedPrescriptions.slice(0, 5).map((prescription, idx) => (
-                      <ListItem key={prescription.id || idx} button onClick={() => navigate(`/prescriptions/${prescription.id}`)}>
-                        <ListItemText primary={prescription.medication || 'Prescription'} />
+                    {completedPrescriptions.map((prescription, idx) => (
+                      <ListItem 
+                        key={prescription.id || idx} 
+                        button 
+                        onClick={() => navigate(`/prescriptions/${prescription.id}`)}
+                        sx={{ 
+                          borderRadius: '16px', 
+                          my: 1, 
+                          p: { xs: 1.2, sm: 2 },
+                          bgcolor: mode === 'dark' ? 'rgba(20, 38, 34, 0.6)' : 'rgba(255, 255, 255, 0.75)',
+                          border: `1px solid ${mode === 'dark' ? 'rgba(102, 205, 170, 0.2)' : 'rgba(137, 215, 183, 0.4)'}`
+                        }}
+                      >
+                        <ListItemText 
+                          primary={
+                            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: { xs: '0.88rem', sm: '1rem' } }}>
+                              {prescription.medication || 'Prescription Document'}
+                            </Typography>
+                          }
+                          secondary={`Patient: ${(prescription as any).patientName || 'Linked Patient'}`}
+                        />
+                        <ChevronRightIcon sx={{ color: mode === 'dark' ? '#66CDAA' : '#428475' }} />
                       </ListItem>
                     ))}
                   </List>
                 )}
               </Box>
+            )}
 
-              {/* Pane 2: Past / Uploaded External Prescriptions & Reports */}
-              <Box sx={{ width: user?.role === 'doctor' ? '25%' : '33.3333%', p: { xs: 1.5, sm: 2 }, flexShrink: 0, boxSizing: 'border-box' }}>
+            {/* Tab 2 (Patient): Past Records */}
+            {tabValue === 2 && user?.role !== 'doctor' && (
+              <Box className="animate-fade-in">
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
                   <Box>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C' }}>
-                      ≡ƒô£ Past / External Prescriptions & Reports
+                    <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: { xs: '0.9rem', sm: '1rem' } }}>
+                      Past / External Prescriptions & Reports
                     </Typography>
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.7rem', sm: '0.78rem' } }}>
                       Medical records from other clinics & past consultations
                     </Typography>
                   </Box>
@@ -924,14 +1051,14 @@ const Dashboard = () => {
                     </Typography>
                   </Box>
                 ) : externalRecords.length === 0 ? (
-                  <Box sx={{ py: 6, textAlign: 'center', bgcolor: mode === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)', borderRadius: '20px', p: 3 }}>
-                    <Box sx={{ p: 2, borderRadius: '50%', bgcolor: 'rgba(19, 79, 77, 0.1)', width: 64, height: 64, mx: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2 }}>
-                      <UploadIcon sx={{ fontSize: 32, color: '#134F4D' }} />
+                  <Box sx={{ py: { xs: 4, sm: 6 }, textAlign: 'center', bgcolor: mode === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)', borderRadius: '20px', p: 3 }}>
+                    <Box sx={{ p: 2, borderRadius: '50%', bgcolor: 'rgba(19, 79, 77, 0.1)', width: 56, height: 56, mx: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2 }}>
+                      <UploadIcon sx={{ fontSize: 28, color: '#134F4D' }} />
                     </Box>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', mb: 0.5 }}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', mb: 0.5, fontSize: { xs: '0.92rem', sm: '1rem' } }}>
                       No Past Prescriptions Uploaded
                     </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 340, mx: 'auto', mb: 2.5, fontSize: '0.82rem' }}>
+                    <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 340, mx: 'auto', mb: 2.5, fontSize: '0.8rem' }}>
                       Upload photos or PDFs of old prescriptions from other clinics to keep your complete health history in one place.
                     </Typography>
                     <Button
@@ -945,6 +1072,7 @@ const Dashboard = () => {
                         fontWeight: 800,
                         px: 3,
                         py: 1,
+                        fontSize: '0.82rem',
                         '&:hover': { bgcolor: '#0e3b3a' }
                       }}
                     >
@@ -965,7 +1093,7 @@ const Dashboard = () => {
                             height: '100%',
                             display: 'flex',
                             flexDirection: 'column',
-                            justify: 'space-between',
+                            justifyContent: 'space-between',
                             boxShadow: '0 4px 14px rgba(0,0,0,0.03)'
                           }}
                         >
@@ -1037,18 +1165,337 @@ const Dashboard = () => {
                   </Grid>
                 )}
               </Box>
+            )}
 
-              {/* Pane 3: Patients (Doctor Only) */}
-              {user?.role === 'doctor' && (
-                <Box sx={{ width: '25%', p: { xs: 1.5, sm: 2 }, flexShrink: 0, boxSizing: 'border-box' }}>
-                  <EnhancedPatientManagement maxPatients={3} searchQuery={searchQuery} />
-                </Box>
-              )}
-            </Box>
+            {/* Tab 2 (Doctor): Patients Management */}
+            {tabValue === 2 && user?.role === 'doctor' && (
+              <Box className="animate-fade-in" sx={{ width: '100%' }}>
+                <EnhancedPatientManagement maxPatients={5} searchQuery={searchQuery} />
+              </Box>
+            )}
           </Box>
         )}
       </Paper>
         </Grid>
+
+        {/* ═══ Right Sidebar ═══ */}
+        {!isMobilePortal && (
+          <Grid item xs={12} md={5} lg={4}>
+            {/* Upcoming Appointments */}
+            <Card 
+              className="glass-card-cream animate-slide-up"
+              sx={{ 
+                mb: 3, 
+                borderRadius: '20px',
+                border: `1.5px solid ${mode === 'dark' ? 'rgba(102, 205, 170, 0.2)' : 'rgba(137, 215, 183, 0.4)'}`,
+                bgcolor: mode === 'dark' ? 'rgba(20, 38, 34, 0.85) !important' : 'rgba(255, 255, 255, 0.95) !important',
+                boxShadow: '0 4px 24px rgba(42, 107, 93, 0.08)',
+                overflow: 'hidden'
+              }}
+            >
+              <CardContent sx={{ p: { xs: 2, sm: 2.5 }, '&:last-child': { pb: 2.5 } }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <Box sx={{ 
+                      p: 1.2, 
+                      borderRadius: '14px', 
+                      bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.15)' : 'rgba(42, 107, 93, 0.1)', 
+                      display: 'flex' 
+                    }}>
+                      <CalendarIcon sx={{ color: mode === 'dark' ? '#66CDAA' : '#1A312C', fontSize: 22 }} />
+                    </Box>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 900, color: mode === 'dark' ? '#FAF2F5' : '#1A312C' }}>
+                      Upcoming Appointments
+                    </Typography>
+                  </Box>
+                  <Badge 
+                    badgeContent={upcomingAppointments.length} 
+                    color="primary"
+                    sx={{ 
+                      '& .MuiBadge-badge': { 
+                        bgcolor: '#1A312C', 
+                        color: '#ffffff', 
+                        fontWeight: 800, 
+                        fontSize: '0.75rem',
+                        minWidth: 24,
+                        height: 24,
+                        borderRadius: '12px'
+                      } 
+                    }}
+                  />
+                </Box>
+
+                {upcomingAppointments.length === 0 ? (
+                  <Box sx={{ 
+                    py: 3, 
+                    textAlign: 'center',
+                    bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.05)' : 'rgba(137, 215, 183, 0.08)',
+                    borderRadius: '14px',
+                    border: `1px dashed ${mode === 'dark' ? 'rgba(102, 205, 170, 0.2)' : 'rgba(42, 107, 93, 0.15)'}`
+                  }}>
+                    <Typography variant="body2" sx={{ 
+                      color: mode === 'dark' ? 'rgba(255, 255, 255, 0.5)' : '#428475', 
+                      fontWeight: 600,
+                      fontSize: '0.85rem'
+                    }}>
+                      No follow-up appointments scheduled.
+                    </Typography>
+                  </Box>
+                ) : (
+                  <List disablePadding dense>
+                    {upcomingAppointments.map((apt, idx) => (
+                      <React.Fragment key={apt.id}>
+                        <ListItem 
+                          button 
+                          onClick={() => navigate(`/prescriptions/${apt.id}`)}
+                          sx={{ 
+                            borderRadius: '12px', 
+                            py: 1.2, 
+                            px: 1.5,
+                            mb: 0.5,
+                            bgcolor: apt.isToday 
+                              ? (mode === 'dark' ? 'rgba(102, 205, 170, 0.12)' : 'rgba(42, 107, 93, 0.06)')
+                              : 'transparent',
+                            '&:hover': { bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.1)' : 'rgba(42, 107, 93, 0.04)' }
+                          }}
+                        >
+                          <ListItemText
+                            primary={
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <Typography variant="body2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.85rem' }}>
+                                  {apt.patientName}
+                                </Typography>
+                                <Chip 
+                                  label={apt.dateStr} 
+                                  size="small" 
+                                  sx={{ 
+                                    height: 22, 
+                                    fontSize: '0.7rem', 
+                                    fontWeight: 800,
+                                    bgcolor: apt.isToday ? '#1A312C' : (mode === 'dark' ? 'rgba(102, 205, 170, 0.2)' : 'rgba(42, 107, 93, 0.1)'),
+                                    color: apt.isToday ? '#89D7B7' : (mode === 'dark' ? '#89D7B7' : '#1A312C')
+                                  }} 
+                                />
+                              </Box>
+                            }
+                            secondary={
+                              <Typography variant="caption" sx={{ color: mode === 'dark' ? 'rgba(255,255,255,0.55)' : '#64748b', fontSize: '0.75rem' }}>
+                                {apt.purpose}{apt.timeStr ? ` • ${apt.timeStr}` : ''}
+                              </Typography>
+                            }
+                          />
+                        </ListItem>
+                        {idx < upcomingAppointments.length - 1 && <Divider sx={{ mx: 1 }} />}
+                      </React.Fragment>
+                    ))}
+                  </List>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Clinical Quick Tools */}
+            {user?.role === 'doctor' && (
+              <Card 
+                className="glass-card-cream animate-slide-up"
+                sx={{ 
+                  mb: 3, 
+                  borderRadius: '20px',
+                  border: `1.5px solid ${mode === 'dark' ? 'rgba(102, 205, 170, 0.2)' : 'rgba(137, 215, 183, 0.4)'}`,
+                  bgcolor: mode === 'dark' ? 'rgba(20, 38, 34, 0.85) !important' : 'rgba(255, 255, 255, 0.95) !important',
+                  boxShadow: '0 4px 24px rgba(42, 107, 93, 0.08)'
+                }}
+              >
+                <CardContent sx={{ p: { xs: 2, sm: 2.5 }, '&:last-child': { pb: 2.5 } }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2.5 }}>
+                    <Box sx={{ 
+                      p: 1.2, 
+                      borderRadius: '14px', 
+                      bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.15)' : 'rgba(42, 107, 93, 0.1)', 
+                      display: 'flex' 
+                    }}>
+                      <StethoscopeIcon sx={{ color: mode === 'dark' ? '#66CDAA' : '#1A312C', fontSize: 22 }} />
+                    </Box>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 900, color: mode === 'dark' ? '#FAF2F5' : '#1A312C' }}>
+                      Clinical Quick Tools
+                    </Typography>
+                  </Box>
+
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                    <Button
+                      variant="contained"
+                      fullWidth
+                      startIcon={<AddIcon />}
+                      onClick={() => navigate('/prescriptions/new')}
+                      sx={{
+                        bgcolor: '#1A312C',
+                        color: '#89D7B7',
+                        fontWeight: 800,
+                        fontSize: '0.88rem',
+                        borderRadius: '16px',
+                        py: 1.5,
+                        textTransform: 'none',
+                        boxShadow: '0 4px 16px rgba(26, 49, 44, 0.3)',
+                        '&:hover': { bgcolor: '#142520', boxShadow: '0 6px 20px rgba(26, 49, 44, 0.4)' }
+                      }}
+                    >
+                      + Issue Digital Prescription
+                    </Button>
+
+                    <Button
+                      variant="outlined"
+                      fullWidth
+                      startIcon={<QrIcon />}
+                      onClick={() => setQrScannerOpen(true)}
+                      sx={{
+                        borderColor: mode === 'dark' ? 'rgba(102, 205, 170, 0.35)' : 'rgba(42, 107, 93, 0.25)',
+                        color: mode === 'dark' ? '#89D7B7' : '#1A312C',
+                        fontWeight: 700,
+                        fontSize: '0.85rem',
+                        borderRadius: '16px',
+                        py: 1.3,
+                        textTransform: 'none',
+                        '&:hover': { 
+                          borderColor: mode === 'dark' ? '#66CDAA' : '#1A312C',
+                          bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.08)' : 'rgba(42, 107, 93, 0.04)'
+                        }
+                      }}
+                    >
+                      Scan Patient Rx QR Code
+                    </Button>
+
+                    <Button
+                      variant="outlined"
+                      fullWidth
+                      startIcon={<MedicalInfoIcon />}
+                      onClick={() => navigate('/prescriptions/all')}
+                      sx={{
+                        borderColor: mode === 'dark' ? 'rgba(102, 205, 170, 0.35)' : 'rgba(42, 107, 93, 0.25)',
+                        color: mode === 'dark' ? '#89D7B7' : '#1A312C',
+                        fontWeight: 700,
+                        fontSize: '0.85rem',
+                        borderRadius: '16px',
+                        py: 1.3,
+                        textTransform: 'none',
+                        '&:hover': { 
+                          borderColor: mode === 'dark' ? '#66CDAA' : '#1A312C',
+                          bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.08)' : 'rgba(42, 107, 93, 0.04)'
+                        }
+                      }}
+                    >
+                      Browse All Prescriptions
+                    </Button>
+                  </Box>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Practice Insights Overview */}
+            <Card 
+              className="glass-card-cream animate-slide-up"
+              sx={{ 
+                borderRadius: '20px',
+                border: `1.5px solid ${mode === 'dark' ? 'rgba(102, 205, 170, 0.2)' : 'rgba(137, 215, 183, 0.4)'}`,
+                bgcolor: mode === 'dark' ? 'rgba(20, 38, 34, 0.85) !important' : 'rgba(255, 255, 255, 0.95) !important',
+                boxShadow: '0 4px 24px rgba(42, 107, 93, 0.08)'
+              }}
+            >
+              <CardContent sx={{ p: { xs: 2, sm: 2.5 }, '&:last-child': { pb: 2.5 } }}>
+                <Typography 
+                  variant="overline" 
+                  sx={{ 
+                    fontWeight: 900, 
+                    color: mode === 'dark' ? '#66CDAA' : '#1A312C', 
+                    letterSpacing: '0.1em',
+                    fontSize: '0.72rem',
+                    display: 'block',
+                    mb: 2
+                  }}
+                >
+                  PRACTICE INSIGHTS OVERVIEW
+                </Typography>
+
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                  <Box sx={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    py: 1.8,
+                    borderBottom: `1px solid ${mode === 'dark' ? 'rgba(102, 205, 170, 0.12)' : 'rgba(0,0,0,0.06)'}`
+                  }}>
+                    <Typography variant="body2" sx={{ fontWeight: 700, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.88rem' }}>
+                      Active Prescriptions
+                    </Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 900, color: mode === 'dark' ? '#66CDAA' : '#1A312C', fontSize: '1.1rem' }}>
+                      {activePrescriptions.length}
+                    </Typography>
+                  </Box>
+
+                  <Box sx={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    py: 1.8,
+                    borderBottom: `1px solid ${mode === 'dark' ? 'rgba(102, 205, 170, 0.12)' : 'rgba(0,0,0,0.06)'}`
+                  }}>
+                    <Typography variant="body2" sx={{ fontWeight: 700, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.88rem' }}>
+                      Completed Records
+                    </Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 900, color: mode === 'dark' ? '#66CDAA' : '#428475', fontSize: '1.1rem' }}>
+                      {completedPrescriptions.length}
+                    </Typography>
+                  </Box>
+
+                  {user?.role === 'doctor' && (
+                    <Box sx={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      alignItems: 'center', 
+                      py: 1.8
+                    }}>
+                      <Typography variant="body2" sx={{ fontWeight: 700, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.88rem' }}>
+                        DigiLocker Status
+                      </Typography>
+                      {digilockerVerified ? (
+                        <Chip 
+                          label="VERIFIED ✓" 
+                          size="small" 
+                          sx={{ 
+                            height: 26,
+                            fontSize: '0.72rem', 
+                            fontWeight: 900,
+                            bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.15)' : 'rgba(42, 107, 93, 0.08)',
+                            color: mode === 'dark' ? '#66CDAA' : '#1A312C',
+                            border: `1px solid ${mode === 'dark' ? 'rgba(102, 205, 170, 0.3)' : 'rgba(42, 107, 93, 0.2)'}`,
+                            borderRadius: '8px'
+                          }} 
+                        />
+                      ) : (
+                        <Chip 
+                          label="NOT VERIFIED" 
+                          size="small" 
+                          sx={{ 
+                            height: 26,
+                            fontSize: '0.72rem', 
+                            fontWeight: 900,
+                            bgcolor: 'rgba(255, 152, 0, 0.1)',
+                            color: '#e65100',
+                            border: '1px solid rgba(255, 152, 0, 0.3)',
+                            borderRadius: '8px',
+                            cursor: 'pointer'
+                          }}
+                          onClick={() => {
+                            setDigilockerLoading(true);
+                            window.location.href = digilockerAPI.getAuthorizeUrl();
+                          }}
+                        />
+                      )}
+                    </Box>
+                  )}
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+        )}
       </Grid>
     </Container>
 
