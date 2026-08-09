@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Box, 
   Paper, 
@@ -78,6 +78,29 @@ export default function WallpaperCarouselHero({
   const navigate = useNavigate();
 
   const [currentIndex, setCurrentIndex] = useState(0);
+
+  // ─── Rotating placeholder phrases ───
+  const PLACEHOLDER_PHRASES = [
+    'Search by patient name...',
+    'Search by mobile number...',
+    'Search by prescription ID...',
+    'Search by diagnosis...',
+    'Search by medicine name...'
+  ];
+  const [placeholderIdx, setPlaceholderIdx] = useState(0);
+  const [placeholderFade, setPlaceholderFade] = useState(true);
+
+  useEffect(() => {
+    if (searchQuery) return; // pause rotation while user is typing
+    const interval = setInterval(() => {
+      setPlaceholderFade(false); // fade out
+      setTimeout(() => {
+        setPlaceholderIdx(prev => (prev + 1) % PLACEHOLDER_PHRASES.length);
+        setPlaceholderFade(true); // fade in
+      }, 300);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [searchQuery]);
 
   // Seamless auto-advance photographic wallpapers every 7 seconds
   useEffect(() => {
@@ -268,56 +291,78 @@ export default function WallpaperCarouselHero({
         {/* Embedded Search Field (If enabled) */}
         {showSearch && (
           <Box sx={{ mt: 2, display: 'flex', gap: 1, alignItems: 'center' }}>
-            <TextField 
-              fullWidth
-              placeholder="Search by name, mobile number, prescription or diagnosis..."
-              value={searchQuery}
-              onChange={(e) => onSearchChange?.(e.target.value)}
-              variant="outlined"
-              size="small"
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon sx={{ color: '#ffffff' }} />
-                  </InputAdornment>
-                ),
-                endAdornment: searchQuery && (
-                  <InputAdornment position="end">
-                    <IconButton size="small" onClick={() => onSearchChange?.('')} sx={{ color: 'rgba(255,255,255,0.8)' }}>
-                      ×
-                    </IconButton>
-                  </InputAdornment>
-                ),
-                sx: {
-                  bgcolor: 'rgba(0, 0, 0, 0.45)',
-                  backdropFilter: 'blur(16px)',
-                  borderRadius: '18px',
-                  color: '#ffffff !important',
-                  border: '1px solid rgba(255, 255, 255, 0.4)',
-                  '& .MuiInputBase-input': {
+            <Box sx={{ position: 'relative', flex: 1 }}>
+              <TextField 
+                fullWidth
+                placeholder=" "
+                value={searchQuery}
+                onChange={(e) => onSearchChange?.(e.target.value)}
+                variant="outlined"
+                size="small"
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon sx={{ color: '#ffffff' }} />
+                    </InputAdornment>
+                  ),
+                  endAdornment: searchQuery && (
+                    <InputAdornment position="end">
+                      <IconButton size="small" onClick={() => onSearchChange?.('')} sx={{ color: 'rgba(255,255,255,0.8)' }}>
+                        ×
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                  sx: {
+                    bgcolor: 'rgba(0, 0, 0, 0.45)',
+                    backdropFilter: 'blur(16px)',
+                    borderRadius: '18px',
                     color: '#ffffff !important',
-                    WebkitTextFillColor: '#ffffff !important',
-                  },
-                  '& input': {
-                    color: '#ffffff !important',
-                    WebkitTextFillColor: '#ffffff !important',
-                    caretColor: '#ffffff !important',
-                  },
-                  '& input::placeholder': { 
-                    color: '#ffffff !important', 
-                    opacity: '0.95 !important',
-                    WebkitTextFillColor: '#ffffff !important',
-                  },
-                  '& .MuiInputBase-input::placeholder': {
-                    color: '#ffffff !important',
-                    opacity: '0.95 !important',
-                    WebkitTextFillColor: '#ffffff !important',
-                  },
-                  '&:hover fieldset': { borderColor: '#ffffff !important' },
-                  '&.Mui-focused fieldset': { borderColor: '#ffffff !important', borderWidth: '1.5px' }
-                }
-              }}
-            />
+                    border: '1px solid rgba(255, 255, 255, 0.4)',
+                    '& .MuiInputBase-input': {
+                      color: '#ffffff !important',
+                      WebkitTextFillColor: '#ffffff !important',
+                    },
+                    '& input': {
+                      color: '#ffffff !important',
+                      WebkitTextFillColor: '#ffffff !important',
+                      caretColor: '#ffffff !important',
+                    },
+                    '& input::placeholder': { 
+                      color: 'transparent !important', 
+                      opacity: '0 !important',
+                    },
+                    '& .MuiInputBase-input::placeholder': {
+                      color: 'transparent !important',
+                      opacity: '0 !important',
+                    },
+                    '&:hover fieldset': { borderColor: '#ffffff !important' },
+                    '&.Mui-focused fieldset': { borderColor: '#ffffff !important', borderWidth: '1.5px' }
+                  }
+                }}
+              />
+              {/* Animated rotating placeholder overlay */}
+              {!searchQuery && (
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: 48,
+                    transform: 'translateY(-50%)',
+                    pointerEvents: 'none',
+                    color: '#ffffff',
+                    opacity: placeholderFade ? 0.9 : 0,
+                    transition: 'opacity 0.3s ease-in-out',
+                    fontSize: '0.875rem',
+                    fontWeight: 400,
+                    whiteSpace: 'nowrap',
+                    overflow: 'visible',
+                    letterSpacing: '0.01em'
+                  }}
+                >
+                  {PLACEHOLDER_PHRASES[placeholderIdx]}
+                </Box>
+              )}
+            </Box>
             {onQrScanClick && (
               <IconButton
                 onClick={onQrScanClick}

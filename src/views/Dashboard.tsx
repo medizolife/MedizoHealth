@@ -55,7 +55,8 @@ import {
   PictureAsPdf as PdfIcon,
   Delete as DeleteIcon,
   Visibility as ViewIcon,
-  Description as FileIcon
+  Description as FileIcon,
+  Edit as EditIcon
 } from '@mui/icons-material';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -558,6 +559,14 @@ const Dashboard = () => {
         </Card>
       )}
 
+      {/* ═══ Stats Cards & Action Bar — collapse when searching ═══ */}
+      <Box sx={{ 
+        maxHeight: searchQuery.length >= 2 ? 0 : 600,
+        opacity: searchQuery.length >= 2 ? 0 : 1,
+        overflow: 'hidden',
+        transition: 'max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease',
+        willChange: 'max-height, opacity'
+      }}>
       {/* ═══ Stats Cards ═══ */}
       <Grid container spacing={{ xs: 1.2, sm: 2 }} sx={{ mb: 3 }} className="animate-slide-up">
         {/* Card 1: Active Prescriptions */}
@@ -716,89 +725,88 @@ const Dashboard = () => {
         }}
       >
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: { xs: 0.8, sm: 1 }, py: 0.3, px: 0.3, width: '100%', alignItems: 'center' }}>
-          {user?.role === 'doctor' && (
-            <Chip 
-              icon={<StethoscopeIcon sx={{ color: '#ffffff !important', fontSize: { xs: 16, sm: 18 } }} />}
-              label="Create Prescription"
-              clickable
-              onClick={() => navigate('/prescriptions/new')}
-              sx={{ 
-                bgcolor: 'var(--color-forest)', 
-                color: '#ffffff', 
-                fontWeight: 800, 
-                fontSize: { xs: '0.76rem', sm: '0.84rem' },
-                px: { xs: 0.5, sm: 1 },
-                py: { xs: 1.8, sm: 2.2 },
-                borderRadius: '14px',
-                flex: { xs: '1 1 auto', sm: 'initial' },
-                boxShadow: '0 4px 14px rgba(42, 107, 93, 0.3)',
-                '&:hover': { bgcolor: '#1d4b41' }
-              }} 
-            />
+          {user?.role === 'doctor' ? (
+            <>
+              <Chip 
+                icon={<PersonAddIcon sx={{ color: mode === 'dark' ? '#FAF2F5 !important' : '#123029 !important', fontSize: { xs: 16, sm: 18 } }} />}
+                label="Manage Patients"
+                clickable
+                onClick={() => setTabValue(2)}
+                sx={{ 
+                  bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.25)' : 'rgba(42, 107, 93, 0.12)', 
+                  color: mode === 'dark' ? '#FAF2F5' : '#123029', 
+                  fontWeight: 800, 
+                  fontSize: { xs: '0.76rem', sm: '0.84rem' },
+                  px: { xs: 0.5, sm: 1 },
+                  py: { xs: 1.8, sm: 2.2 },
+                  borderRadius: '14px',
+                  flex: '1 1 0',
+                  border: '1px solid var(--color-mint)',
+                  '&:hover': { bgcolor: 'rgba(102, 205, 170, 0.3)' }
+                }} 
+              />
+              <Chip 
+                icon={<EditIcon sx={{ color: mode === 'dark' ? '#FAF2F5 !important' : '#123029 !important', fontSize: { xs: 16, sm: 18 } }} />}
+                label="Edit Your Profile"
+                clickable
+                onClick={() => navigate('/profile')}
+                sx={{ 
+                  bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.15)' : 'rgba(42, 107, 93, 0.08)', 
+                  color: mode === 'dark' ? '#FAF2F5' : '#123029', 
+                  fontWeight: 800, 
+                  fontSize: { xs: '0.76rem', sm: '0.84rem' },
+                  px: { xs: 0.5, sm: 1 },
+                  py: { xs: 1.8, sm: 2.2 },
+                  borderRadius: '14px',
+                  flex: '1 1 0',
+                  border: `1px solid ${mode === 'dark' ? 'rgba(102, 205, 170, 0.2)' : 'rgba(42, 107, 93, 0.15)'}`,
+                  '&:hover': { bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.25)' : 'rgba(42, 107, 93, 0.12)' }
+                }} 
+              />
+            </>
+          ) : (
+            <>
+              <Chip 
+                icon={<UploadIcon sx={{ color: '#ffffff !important', fontSize: { xs: 16, sm: 18 } }} />}
+                label="Upload Past Prescription"
+                clickable
+                onClick={() => setUploadPastRxModalOpen(true)}
+                sx={{ 
+                  bgcolor: '#134F4D', 
+                  color: '#ffffff', 
+                  fontWeight: 800, 
+                  fontSize: { xs: '0.76rem', sm: '0.84rem' },
+                  px: { xs: 0.5, sm: 1 },
+                  py: { xs: 1.8, sm: 2.2 },
+                  borderRadius: '14px',
+                  flex: '1 1 0',
+                  boxShadow: '0 4px 14px rgba(19, 79, 77, 0.3)',
+                  '&:hover': { bgcolor: '#0e3b3a' }
+                }} 
+              />
+              <Chip 
+                icon={<EditIcon sx={{ color: mode === 'dark' ? '#FAF2F5 !important' : '#123029 !important', fontSize: { xs: 16, sm: 18 } }} />}
+                label="Edit Your Profile"
+                clickable
+                onClick={() => navigate('/profile')}
+                sx={{ 
+                  bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.15)' : 'rgba(42, 107, 93, 0.08)', 
+                  color: mode === 'dark' ? '#FAF2F5' : '#123029', 
+                  fontWeight: 800, 
+                  fontSize: { xs: '0.76rem', sm: '0.84rem' },
+                  px: { xs: 0.5, sm: 1 },
+                  py: { xs: 1.8, sm: 2.2 },
+                  borderRadius: '14px',
+                  flex: '1 1 0',
+                  border: `1px solid ${mode === 'dark' ? 'rgba(102, 205, 170, 0.2)' : 'rgba(42, 107, 93, 0.15)'}`,
+                  '&:hover': { bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.25)' : 'rgba(42, 107, 93, 0.12)' }
+                }} 
+              />
+            </>
           )}
-
-          {user?.role !== 'doctor' && (
-            <Chip 
-              icon={<UploadIcon sx={{ color: '#ffffff !important', fontSize: { xs: 16, sm: 18 } }} />}
-              label="Upload Past Prescription"
-              clickable
-              onClick={() => setUploadPastRxModalOpen(true)}
-              sx={{ 
-                bgcolor: '#134F4D', 
-                color: '#ffffff', 
-                fontWeight: 800, 
-                fontSize: { xs: '0.76rem', sm: '0.84rem' },
-                px: { xs: 0.5, sm: 1 },
-                py: { xs: 1.8, sm: 2.2 },
-                borderRadius: '14px',
-                flex: { xs: '1 1 auto', sm: 'initial' },
-                boxShadow: '0 4px 14px rgba(19, 79, 77, 0.3)',
-                '&:hover': { bgcolor: '#0e3b3a' }
-              }} 
-            />
-          )}
-
-          {user?.role === 'doctor' && (
-            <Chip 
-              icon={<PersonAddIcon sx={{ color: mode === 'dark' ? '#FAF2F5 !important' : '#123029 !important', fontSize: { xs: 16, sm: 18 } }} />}
-              label="Manage Patients"
-              clickable
-              onClick={() => setTabValue(2)}
-              sx={{ 
-                bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.25)' : 'rgba(42, 107, 93, 0.12)', 
-                color: mode === 'dark' ? '#FAF2F5' : '#123029', 
-                fontWeight: 800, 
-                fontSize: { xs: '0.76rem', sm: '0.84rem' },
-                px: { xs: 0.5, sm: 1 },
-                py: { xs: 1.8, sm: 2.2 },
-                borderRadius: '14px',
-                flex: { xs: '1 1 auto', sm: 'initial' },
-                border: '1px solid var(--color-mint)',
-                '&:hover': { bgcolor: 'rgba(102, 205, 170, 0.3)' }
-              }} 
-            />
-          )}
-
-          <Chip 
-            icon={<MedicalInfoIcon sx={{ color: mode === 'dark' ? '#FAF2F5 !important' : '#123029 !important', fontSize: { xs: 16, sm: 18 } }} />}
-            label="All Records"
-            clickable
-            onClick={() => setTabValue(0)}
-            sx={{ 
-              bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.15)' : 'rgba(42, 107, 93, 0.08)', 
-              color: mode === 'dark' ? '#FAF2F5' : '#123029', 
-              fontWeight: 800, 
-              fontSize: { xs: '0.76rem', sm: '0.84rem' },
-              px: { xs: 0.5, sm: 1 },
-              py: { xs: 1.8, sm: 2.2 },
-              borderRadius: '14px',
-              flex: { xs: '1 1 auto', sm: 'initial' },
-              border: `1px solid ${mode === 'dark' ? 'rgba(102, 205, 170, 0.2)' : 'rgba(42, 107, 93, 0.15)'}`,
-              '&:hover': { bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.25)' : 'rgba(42, 107, 93, 0.12)' }
-            }} 
-          />
         </Box>
       </Paper>
+      </Box>{/* end collapse wrapper */}
 
       {/* ═══ Segmented Glass Tabs & Content List ═══ */}
       <Paper 
