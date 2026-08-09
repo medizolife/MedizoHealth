@@ -48,8 +48,12 @@ import {
   Notifications as NotificationsIcon,
   History as HistoryIcon,
   ExpandMore as ExpandMoreIcon,
-  ChevronRight as ChevronRightIcon
+  ChevronRight as ChevronRightIcon,
+  Download as DownloadIcon,
+  OpenInNew as OpenInNewIcon,
+  PictureAsPdf as PdfIcon
 } from '@mui/icons-material';
+import { IconButton, Tooltip } from '@mui/material';
 import { prescriptionsAPI } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import { Patient } from '../types/auth';
@@ -130,6 +134,36 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
     bloodType: '',
     insurance: { provider: '', policyNumber: '', groupNumber: '' }
   });
+
+  const [downloadingPdfId, setDownloadingPdfId] = useState<string | null>(null);
+
+  const handleDownloadPdf = async (e: React.MouseEvent, rxId: string) => {
+    e.stopPropagation();
+    if (!rxId) return;
+    try {
+      setDownloadingPdfId(rxId);
+      const blob = await prescriptionsAPI.downloadPrescription(rxId);
+      const blobUrl = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.setAttribute('download', `Prescription_${rxId.substring(0, 8).toUpperCase()}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error('Error downloading prescription PDF:', err);
+      window.open(`/api/prescriptions/${rxId}/download`, '_blank');
+    } finally {
+      setDownloadingPdfId(null);
+    }
+  };
+
+  const handleViewPrescription = (e: React.MouseEvent, rxId: string) => {
+    e.stopPropagation();
+    if (!rxId) return;
+    navigate(`/prescriptions/${rxId}`);
+  };
 
   // Fetch from cache first, then background refresh
   useEffect(() => {
@@ -688,63 +722,204 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
 
               {tabValue === 1 && (
                 <Box>
-                  <Typography variant="h6" gutterBottom>
-                    <HistoryIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-                    Prescription History
-                  </Typography>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <HistoryIcon sx={{ color: isDark ? '#89D7B7' : '#134F4D' }} />
+                      Prescription History
+                    </Typography>
+                    {medicalDetails.prescriptionHistory && medicalDetails.prescriptionHistory.length > 0 && (
+                      <Chip 
+                        label={`${medicalDetails.prescriptionHistory.length} Total`} 
+                        size="small" 
+                        sx={{ fontWeight: 800, bgcolor: isDark ? 'rgba(137, 215, 183, 0.15)' : 'rgba(19, 79, 77, 0.08)', color: isDark ? '#89D7B7' : '#134F4D' }} 
+                      />
+                    )}
+                  </Box>
+
                   {medicalDetails.prescriptionHistory && medicalDetails.prescriptionHistory.length > 0 ? (
-                    medicalDetails.prescriptionHistory.map((prescription: any, index: number) => (
-                      <Accordion key={prescription.id}>
-                        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                          <Box display="flex" justifyContent="space-between" width="100%">
-                            <Typography variant="body1">
-                              {prescription.diagnosis}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              {formatDateTime(prescription.createdAt)}
-                            </Typography>
-                          </Box>
-                        </AccordionSummary>
-                        <AccordionDetails>
-                          <Grid container spacing={2}>
-                            <Grid item xs={12} md={6}>
-                              <Typography variant="subtitle2" gutterBottom>
-                                Medications:
-                              </Typography>
-                              <List dense>
-                                {prescription.medications.map((med: any, medIndex: number) => (
-                                  <ListItem key={`${prescription.id}-med-${med.name}-${medIndex}`}>
-                                    <ListItemText 
-                                      primary={med.name}
-                                      secondary={`${med.dosage} - ${med.frequency} for ${med.duration}`}
-                                    />
-                                  </ListItem>
-                                ))}
-                              </List>
-                            </Grid>
-                            <Grid item xs={12} md={6}>
-                              <Typography variant="subtitle2" gutterBottom>
-                                Notes:
-                              </Typography>
-                              <Typography variant="body2">
-                                {prescription.notes || 'No additional notes'}
-                              </Typography>
-                              <Box mt={2}>
+                    medicalDetails.prescriptionHistory.map((prescription: any) => {
+                      const rxId = prescription.id || '';
+                      const rxTitle = prescription.diagnosis || (prescription.medications && prescription.medications[0]?.name) || prescription.medication || 'Prescription Document';
+                      const formattedDate = formatDateTime ? formatDateTime(prescription.createdAt) : new Date(prescription.createdAt || Date.now()).toLocaleString();
+                      const isDownloadingThis = downloadingPdfId === rxId;
+
+                      return (
+                        <Accordion 
+                          key={rxId}
+                          sx={{
+                            mb: 1.5,
+                            borderRadius: '16px !important',
+                            overflow: 'hidden',
+                            boxShadow: 'none',
+                            bgcolor: isDark ? 'rgba(20, 38, 34, 0.6)' : '#ffffff',
+                            border: isDark ? '1px solid rgba(137, 215, 183, 0.2)' : '1px solid rgba(0, 0, 0, 0.08)',
+                            '&:before': { display: 'none' }
+                          }}
+                        >
+                          <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: isDark ? '#89D7B7' : '#134F4D' }} />}>
+                            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, width: '100%', gap: 1, pr: 1 }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                                <Typography variant="subtitle1" sx={{ fontWeight: 800, color: isDark ? '#FAF2F5' : '#0f172a' }}>
+                                  {rxTitle}
+                                </Typography>
+                                {rxId && (
+                                  <Chip 
+                                    label={`#${rxId.substring(0, 6).toUpperCase()}`} 
+                                    size="small" 
+                                    sx={{ height: 20, fontSize: '0.68rem', fontWeight: 800, bgcolor: isDark ? 'rgba(255,255,255,0.06)' : '#f1f5f9' }} 
+                                  />
+                                )}
                                 <Chip 
-                                  label={prescription.status}
-                                  color={prescription.status === 'active' ? 'success' : 'default'}
+                                  label={(prescription.status || 'active').toUpperCase()} 
+                                  color={prescription.status === 'completed' ? 'success' : prescription.status === 'cancelled' ? 'error' : 'primary'}
                                   size="small"
+                                  sx={{ height: 20, fontSize: '0.65rem', fontWeight: 800 }}
                                 />
                               </Box>
+                              
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: { xs: '100%', sm: 'auto' }, justifyContent: { xs: 'space-between', sm: 'flex-end' } }}>
+                                <Typography variant="caption" sx={{ color: isDark ? '#89D7B7' : '#64748b', fontWeight: 600 }}>
+                                  {formattedDate}
+                                </Typography>
+                                <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                  <Tooltip title="View Prescription">
+                                    <IconButton size="small" onClick={(e) => handleViewPrescription(e, rxId)} sx={{ color: isDark ? '#89D7B7' : '#134F4D' }}>
+                                      <VisibilityIcon fontSize="small" />
+                                    </IconButton>
+                                  </Tooltip>
+                                  <Tooltip title="Download PDF">
+                                    <IconButton size="small" onClick={(e) => handleDownloadPdf(e, rxId)} disabled={isDownloadingThis} sx={{ color: isDark ? '#89D7B7' : '#134F4D' }}>
+                                      {isDownloadingThis ? <CircularProgress size={14} color="inherit" /> : <DownloadIcon fontSize="small" />}
+                                    </IconButton>
+                                  </Tooltip>
+                                </Box>
+                              </Box>
+                            </Box>
+                          </AccordionSummary>
+
+                          <AccordionDetails sx={{ pt: 0, borderTop: isDark ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.04)' }}>
+                            <Grid container spacing={2} sx={{ mt: 0.5 }}>
+                              <Grid item xs={12} md={7}>
+                                <Typography variant="subtitle2" sx={{ fontWeight: 800, color: isDark ? '#89D7B7' : '#134F4D', mb: 1, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                  💊 Prescribed Medications
+                                </Typography>
+
+                                {prescription.medications && prescription.medications.length > 0 ? (
+                                  <List dense disablePadding>
+                                    {prescription.medications.map((med: any, medIndex: number) => {
+                                      // Clean formatting to prevent 'undefined' string outputs
+                                      const parts: string[] = [];
+                                      if (med.dosage && med.dosage !== 'undefined') parts.push(med.dosage);
+                                      if (med.frequency && med.frequency !== 'undefined') parts.push(med.frequency);
+                                      if (med.instructions && med.instructions !== 'undefined') parts.push(med.instructions);
+                                      if (med.duration && med.duration !== 'undefined') parts.push(`for ${med.duration}`);
+                                      const subText = parts.filter(Boolean).join(' • ');
+
+                                      return (
+                                        <ListItem 
+                                          key={`${rxId}-med-${med.name || medIndex}-${medIndex}`}
+                                          sx={{ 
+                                            px: 1.5, 
+                                            py: 0.8, 
+                                            mb: 0.8, 
+                                            borderRadius: '10px', 
+                                            bgcolor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc',
+                                            border: isDark ? '1px solid rgba(255,255,255,0.05)' : '1px solid #e2e8f0' 
+                                          }}
+                                        >
+                                          <ListItemText 
+                                            primary={
+                                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <Typography variant="body2" sx={{ fontWeight: 800, color: isDark ? '#FAF2F5' : '#0f172a' }}>
+                                                  {med.name}
+                                                </Typography>
+                                                {med.type && (
+                                                  <Chip label={med.type} size="small" sx={{ height: 18, fontSize: '0.62rem', fontWeight: 800 }} />
+                                                )}
+                                              </Box>
+                                            }
+                                            secondary={
+                                              <Typography variant="caption" sx={{ color: isDark ? '#89D7B7' : '#475569', display: 'block', mt: 0.3, fontWeight: 600 }}>
+                                                {subText || 'As directed by physician'}
+                                              </Typography>
+                                            }
+                                          />
+                                        </ListItem>
+                                      );
+                                    })}
+                                  </List>
+                                ) : (
+                                  <Box sx={{ p: 1.5, borderRadius: '10px', bgcolor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc' }}>
+                                    <Typography variant="body2" sx={{ fontWeight: 800, color: isDark ? '#FAF2F5' : '#0f172a' }}>
+                                      {prescription.medication || 'Medication details recorded'}
+                                    </Typography>
+                                    <Typography variant="caption" sx={{ color: isDark ? '#89D7B7' : '#475569', display: 'block', mt: 0.3, fontWeight: 600 }}>
+                                      {[prescription.dosage, prescription.frequency, prescription.duration].filter(b => b && b !== 'undefined').join(' • ')}
+                                    </Typography>
+                                  </Box>
+                                )}
+                              </Grid>
+
+                              <Grid item xs={12} md={5}>
+                                <Typography variant="subtitle2" sx={{ fontWeight: 800, color: isDark ? '#89D7B7' : '#134F4D', mb: 1 }}>
+                                  📝 Clinical Notes & Instructions
+                                </Typography>
+                                <Paper variant="outlined" sx={{ p: 1.5, borderRadius: '12px', bgcolor: isDark ? 'rgba(0,0,0,0.2)' : '#fffbeb', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(245, 158, 11, 0.3)', mb: 2 }}>
+                                  <Typography variant="body2" sx={{ color: isDark ? '#FAF2F5' : '#78350f', fontSize: '0.85rem' }}>
+                                    {prescription.notes || prescription.instructions || 'No additional notes provided.'}
+                                  </Typography>
+                                </Paper>
+
+                                {/* Action Buttons: View & Download */}
+                                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mt: 2 }}>
+                                  <Button
+                                    fullWidth
+                                    variant="outlined"
+                                    size="small"
+                                    startIcon={<VisibilityIcon />}
+                                    onClick={(e) => handleViewPrescription(e, rxId)}
+                                    sx={{
+                                      borderRadius: '12px',
+                                      fontWeight: 800,
+                                      textTransform: 'none',
+                                      borderColor: isDark ? '#89D7B7' : '#134F4D',
+                                      color: isDark ? '#89D7B7' : '#134F4D'
+                                    }}
+                                  >
+                                    View Prescription
+                                  </Button>
+                                  <Button
+                                    fullWidth
+                                    variant="contained"
+                                    size="small"
+                                    startIcon={isDownloadingThis ? <CircularProgress size={16} color="inherit" /> : <DownloadIcon />}
+                                    onClick={(e) => handleDownloadPdf(e, rxId)}
+                                    disabled={isDownloadingThis}
+                                    sx={{
+                                      borderRadius: '12px',
+                                      fontWeight: 800,
+                                      textTransform: 'none',
+                                      bgcolor: isDark ? '#89D7B7' : '#134F4D',
+                                      color: isDark ? '#0f1e1a' : '#ffffff',
+                                      '&:hover': { bgcolor: isDark ? '#6ec7a3' : '#0e3b3a' }
+                                    }}
+                                  >
+                                    {isDownloadingThis ? 'Downloading...' : 'Download PDF'}
+                                  </Button>
+                                </Stack>
+                              </Grid>
                             </Grid>
-                          </Grid>
-                        </AccordionDetails>
-                      </Accordion>
-                    ))
+                          </AccordionDetails>
+                        </Accordion>
+                      );
+                    })
                   ) : (
-                    <Typography color="text.secondary">
-                      No prescription history available
-                    </Typography>
+                    <Box sx={{ p: 4, textAlign: 'center', borderRadius: '16px', bgcolor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc', border: '1px dashed #cbd5e1' }}>
+                      <HistoryIcon sx={{ fontSize: 40, color: 'text.secondary', mb: 1, opacity: 0.5 }} />
+                      <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 700 }}>
+                        No prescription history available for this patient.
+                      </Typography>
+                    </Box>
                   )}
                 </Box>
               )}
