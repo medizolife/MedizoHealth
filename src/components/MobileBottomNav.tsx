@@ -83,7 +83,7 @@ const MobileBottomNav = () => {
       sx={{ 
         display: { xs: 'block', md: 'none' },
         position: 'fixed', 
-        bottom: { xs: 12, sm: 20 }, 
+        bottom: { xs: 'calc(12px + env(safe-area-inset-bottom, 0px))', sm: 20 }, 
         left: '50% !important', 
         right: 'auto !important',
         transform: 'translateX(-50%) !important',

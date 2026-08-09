@@ -107,7 +107,8 @@ import {
   Bloodtype as BloodIcon,
   ExpandLess as ExpandLessIcon,
   ChevronRight as ChevronRightIcon,
-  Download as DownloadIcon
+  Download as DownloadIcon,
+  Autorenew as ContinueTrailIcon
 } from '@mui/icons-material';
 import api from '../services/api';
 import { useThemeContext } from '../contexts/ThemeContext';
@@ -616,29 +617,47 @@ const NewPrescription = () => {
   };
 
   // Copy past prescription data into current form (re-order)
-  const handleCopyPastRx = (rx: Prescription) => {
-    // Copy diagnosis
-    if (rx.provisionalDiagnosis && rx.provisionalDiagnosis.length > 0) {
-      setFormData(prev => ({
+  const handleContinueTreatmentTrail = (rx: Prescription) => {
+    setFormData(prev => {
+      // Smart merge: deduplicate string arrays
+      const mergeUnique = (existing: string[] | undefined, incoming: string[] | undefined): string[] => {
+        if (!incoming || incoming.length === 0) return existing || [];
+        return Array.from(new Set([...(existing || []), ...incoming]));
+      };
+
+      // Smart merge medications: skip if same name already exists
+      const existingMedNames = new Set((prev.medications || []).map(m => (m.name || '').toLowerCase().trim()));
+      const newMeds = (rx.medications || []).filter(m => {
+        const name = (m.name || (m as any).medicationName || '').toLowerCase().trim();
+        return name && !existingMedNames.has(name);
+      });
+
+      // Extract medication names from past Rx as "current medications" (patient is continuing them)
+      const pastMedNames = (rx.medications || []).map(m => m.name || (m as any).medicationName || '').filter(Boolean);
+
+      return {
         ...prev,
-        provisionalDiagnosis: Array.from(new Set([...(prev.provisionalDiagnosis || []), ...rx.provisionalDiagnosis!]))
-      }));
-    }
-    // Copy medications
-    if (rx.medications && rx.medications.length > 0) {
-      setFormData(prev => ({
-        ...prev,
-        medications: [...(prev.medications || []), ...rx.medications!]
-      }));
-    }
-    // Copy complaints
-    if (rx.presentingComplaints && rx.presentingComplaints.length > 0) {
-      setFormData(prev => ({
-        ...prev,
-        presentingComplaints: Array.from(new Set([...(prev.presentingComplaints || []), ...rx.presentingComplaints!]))
-      }));
-    }
-    setRxSnackbar({ open: true, message: '✅ Past prescription data copied to current form!', severity: 'success' });
+        // Diagnosis & complaints — merge without duplicates
+        provisionalDiagnosis: mergeUnique(prev.provisionalDiagnosis, rx.provisionalDiagnosis),
+        presentingComplaints: mergeUnique(prev.presentingComplaints, rx.presentingComplaints),
+        clinicalFindings: mergeUnique(prev.clinicalFindings, rx.clinicalFindings),
+        // Medications — smart merge (skip duplicates by name)
+        medications: [...(prev.medications || []), ...newMeds],
+        // Past prescribed meds become "current medications" (ongoing)
+        currentMedications: mergeUnique(prev.currentMedications, pastMedNames),
+        // Medication notes
+        medicationNotes: mergeUnique(prev.medicationNotes, rx.medicationNotes),
+        // Investigations — carry forward for follow-up monitoring
+        investigations: [...(prev.investigations || []), ...(rx.investigations || [])],
+        // Dietary & lifestyle
+        dietModifications: mergeUnique(prev.dietModifications, rx.dietModifications),
+        lifestyleChanges: mergeUnique(prev.lifestyleChanges, rx.lifestyleChanges),
+        warningSigns: mergeUnique(prev.warningSigns, rx.warningSigns),
+      };
+    });
+
+    const addedCount = (rx.medications || []).length;
+    setRxSnackbar({ open: true, message: `🔄 Treatment trail continued — diagnosis, ${addedCount} medication(s) & care plan carried forward. Review and adjust as needed.`, severity: 'success' });
   };
 
   // Handle select changes
@@ -1342,7 +1361,7 @@ const NewPrescription = () => {
                             No previous prescriptions found for this patient.
                           </Typography>
                         ) : (
-                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, maxHeight: 260, overflowY: 'auto', pr: 0.5, '&::-webkit-scrollbar': { width: 4 }, '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(66,132,117,0.3)', borderRadius: 2 } }}>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, maxHeight: expandedPastRxId ? 520 : 300, overflowY: 'auto', pr: 0.5, pb: 1, '&::-webkit-scrollbar': { width: 4 }, '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(66,132,117,0.3)', borderRadius: 2 } }}>
                             {pastDoctorPrescriptions.slice(0, 5).map((rx) => {
                               const isExpanded = expandedPastRxId === rx.id;
                               const diagnosisText = typeof rx.provisionalDiagnosis?.[0] === 'object'
@@ -1402,18 +1421,6 @@ const NewPrescription = () => {
                                     </Box>
 
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
-                                      <Tooltip title="Copy to current Rx">
-                                        <IconButton
-                                          size="small"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleCopyPastRx(rx);
-                                          }}
-                                          sx={{ bgcolor: 'rgba(66, 132, 117, 0.1)', '&:hover': { bgcolor: 'rgba(66, 132, 117, 0.2)' } }}
-                                        >
-                                          <CopyIcon sx={{ fontSize: 16, color: '#428475' }} />
-                                        </IconButton>
-                                      </Tooltip>
                                       <Tooltip title={isExpanded ? "Hide Details" : "View Details Inline"}>
                                         <IconButton
                                           size="small"
@@ -1431,59 +1438,85 @@ const NewPrescription = () => {
 
                                   {/* Inline Collapsible Prescription Details */}
                                   <Collapse in={isExpanded}>
-                                    <Box sx={{ p: 2, pt: 1, borderTop: '1px dashed rgba(66, 132, 117, 0.2)', bgcolor: mode === 'dark' ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.7)' }}>
+                                    <Box sx={{ p: 2, pt: 1, pb: 2, borderTop: '1px dashed rgba(66, 132, 117, 0.2)', bgcolor: mode === 'dark' ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.7)' }}>
                                       {/* Medications Detailed List */}
                                       {rx.medications && rx.medications.length > 0 && (
                                         <Box sx={{ mb: 1.5 }}>
                                           <Typography variant="caption" sx={{ fontWeight: 800, color: '#428475', textTransform: 'uppercase', letterSpacing: 0.5, fontSize: '0.65rem', display: 'block', mb: 0.8 }}>
                                             💊 Prescribed Medications ({rx.medications.length})
                                           </Typography>
-                                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.8 }}>
-                                            {rx.medications.map((m: any, idx: number) => (
-                                              <Box key={idx} sx={{ p: 1, borderRadius: '8px', bgcolor: mode === 'dark' ? 'rgba(255,255,255,0.04)' : '#ffffff', border: '1px solid rgba(66,132,117,0.12)' }}>
-                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.3 }}>
-                                                  <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.78rem' }}>
-                                                    {m.name || m.medicationName || 'Medication'}
+                                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.8, maxHeight: 240, overflowY: 'auto', pr: 0.5, '&::-webkit-scrollbar': { width: 4 }, '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(66,132,117,0.2)', borderRadius: 2 } }}>
+                                            {rx.medications.map((m: any, idx: number) => {
+                                              const getMedNote = (med: any): string | null => {
+                                                if (!med) return null;
+                                                const inst = typeof med.instructions === 'string' ? med.instructions.trim() : (med.instructions?.text || med.instructions?.instructions || '');
+                                                if (inst && inst !== '[object Object]') return inst;
+                                                const note = typeof med.note === 'string' ? med.note.trim() : (typeof med.notes === 'string' ? med.notes.trim() : '');
+                                                if (note && note !== '[object Object]') return note;
+                                                const food = typeof med.foodRelation === 'string' ? med.foodRelation.trim() : (typeof med.mealRelation === 'string' ? med.mealRelation.trim() : '');
+                                                if (food && food !== '[object Object]') return food;
+                                                return null;
+                                              };
+                                              const noteStr = getMedNote(m);
+
+                                              return (
+                                                <Box key={idx} sx={{ p: 1, borderRadius: '8px', bgcolor: mode === 'dark' ? 'rgba(255,255,255,0.04)' : '#ffffff', border: '1px solid rgba(66,132,117,0.12)' }}>
+                                                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.3 }}>
+                                                    <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.78rem' }}>
+                                                      {m.name || m.medicationName || 'Medication'}
+                                                    </Typography>
+                                                    {m.dosage && (
+                                                      <Chip label={m.dosage} size="small" sx={{ height: 18, fontSize: '0.62rem', fontWeight: 700, bgcolor: 'rgba(66,132,117,0.1)', color: '#428475' }} />
+                                                    )}
+                                                  </Box>
+                                                  <Typography variant="caption" sx={{ color: '#64748b', fontSize: '0.7rem', display: 'block' }}>
+                                                    {[
+                                                      m.frequency && m.frequency !== m.dosage ? `Freq: ${m.frequency}` : null,
+                                                      m.duration ? `Duration: ${m.duration}` : null,
+                                                      noteStr ? `Note: ${noteStr}` : null
+                                                    ].filter(Boolean).join(' • ') || 'Standard Dosage'}
                                                   </Typography>
-                                                  {m.dosage && (
-                                                    <Chip label={m.dosage} size="small" sx={{ height: 18, fontSize: '0.62rem', fontWeight: 700, bgcolor: 'rgba(66,132,117,0.1)', color: '#428475' }} />
-                                                  )}
                                                 </Box>
-                                                <Typography variant="caption" sx={{ color: '#64748b', fontSize: '0.7rem', display: 'block' }}>
-                                                  {[
-                                                    m.frequency ? `Freq: ${m.frequency}` : null,
-                                                    m.duration ? `Duration: ${m.duration}` : null,
-                                                    m.instructions || m.timing || m.foodRelation ? `Note: ${m.instructions || m.timing || m.foodRelation}` : null
-                                                  ].filter(Boolean).join(' • ') || 'Standard Dosage'}
-                                                </Typography>
-                                              </Box>
-                                            ))}
+                                              );
+                                            })}
                                           </Box>
                                         </Box>
                                       )}
 
                                       {/* Advice / Notes */}
-                                      {((rx as any).advice || rx.notes) && (
-                                        <Box sx={{ mb: 1.5 }}>
-                                          <Typography variant="caption" sx={{ fontWeight: 800, color: '#428475', textTransform: 'uppercase', letterSpacing: 0.5, fontSize: '0.65rem', display: 'block', mb: 0.3 }}>
-                                            📝 Doctor Notes & Advice
-                                          </Typography>
-                                          <Typography variant="caption" sx={{ color: mode === 'dark' ? '#cbd5e1' : '#475569', fontSize: '0.73rem', display: 'block', fontStyle: 'italic' }}>
-                                            {(rx as any).advice || rx.notes}
-                                          </Typography>
-                                        </Box>
-                                      )}
+                                      {(() => {
+                                        const adviceText = (rx as any).advice || rx.notes;
+                                        if (!adviceText) return null;
+                                        const cleanText = typeof adviceText === 'string'
+                                          ? adviceText.trim()
+                                          : Array.isArray(adviceText)
+                                          ? adviceText.join(', ')
+                                          : typeof adviceText === 'object'
+                                          ? (adviceText.text || adviceText.advice || adviceText.notes || '')
+                                          : String(adviceText);
+                                        if (!cleanText || cleanText === '[object Object]') return null;
+                                        return (
+                                          <Box sx={{ mb: 1.5 }}>
+                                            <Typography variant="caption" sx={{ fontWeight: 800, color: '#428475', textTransform: 'uppercase', letterSpacing: 0.5, fontSize: '0.65rem', display: 'block', mb: 0.3 }}>
+                                              📝 Doctor Notes & Advice
+                                            </Typography>
+                                            <Typography variant="caption" sx={{ color: mode === 'dark' ? '#cbd5e1' : '#475569', fontSize: '0.73rem', display: 'block', fontStyle: 'italic' }}>
+                                              {cleanText}
+                                            </Typography>
+                                          </Box>
+                                        );
+                                      })()}
 
                                       {/* Action Toolbar */}
                                       <Box sx={{ display: 'flex', gap: 1, mt: 1.5, pt: 1, borderTop: '1px solid rgba(66,132,117,0.1)', flexWrap: 'wrap' }}>
                                         <Button
                                           size="small"
                                           variant="contained"
-                                          startIcon={<CopyIcon sx={{ fontSize: 14 }} />}
-                                          onClick={() => handleCopyPastRx(rx)}
+                                          startIcon={<ContinueTrailIcon sx={{ fontSize: 14 }} />}
+                                          onClick={() => handleContinueTreatmentTrail(rx)}
                                           sx={{ bgcolor: '#428475', '&:hover': { bgcolor: '#2e5e53' }, fontSize: '0.7rem', textTransform: 'none', py: 0.4, px: 1.5, borderRadius: '8px' }}
                                         >
-                                          Copy to Current Rx
+                                          Continue Treatment Trail
                                         </Button>
                                         <Button
                                           size="small"

@@ -83,7 +83,7 @@ const Home = () => {
     <Box 
       sx={{ 
         minHeight: '100vh', 
-        backgroundColor: '#F8FAFC', 
+        backgroundColor: 'var(--color-light-bg, #F2F8F6)', 
         color: '#0F172A', 
         overflowX: 'hidden',
         position: 'relative'
@@ -97,10 +97,11 @@ const Home = () => {
           top: 0,
           left: 0,
           right: 0,
-          height: '750px',
-          backgroundImage: `radial-gradient(circle at 15% 15%, rgba(16, 185, 129, 0.08) 0%, transparent 60%), radial-gradient(circle at 85% 25%, rgba(56, 189, 248, 0.1) 0%, transparent 60%), url('/images/hero_light_bg.png')`,
+          bottom: 0,
+          minHeight: '100%',
+          backgroundImage: `radial-gradient(circle at 15% 15%, rgba(16, 185, 129, 0.12) 0%, transparent 60%), radial-gradient(circle at 85% 25%, rgba(56, 189, 248, 0.12) 0%, transparent 60%), url('/images/hero_light_bg.png')`,
           backgroundSize: 'cover',
-          backgroundPosition: 'center',
+          backgroundPosition: 'top center',
           opacity: 0.85,
           pointerEvents: 'none',
           zIndex: 0

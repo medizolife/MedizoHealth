@@ -866,7 +866,16 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
                                 </Typography>
                                 <Paper variant="outlined" sx={{ p: 1.5, borderRadius: '12px', bgcolor: isDark ? 'rgba(0,0,0,0.2)' : '#fffbeb', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(245, 158, 11, 0.3)', mb: 2 }}>
                                   <Typography variant="body2" sx={{ color: isDark ? '#FAF2F5' : '#78350f', fontSize: '0.85rem' }}>
-                                    {prescription.notes || prescription.instructions || 'No additional notes provided.'}
+                                    {(() => {
+                                      const noteVal = prescription.notes || prescription.instructions;
+                                      if (!noteVal) return 'No additional notes provided.';
+                                      if (typeof noteVal === 'string' && noteVal.trim() && noteVal !== '[object Object]') return noteVal.trim();
+                                      if (typeof noteVal === 'object') {
+                                        const textStr = noteVal.text || noteVal.notes || noteVal.instructions || noteVal.advice || '';
+                                        if (textStr && textStr !== '[object Object]') return textStr;
+                                      }
+                                      return 'No additional notes provided.';
+                                    })()}
                                   </Typography>
                                 </Paper>
 
