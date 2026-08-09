@@ -9,6 +9,7 @@ import { digilockerAPI } from '../services/api';
 import { Patient } from '../types/auth';
 import { Prescription } from '../types/prescription';
 import QrScannerModal from '../components/QrScannerModal';
+import InvestigationDetailDialog from '../components/InvestigationDetailDialog';
 import { FamilyProfile, RELATIONSHIP_LABELS, RELATIONSHIP_ICONS } from '../types/familyProfile';
 import { getProfilesByAccountId } from '../services/familyProfiles';
 import { 
@@ -97,6 +98,7 @@ import {
   LocalCafe as EmptyStomachIcon,
   AccessTime as AnyTimeIcon,
   FlashOn as SosIcon,
+  Edit as EditIcon,
   ReportProblem as WarningBadgeIcon,
   History as HistoryIcon,
   QrCodeScanner as QrCodeScannerIcon,
@@ -248,7 +250,12 @@ const NewPrescription = () => {
   const [newLifestyle, setNewLifestyle] = useState('');
   const [newWarning, setNewWarning] = useState('');
   const [newBringItem, setNewBringItem] = useState('');
-  const [showCustomTestForm, setShowCustomTestForm] = useState(false);
+
+  // Investigation detail dialog state
+  const [invDialogOpen, setInvDialogOpen] = useState(false);
+  const [invDialogTest, setInvDialogTest] = useState<Investigation>({ testName: '', reason: '', priority: 'Normal', fasting: '' });
+  const [invDialogIsCustom, setInvDialogIsCustom] = useState(false);
+  const [invDialogEditIndex, setInvDialogEditIndex] = useState<number | null>(null);
 
   const [newMedication, setNewMedication] = useState<MedicationItem>({
     name: '',
@@ -471,13 +478,7 @@ const NewPrescription = () => {
     return [...startsWithMatches, ...includesMatches].slice(0, 50);
   }, [newMedication.name]);
 
-  // New investigation form
-  const [newInvestigation, setNewInvestigation] = useState<Investigation>({
-    testName: '',
-    reason: '',
-    priority: 'Normal',
-    fasting: ''
-  });
+
 
   // Fetch only doctor's linked patients on mount
   const fetchMyPatients = async () => {
@@ -734,16 +735,7 @@ const NewPrescription = () => {
     });
   };
 
-  // Add investigation
-  const addInvestigation = () => {
-    if (newInvestigation.testName.trim()) {
-      setFormData({
-        ...formData,
-        investigations: [...(formData.investigations || []), { ...newInvestigation }]
-      });
-      setNewInvestigation({ testName: '', reason: '', priority: 'Normal', fasting: '' });
-    }
-  };
+
 
   // Remove investigation
   const removeInvestigation = (index: number) => {
@@ -751,6 +743,50 @@ const NewPrescription = () => {
       ...formData,
       investigations: formData.investigations?.filter((_, i) => i !== index)
     });
+  };
+
+  // Open investigation dialog for a predefined test
+  const openInvDialogForTest = (testName: string) => {
+    setInvDialogTest({ testName, reason: 'Routine Evaluation', priority: 'Normal', fasting: 'Not Required' });
+    setInvDialogIsCustom(false);
+    setInvDialogEditIndex(null);
+    setInvDialogOpen(true);
+  };
+
+  // Open investigation dialog for a custom test
+  const openInvDialogCustom = () => {
+    setInvDialogTest({ testName: '', reason: 'Routine Evaluation', priority: 'Normal', fasting: 'Not Required' });
+    setInvDialogIsCustom(true);
+    setInvDialogEditIndex(null);
+    setInvDialogOpen(true);
+  };
+
+  // Open investigation dialog for editing an existing investigation
+  const openInvDialogForEdit = (index: number) => {
+    const inv = formData.investigations?.[index];
+    if (inv) {
+      setInvDialogTest({ ...inv });
+      setInvDialogIsCustom(true); // editable test name
+      setInvDialogEditIndex(index);
+      setInvDialogOpen(true);
+    }
+  };
+
+  // Handle investigation dialog confirm
+  const handleInvDialogConfirm = (investigation: Investigation) => {
+    if (invDialogEditIndex !== null) {
+      // Editing existing investigation
+      const updated = [...(formData.investigations || [])];
+      updated[invDialogEditIndex] = investigation;
+      setFormData({ ...formData, investigations: updated });
+    } else {
+      // Adding new investigation
+      setFormData({
+        ...formData,
+        investigations: [...(formData.investigations || []), investigation]
+      });
+    }
+    setInvDialogOpen(false);
   };
 
   // Add bring item to follow-up
@@ -2838,10 +2874,8 @@ const NewPrescription = () => {
                               investigations: formData.investigations?.filter(i => i.testName !== item.name)
                             });
                           } else {
-                            setFormData({
-                              ...formData,
-                              investigations: [...(formData.investigations || []), { testName: item.name, reason: 'Routine Evaluation', priority: 'Normal', fasting: 'Not Required' }]
-                            });
+                            // Open the investigation detail popup instead of adding with defaults
+                            openInvDialogForTest(item.name);
                           }
                         }}
                         sx={{
@@ -2859,116 +2893,72 @@ const NewPrescription = () => {
               </Box>
             ))}
 
-            {/* Custom Other Test Toggle Chip */}
+            {/* Custom Other Test — Opens the detail popup */}
             <Box sx={{ mt: 1.5, mb: 2 }}>
               <Chip
-                label={showCustomTestForm ? '✖ Close Custom Test Menu' : '➕ + Other (Add Custom Test Not Listed)'}
-                onClick={() => setShowCustomTestForm(!showCustomTestForm)}
+                label="➕ + Other (Add Custom Test Not Listed)"
+                onClick={() => openInvDialogCustom()}
                 sx={{
                   fontWeight: 800,
                   fontSize: '0.75rem',
                   cursor: 'pointer',
-                  bgcolor: showCustomTestForm ? '#ef4444' : 'rgba(102, 205, 170, 0.25)',
-                  color: showCustomTestForm ? '#ffffff' : 'var(--color-forest)',
+                  bgcolor: 'rgba(102, 205, 170, 0.25)',
+                  color: 'var(--color-forest)',
                   border: '1px solid var(--color-mint)',
                   py: 0.5
                 }}
               />
             </Box>
 
-            {/* Conditional Custom Test Input Form (Only opens when "+ Other" is clicked) */}
-            {showCustomTestForm && (
-              <Paper variant="outlined" sx={{ p: 2, mb: 2, borderRadius: '18px', bgcolor: mode === 'dark' ? 'rgba(0,0,0,0.3)' : 'rgba(255, 248, 237, 0.7)', borderColor: 'var(--color-mint)' }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', mb: 1.5 }}>
-                  Add Custom Test (Unlisted Diagnostic Test)
-                </Typography>
-                <Grid container spacing={1.5}>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      label="Test Name *"
-                      placeholder="e.g., Upper GI Endoscopy / Biopsy"
-                      value={newInvestigation.testName}
-                      onChange={(e) => setNewInvestigation({ ...newInvestigation, testName: e.target.value })}
-                      InputProps={{ sx: { borderRadius: '12px' } }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      label="Reason"
-                      placeholder="e.g., Evaluate gastric ulceration"
-                      value={newInvestigation.reason}
-                      onChange={(e) => setNewInvestigation({ ...newInvestigation, reason: e.target.value })}
-                      InputProps={{ sx: { borderRadius: '12px' } }}
-                    />
-                  </Grid>
-                  <Grid item xs={6} sm={4}>
-                    <FormControl fullWidth size="small">
-                      <InputLabel id="inv-priority">Priority</InputLabel>
-                      <Select
-                        labelId="inv-priority"
-                        value={newInvestigation.priority || 'Normal'}
-                        label="Priority"
-                        onChange={(e) => setNewInvestigation({ ...newInvestigation, priority: e.target.value })}
-                        sx={{ borderRadius: '12px' }}
-                      >
-                        <MenuItem value="Urgent">Urgent</MenuItem>
-                        <MenuItem value="Normal">Normal</MenuItem>
-                        <MenuItem value="Routine">Routine</MenuItem>
-                      </Select>
-                    </FormControl>
-                  </Grid>
-                  <Grid item xs={6} sm={4}>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      label="Fasting Requirement"
-                      placeholder="e.g., 8 hours fasting"
-                      value={newInvestigation.fasting}
-                      onChange={(e) => setNewInvestigation({ ...newInvestigation, fasting: e.target.value })}
-                      InputProps={{ sx: { borderRadius: '12px' } }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={4}>
-                    <Button 
-                      variant="contained" 
-                      fullWidth 
-                      onClick={() => {
-                        addInvestigation();
-                        setShowCustomTestForm(false);
-                      }}
-                      startIcon={<AddIcon />}
-                      sx={{ height: 40, bgcolor: 'var(--color-forest)', color: '#ffffff', fontWeight: 800, borderRadius: '12px' }}
-                    >
-                      + Add Custom Test
-                    </Button>
-                  </Grid>
-                </Grid>
-              </Paper>
-            )}
-
             {formData.investigations && formData.investigations.length > 0 && (
               <Box sx={{ mb: 2 }}>
-                {formData.investigations.map((inv, idx) => (
-                  <Card key={idx} variant="outlined" sx={{ mb: 1, p: 1.5, borderRadius: '14px', bgcolor: mode === 'dark' ? 'rgba(18, 38, 34, 0.85)' : '#ffffff', borderColor: mode === 'dark' ? 'rgba(137, 215, 183, 0.3)' : 'rgba(0,0,0,0.12)' }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Box>
-                        <Typography variant="body2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C' }}>
-                          {idx + 1}. {inv.testName}
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: mode === 'dark' ? '#89D7B7' : '#428475', display: 'block', fontWeight: 600 }}>
-                          Reason: {inv.reason || 'Standard check'} • Priority: {inv.priority}
-                        </Typography>
+                <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', display: 'block', mb: 1, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  Added Investigations ({formData.investigations.length})
+                </Typography>
+                {formData.investigations.map((inv, idx) => {
+                  const priorityColor = inv.priority === 'Urgent' ? '#ef4444' : inv.priority === 'Routine' ? '#22c55e' : '#f59e0b';
+                  return (
+                    <Card key={idx} variant="outlined" sx={{ mb: 1, p: 1.5, borderRadius: '14px', bgcolor: mode === 'dark' ? 'rgba(18, 38, 34, 0.85)' : '#ffffff', borderColor: mode === 'dark' ? 'rgba(137, 215, 183, 0.3)' : 'rgba(0,0,0,0.12)', transition: 'all 0.2s ease', '&:hover': { borderColor: mode === 'dark' ? 'rgba(137, 215, 183, 0.6)' : 'rgba(66, 132, 117, 0.4)' } }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <Box sx={{ flex: 1 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                            <Typography variant="body2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C' }}>
+                              {idx + 1}. {inv.testName}
+                            </Typography>
+                            <Chip
+                              label={inv.priority || 'Normal'}
+                              size="small"
+                              sx={{
+                                height: 20,
+                                fontWeight: 800,
+                                fontSize: '0.65rem',
+                                bgcolor: `${priorityColor}22`,
+                                color: priorityColor,
+                                border: `1px solid ${priorityColor}44`
+                              }}
+                            />
+                          </Box>
+                          <Typography variant="caption" sx={{ color: mode === 'dark' ? '#89D7B7' : '#428475', display: 'block', fontWeight: 600 }}>
+                            {inv.reason || 'Standard check'} • Fasting: {inv.fasting || 'Not specified'}
+                          </Typography>
+                          {inv.specialInstructions && (
+                            <Typography variant="caption" sx={{ color: mode === 'dark' ? 'rgba(250, 242, 245, 0.6)' : 'rgba(26, 49, 44, 0.6)', display: 'block', fontStyle: 'italic', mt: 0.3 }}>
+                              📋 {inv.specialInstructions}
+                            </Typography>
+                          )}
+                        </Box>
+                        <Box sx={{ display: 'flex', gap: 0.5 }}>
+                          <IconButton size="small" onClick={() => openInvDialogForEdit(idx)} sx={{ color: mode === 'dark' ? '#89D7B7' : '#428475' }}>
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton size="small" onClick={() => removeInvestigation(idx)} sx={{ color: '#ef4444' }}>
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Box>
                       </Box>
-                      <IconButton size="small" onClick={() => removeInvestigation(idx)} sx={{ color: '#ef4444' }}>
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </Box>
-                  </Card>
-                ))}
+                    </Card>
+                  );
+                })}
               </Box>
             )}
 
@@ -3757,6 +3747,17 @@ const NewPrescription = () => {
           {rxSnackbar.message}
         </Alert>
       </Snackbar>
+
+      {/* Investigation Detail Dialog */}
+      <InvestigationDetailDialog
+        open={invDialogOpen}
+        onClose={() => setInvDialogOpen(false)}
+        onConfirm={handleInvDialogConfirm}
+        initialData={invDialogTest}
+        isCustom={invDialogIsCustom}
+        isEditing={invDialogEditIndex !== null}
+        mode={mode}
+      />
     </Container>
   );
 };

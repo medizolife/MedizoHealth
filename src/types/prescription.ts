@@ -44,6 +44,7 @@ export interface Investigation {
   reason?: string;
   priority?: string;
   fasting?: string;
+  specialInstructions?: string;
 }
 
 // Follow-up information
