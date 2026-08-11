@@ -57,6 +57,7 @@ export interface Patient extends User {
   allergies?: string | string[];
   emergencyContact?: string;
   medicalHistory?: string;
+  guardianId?: string;
   familyProfiles?: any[];
 }
 

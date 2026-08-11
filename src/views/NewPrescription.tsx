@@ -53,7 +53,8 @@ import {
   Tooltip,
   Collapse,
   FormControlLabel,
-  Switch
+  Switch,
+  LinearProgress
 } from '@mui/material';
 import indianMedicines from '../data/indianMedicines.json';
 import {
@@ -108,7 +109,10 @@ import {
   ExpandLess as ExpandLessIcon,
   ChevronRight as ChevronRightIcon,
   Download as DownloadIcon,
-  Autorenew as ContinueTrailIcon
+  Autorenew as ContinueTrailIcon,
+  NavigateNext as NextIcon,
+  NavigateBefore as PrevIcon,
+  Check as CheckIcon
 } from '@mui/icons-material';
 import api from '../services/api';
 import { useThemeContext } from '../contexts/ThemeContext';
@@ -119,6 +123,34 @@ const NewPrescription = () => {
   const { authState } = useAuth();
   const { user } = authState;
   const { mode } = useThemeContext();
+
+  // Stepper Card state (2 sections per step card flow)
+  const [activeStep, setActiveStep] = useState(0);
+  const [viewMode, setViewMode] = useState<'cards' | 'all'>('cards');
+
+  const FORM_STEPS = [
+    { label: 'Patient & Vitals', icon: '👤', subtitle: 'Select patient & record consultation vitals' },
+    { label: 'Clinical & Diagnosis', icon: '🩺', subtitle: 'Complaints, findings & provisional diagnosis' },
+    { label: 'Rx & Lab Tests', icon: '💊', subtitle: 'Prescribe medications & diagnostic tests' },
+    { label: 'Advice & Follow-Up', icon: '🍏', subtitle: 'Diet advice, follow-up schedule & final remarks' },
+  ];
+
+  const handleNextStep = () => {
+    if (activeStep === 0 && !selectedPatient) {
+      setError('Please select a target patient before proceeding.');
+      window.scrollTo({ top: 120, behavior: 'smooth' });
+      return;
+    }
+    setError(null);
+    setActiveStep(prev => Math.min(FORM_STEPS.length - 1, prev + 1));
+    window.scrollTo({ top: 120, behavior: 'smooth' });
+  };
+
+  const handlePrevStep = () => {
+    setError(null);
+    setActiveStep(prev => Math.max(0, prev - 1));
+    window.scrollTo({ top: 120, behavior: 'smooth' });
+  };
   
   // Redirect non-doctors away from prescription creation page
   useEffect(() => {
@@ -150,6 +182,26 @@ const NewPrescription = () => {
   });
   const [newPatientError, setNewPatientError] = useState('');
   const [newPatientSuccess, setNewPatientSuccess] = useState('');
+
+  // Guardian state (for minor patients under 15)
+  const [guardianMode, setGuardianMode] = useState<'link' | 'create'>('link');
+  const [guardianSearchQuery, setGuardianSearchQuery] = useState('');
+  const [guardianSearching, setGuardianSearching] = useState(false);
+  const [guardianFound, setGuardianFound] = useState<any>(null);
+  const [guardianCreateData, setGuardianCreateData] = useState({ firstName: '', lastName: '', email: '', phone: '' });
+
+  // Helper: compute patient age from DOB
+  const computePatientAge = (dob: string): number => {
+    if (!dob) return 99;
+    const birthDate = new Date(dob);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
+    return age;
+  };
+  const isMinorPatient = computePatientAge(newPatientData.dateOfBirth) < 15;
+  const isGuardianResolved = guardianFound !== null || (guardianMode === 'create' && guardianCreateData.firstName && guardianCreateData.lastName && (guardianCreateData.email || guardianCreateData.phone));
 
   // Add existing patient modal state
   const [addExistingPatientDialogOpen, setAddExistingPatientDialogOpen] = useState(false);
@@ -279,6 +331,16 @@ const NewPrescription = () => {
   // Popover state for per-time-of-day dose count + meal relation
   const [mealPopoverAnchor, setMealPopoverAnchor] = useState<HTMLElement | null>(null);
   const [mealPopoverTimeKey, setMealPopoverTimeKey] = useState<'morning' | 'afternoon' | 'evening' | 'night'>('morning');
+
+  const openMealPopover = (e: React.MouseEvent<HTMLElement>, key: 'morning' | 'afternoon' | 'evening' | 'night') => {
+    setMealPopoverAnchor(e.currentTarget);
+    setMealPopoverTimeKey(key);
+  };
+
+  const handlePatientChange = (e: SelectChangeEvent<string>) => {
+    const val = e.target.value;
+    setFormData(prev => ({ ...prev, patientId: val }));
+  };
 
   const getDispensaryUnit = (medForm: string = 'Tablet') => {
     switch (medForm) {
@@ -839,17 +901,23 @@ const NewPrescription = () => {
     
     if (!formData.patientId) {
       setError('Please select a patient before issuing prescription');
+      setActiveStep(0);
+      window.scrollTo({ top: 120, behavior: 'smooth' });
       return;
     }
 
     // If multiple profiles exist, require profile selection
     if (familyProfiles.length > 1 && !selectedProfile) {
       setError('Please select which family member this prescription is for');
+      setActiveStep(0);
+      window.scrollTo({ top: 120, behavior: 'smooth' });
       return;
     }
 
     if (!formData.medications || formData.medications.length === 0) {
       setError('Please add at least one prescribed medication');
+      setActiveStep(2);
+      window.scrollTo({ top: 120, behavior: 'smooth' });
       return;
     }
     
@@ -887,7 +955,7 @@ const NewPrescription = () => {
   };
   
   return (
-    <Container maxWidth="xl" sx={{ pt: { xs: 2, sm: 3 }, pb: 10, px: { xs: 1.5, sm: 3, md: 4 } }} className="animate-slide-up">
+    <Container maxWidth="lg" sx={{ pt: { xs: 2, sm: 3.5 }, pb: { xs: 24, sm: 10 }, px: { xs: 1.5, sm: 3, md: 4 }, maxWidth: '1260px', mx: 'auto' }} className="animate-slide-up">
       
       {/* ─── Hero Glass Header ─── */}
       <Paper 
@@ -1014,2276 +1082,2642 @@ const NewPrescription = () => {
         </Alert>
       )}
       
-      <Box component="form" onSubmit={handleSubmit}>
-        
-        {/* ─── 1. Patient Selection Card ─── */}
-        <Paper 
-          className={mode === 'dark' ? 'apple-glass-card-dark' : 'apple-glass-card'}
-          sx={{ 
-            p: { xs: 2.2, sm: 3 }, 
-            mb: 3, 
-            borderRadius: '24px !important'
-          }}
-        >
-          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'flex-start', sm: 'center' }, justifyContent: 'space-between', mb: 2, gap: 1 }}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)', display: 'flex', alignItems: 'center', gap: 1 }}>
-              <PersonIcon sx={{ color: 'var(--color-mint)' }} /> 1. Select Target Patient *
+      {/* ─── Modern Stepper Header & View Mode Switch ─── */}
+      <Paper
+        className={mode === 'dark' ? 'apple-glass-card-dark' : 'apple-glass-card'}
+        sx={{
+          display: { xs: 'none', sm: 'block' },
+          p: { xs: 2, sm: 2.5 },
+          mb: 3,
+          borderRadius: '24px !important',
+          border: mode === 'dark' ? '1px solid rgba(137, 215, 183, 0.25)' : '1px solid rgba(66, 132, 117, 0.2)',
+        }}
+      >
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'flex-start', sm: 'center' }, justifyContent: 'space-between', mb: 2, gap: 1.5 }}>
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: 900, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', display: 'flex', alignItems: 'center', gap: 1, fontSize: '1.05rem' }}>
+              {FORM_STEPS[activeStep].icon} {FORM_STEPS[activeStep].label}
             </Typography>
-
-            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<PersonAddIcon />}
-                onClick={() => setNewPatientDialogOpen(true)}
-                sx={{ borderRadius: '14px', fontWeight: 800, fontSize: '0.75rem', borderColor: 'var(--color-forest)', color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }}
-              >
-                + NEW PATIENT
-              </Button>
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<PersonSearchIcon />}
-                onClick={() => setAddExistingPatientDialogOpen(true)}
-                sx={{ borderRadius: '14px', fontWeight: 800, fontSize: '0.75rem', borderColor: 'var(--color-forest)', color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }}
-              >
-                + ADD EXISTING
-              </Button>
-            </Box>
+            <Typography variant="caption" sx={{ color: mode === 'dark' ? '#89D7B7' : '#428475', fontWeight: 700 }}>
+              Step {activeStep + 1} of 4 • {FORM_STEPS[activeStep].subtitle}
+            </Typography>
           </Box>
-          
-          <Grid container spacing={2}>
-            <Grid item xs={12}>
-              <FormControl fullWidth required size="small">
-                <InputLabel id="patient-select-label" sx={{ color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)', fontWeight: 700 }}>Select Patient *</InputLabel>
-                <Select
-                  labelId="patient-select-label"
-                  name="patientId"
-                  value={formData.patientId}
-                  label="Select Patient *"
-                  onChange={handleSelectChange}
-                  MenuProps={{
-                    PaperProps: {
-                      sx: {
-                        maxHeight: 260,
-                        overflowY: 'auto',
-                        borderRadius: '14px',
-                        '&::-webkit-scrollbar': { width: 6 },
-                        '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(66,132,117,0.3)', borderRadius: 3 }
-                      }
+
+          {/* View Mode Switcher */}
+          <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 1, bgcolor: mode === 'dark' ? 'rgba(0,0,0,0.3)' : 'rgba(66, 132, 117, 0.08)', p: 0.5, borderRadius: '16px' }}>
+            <Button
+              size="small"
+              onClick={() => setViewMode('cards')}
+              sx={{
+                borderRadius: '12px',
+                fontWeight: 800,
+                fontSize: '0.72rem',
+                px: 1.5,
+                py: 0.6,
+                bgcolor: viewMode === 'cards' ? '#428475' : 'transparent',
+                color: viewMode === 'cards' ? '#ffffff' : mode === 'dark' ? '#89D7B7' : '#1A312C',
+                '&:hover': { bgcolor: viewMode === 'cards' ? '#356d61' : 'rgba(66,132,117,0.1)' }
+              }}
+            >
+              🎴 Card View (2 Sections/Step)
+            </Button>
+            <Button
+              size="small"
+              onClick={() => setViewMode('all')}
+              sx={{
+                borderRadius: '12px',
+                fontWeight: 800,
+                fontSize: '0.72rem',
+                px: 1.5,
+                py: 0.6,
+                bgcolor: viewMode === 'all' ? '#428475' : 'transparent',
+                color: viewMode === 'all' ? '#ffffff' : mode === 'dark' ? '#89D7B7' : '#1A312C',
+                '&:hover': { bgcolor: viewMode === 'all' ? '#356d61' : 'rgba(66,132,117,0.1)' }
+              }}
+            >
+              📄 Show All Sections
+            </Button>
+          </Box>
+        </Box>
+
+        {/* Progress Bar */}
+        <Box sx={{ width: '100%', mb: 2 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+            <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', fontSize: '0.72rem' }}>
+              Prescription Progress
+            </Typography>
+            <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', fontSize: '0.72rem' }}>
+              {Math.round(((activeStep + 1) / 4) * 100)}% Completed
+            </Typography>
+          </Box>
+          <LinearProgress
+            variant="determinate"
+            value={((activeStep + 1) / 4) * 100}
+            sx={{
+              height: 8,
+              borderRadius: 4,
+              bgcolor: mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+              '& .MuiLinearProgress-bar': {
+                borderRadius: 4,
+                background: 'linear-gradient(90deg, #428475 0%, #89D7B7 100%)'
+              }
+            }}
+          />
+        </Box>
+
+        {/* 4 Interactive Step Indicator Cards */}
+        <Grid container spacing={1.5}>
+          {FORM_STEPS.map((step, idx) => {
+            const isActive = activeStep === idx;
+            const isCompleted = activeStep > idx;
+            return (
+              <Grid item xs={6} sm={3} key={idx}>
+                <Paper
+                  onClick={() => {
+                    setActiveStep(idx);
+                    window.scrollTo({ top: 120, behavior: 'smooth' });
+                  }}
+                  elevation={isActive ? 6 : 0}
+                  sx={{
+                    p: 1.5,
+                    borderRadius: '18px',
+                    cursor: 'pointer',
+                    border: isActive
+                      ? '2px solid #89D7B7'
+                      : isCompleted
+                      ? '1px solid rgba(137, 215, 183, 0.4)'
+                      : '1px solid rgba(0,0,0,0.08)',
+                    bgcolor: isActive
+                      ? mode === 'dark' ? 'rgba(66, 132, 117, 0.38)' : 'rgba(66, 132, 117, 0.12)'
+                      : isCompleted
+                      ? mode === 'dark' ? 'rgba(137, 215, 183, 0.1)' : 'rgba(137, 215, 183, 0.15)'
+                      : mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.75)',
+                    boxShadow: isActive
+                      ? (mode === 'dark' ? '0 0 24px rgba(137, 215, 183, 0.25)' : '0 6px 20px rgba(66, 132, 117, 0.18)')
+                      : 'none',
+                    transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1.2,
+                    '&:hover': {
+                      transform: 'translateY(-3px)',
+                      borderColor: '#89D7B7'
                     }
                   }}
-                  sx={{ 
-                    borderRadius: '16px',
-                    bgcolor: mode === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(255, 255, 255, 0.9)',
-                    fontWeight: 700,
-                    color: mode === 'dark' ? '#FAF2F5' : '#123029',
-                    '& fieldset': { borderColor: 'var(--glass-border)' }
-                  }}
                 >
-                  {patients.length === 0 && (
-                    <MenuItem disabled value="" sx={{ fontStyle: 'italic', color: '#999' }}>
-                      No linked patients yet — use + NEW or + ADD EXISTING
-                    </MenuItem>
-                  )}
-                  {patients.map(patient => {
-                    const phone = (patient as any).contactNumber || (patient as any).phone || (patient as any).mobile || '';
-                    return (
-                      <MenuItem key={patient.id} value={patient.id} sx={{ fontWeight: 600 }}>
-                        {patient.firstName} {patient.lastName} {phone ? `(Mobile: ${phone})` : `(${patient.email})`}
-                      </MenuItem>
-                    );
-                  })}
-                </Select>
-                <Typography variant="caption" sx={{ color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-teal)', mt: 0.8, display: 'block', fontWeight: 600 }}>
-                  {patients.length > 0 
-                    ? `Showing ${patients.length} linked patient${patients.length > 1 ? 's' : ''} (latest activity first)`
-                    : 'Add patients using + NEW PATIENT or + ADD EXISTING above'}
+                  <Avatar
+                    sx={{
+                      width: 36,
+                      height: 36,
+                      fontSize: '0.95rem',
+                      fontWeight: 900,
+                      bgcolor: isActive
+                        ? '#89D7B7'
+                        : isCompleted
+                        ? '#428475'
+                        : mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+                      color: isActive ? '#1A312C' : isCompleted ? '#ffffff' : mode === 'dark' ? '#FAF2F5' : '#64748b',
+                      boxShadow: isActive ? '0 0 12px rgba(137, 215, 183, 0.4)' : 'none'
+                    }}
+                  >
+                    {isCompleted ? <CheckIcon sx={{ fontSize: 20 }} /> : step.icon}
+                  </Avatar>
+                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                    <Typography variant="caption" sx={{ fontWeight: 800, color: isActive ? (mode === 'dark' ? '#FAF2F5' : '#1A312C') : '#64748b', display: 'block', lineHeight: 1.25, fontSize: '0.78rem' }} noWrap>
+                      {idx + 1}. {step.label}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: isActive ? '#89D7B7' : '#94a3b8', fontSize: '0.65rem', fontWeight: 700, display: 'block' }} noWrap>
+                      {isCompleted ? '✓ Completed' : isActive ? '● Active Step' : 'Pending'}
+                    </Typography>
+                  </Box>
+                </Paper>
+              </Grid>
+            );
+          })}
+        </Grid>
+      </Paper>
+      
+      <Box component="form" onSubmit={handleSubmit}>
+        
+        {/* ═══ STEP 1: PATIENT SELECTION & VITAL SIGNS ═══ */}
+        {(viewMode === 'all' || activeStep === 0) && (
+          <Box 
+            key={activeStep === 0 ? 'step-0' : 'step-all-0'}
+            sx={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: 0,
+              animation: 'stepCardFadeIn 0.38s cubic-bezier(0.16, 1, 0.3, 1)',
+              '@keyframes stepCardFadeIn': {
+                '0%': { opacity: 0, transform: 'translateY(16px) scale(0.992)' },
+                '100%': { opacity: 1, transform: 'translateY(0) scale(1)' }
+              }
+            }}
+          >
+            {/* ─── 1. Patient Selection Card ─── */}
+            <Paper 
+              className={mode === 'dark' ? 'apple-glass-card-dark' : 'apple-glass-card'}
+              sx={{ 
+                p: { xs: 2.2, sm: 3 }, 
+                mb: 3, 
+                borderRadius: '24px !important'
+              }}
+            >
+              <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'flex-start', sm: 'center' }, justifyContent: 'space-between', mb: 2, gap: 1 }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)', display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <PersonIcon sx={{ color: 'var(--color-mint)' }} /> 1. Select Target Patient *
                 </Typography>
-              </FormControl>
-            </Grid>
 
-            {/* ═══ Family Profile Selector ═══ */}
-            {selectedPatient && familyProfiles.length > 1 && (
-              <Grid item xs={12}>
-                <Paper
-                  elevation={0}
-                  sx={{
-                    p: 2,
-                    borderRadius: '18px',
-                    border: mode === 'dark' ? '1.5px solid rgba(137, 215, 183, 0.25)' : '1.5px solid rgba(66, 132, 117, 0.2)',
-                    bgcolor: mode === 'dark' ? 'rgba(17, 29, 26, 0.7)' : 'rgba(66, 132, 117, 0.04)',
-                  }}
-                >
-                  <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', textTransform: 'uppercase', fontSize: '0.68rem', display: 'block', mb: 1.2 }}>
-                    👥 Select Profile for Prescription *
-                  </Typography>
-                  <Box sx={{ display: 'flex', gap: 1.2, flexWrap: 'wrap' }}>
-                    {familyProfiles.map((profile) => (
-                      <Paper
-                        key={profile.id}
-                        elevation={0}
-                        onClick={() => setSelectedProfile(profile)}
-                        sx={{
-                          p: 1.5,
-                          borderRadius: '14px',
-                          cursor: 'pointer',
-                          border: selectedProfile?.id === profile.id
-                            ? (mode === 'dark' ? '2px solid #89D7B7' : '2px solid #428475')
-                            : (mode === 'dark' ? '1.5px solid rgba(137, 215, 183, 0.15)' : '1.5px solid rgba(0,0,0,0.08)'),
-                          bgcolor: selectedProfile?.id === profile.id
-                            ? (mode === 'dark' ? 'rgba(137, 215, 183, 0.12)' : 'rgba(66, 132, 117, 0.08)')
-                            : (mode === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.8)'),
-                          transition: 'all 0.2s ease',
-                          minWidth: 120,
-                          '&:hover': {
-                            borderColor: mode === 'dark' ? '#89D7B7' : '#428475',
-                            transform: 'translateY(-1px)',
-                            boxShadow: '0 4px 12px rgba(66, 132, 117, 0.15)'
-                          }
-                        }}
-                      >
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                          <Avatar
+                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<PersonAddIcon />}
+                    onClick={() => setNewPatientDialogOpen(true)}
+                    sx={{ borderRadius: '14px', fontWeight: 800, fontSize: '0.75rem', borderColor: 'var(--color-forest)', color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }}
+                  >
+                    + NEW PATIENT
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<PersonSearchIcon />}
+                    onClick={() => setAddExistingPatientDialogOpen(true)}
+                    sx={{ borderRadius: '14px', fontWeight: 800, fontSize: '0.75rem', borderColor: 'var(--color-forest)', color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }}
+                  >
+                    + ADD EXISTING
+                  </Button>
+                </Box>
+              </Box>
+              
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <FormControl fullWidth required size="small">
+                    <InputLabel id="patient-select-label" sx={{ color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)', fontWeight: 700 }}>Select Patient *</InputLabel>
+                    <Select
+                      labelId="patient-select-label"
+                      value={formData.patientId}
+                      label="Select Patient *"
+                      onChange={handlePatientChange}
+                      sx={{ borderRadius: '14px' }}
+                    >
+                      {patients.map((patient) => (
+                        <MenuItem key={patient.id || (patient as any)._id} value={patient.id || (patient as any)._id}>
+                          {patient.firstName} {patient.lastName} ({patient.email})
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                {/* Family Profiles Bar */}
+                {selectedPatient && familyProfiles.length > 0 && (
+                  <Grid item xs={12}>
+                    <Paper 
+                      variant="outlined" 
+                      sx={{ 
+                        p: 1.5, 
+                        borderRadius: '16px', 
+                        bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.05)' : 'rgba(66, 132, 117, 0.05)',
+                        borderColor: selectedProfile ? '#428475' : '#dc2626'
+                      }}
+                    >
+                      <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', display: 'block', mb: 1 }}>
+                        👨‍👩‍👧‍👦 Select Family Member for this Prescription *:
+                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                        {familyProfiles.map((profile) => (
+                          <Paper
+                            key={profile.id}
+                            onClick={() => setSelectedProfile(profile)}
+                            elevation={selectedProfile?.id === profile.id ? 2 : 0}
                             sx={{
-                              width: 28,
-                              height: 28,
-                              bgcolor: selectedProfile?.id === profile.id ? '#1A312C' : '#428475',
-                              color: '#89D7B7',
-                              fontSize: '0.8rem',
-                              fontWeight: 800
+                              p: 1,
+                              px: 1.5,
+                              borderRadius: '12px',
+                              cursor: 'pointer',
+                              border: selectedProfile?.id === profile.id ? '2px solid #428475' : '1px solid rgba(0,0,0,0.1)',
+                              bgcolor: selectedProfile?.id === profile.id ? (mode === 'dark' ? 'rgba(66, 132, 117, 0.3)' : '#e6f2ef') : 'transparent',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 1
                             }}
                           >
-                            {RELATIONSHIP_ICONS[profile.relationship] || '👤'}
+                            <Avatar
+                              sx={{
+                                width: 28,
+                                height: 28,
+                                bgcolor: selectedProfile?.id === profile.id ? '#1A312C' : '#428475',
+                                color: '#89D7B7',
+                                fontSize: '0.8rem',
+                                fontWeight: 800
+                              }}
+                            >
+                              {RELATIONSHIP_ICONS[profile.relationship] || '👤'}
+                            </Avatar>
+                            <Box>
+                              <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', display: 'block', lineHeight: 1.2, fontSize: '0.76rem' }}>
+                                {profile.firstName}
+                              </Typography>
+                              <Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b', fontSize: '0.62rem' }}>
+                                {RELATIONSHIP_LABELS[profile.relationship]}
+                              </Typography>
+                            </Box>
+                            <Typography variant="caption" sx={{ fontWeight: 800, fontFamily: 'monospace', color: '#428475', fontSize: '0.65rem' }}>
+                              {profile.patientDisplayId}
+                            </Typography>
+                          </Paper>
+                        ))}
+                      </Box>
+                      {!selectedProfile && (
+                        <Typography variant="caption" sx={{ color: '#dc2626', fontWeight: 600, mt: 1, display: 'block', fontSize: '0.7rem' }}>
+                          ⚠️ Please select which family member this prescription is for
+                        </Typography>
+                      )}
+                    </Paper>
+                  </Grid>
+                )}
+
+                {loadingProfiles && (
+                  <Grid item xs={12}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1 }}>
+                      <CircularProgress size={16} sx={{ color: '#428475' }} />
+                      <Typography variant="caption" sx={{ color: '#64748b' }}>Loading family profiles...</Typography>
+                    </Box>
+                  </Grid>
+                )}
+                
+                {selectedPatient && (
+                  <Grid item xs={12}>
+                    {/* Rich Patient Context Card */}
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        borderRadius: '22px',
+                        border: mode === 'dark' ? '1.5px solid rgba(137, 215, 183, 0.3)' : '1.5px solid rgba(18, 48, 41, 0.12)',
+                        bgcolor: mode === 'dark' ? 'rgba(17, 29, 26, 0.85)' : 'rgba(255, 255, 255, 0.95)',
+                        overflow: 'hidden',
+                        backdropFilter: 'blur(16px)',
+                        boxShadow: mode === 'dark' ? '0 8px 32px rgba(0,0,0,0.3)' : '0 8px 32px rgba(18, 48, 41, 0.06)'
+                      }}
+                    >
+                      {/* Patient Header */}
+                      <Box
+                        onClick={() => setPatientContextExpanded(!patientContextExpanded)}
+                        sx={{
+                          p: 2,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          cursor: 'pointer',
+                          transition: 'background 0.2s',
+                          '&:hover': { bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.06)' : 'rgba(102, 205, 170, 0.06)' }
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                          <Avatar
+                            sx={{
+                              width: 48,
+                              height: 48,
+                              bgcolor: mode === 'dark' ? '#428475' : '#1A312C',
+                              color: '#89D7B7',
+                              fontWeight: 900,
+                              fontSize: '1.1rem'
+                            }}
+                          >
+                            {selectedPatient.firstName?.[0]?.toUpperCase() || 'P'}
                           </Avatar>
                           <Box>
-                            <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', display: 'block', lineHeight: 1.2, fontSize: '0.76rem' }}>
-                              {profile.firstName}
+                            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', lineHeight: 1.2 }}>
+                              {selectedPatient.firstName} {selectedPatient.lastName}
                             </Typography>
-                            <Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b', fontSize: '0.62rem' }}>
-                              {RELATIONSHIP_LABELS[profile.relationship]}
+                            <Typography variant="caption" sx={{ color: mode === 'dark' ? '#89D7B7' : '#428475', fontWeight: 700, display: 'block' }}>
+                              {selectedPatient.email}
+                              {(selectedPatient as any).dateOfBirth && ` • ${new Date().getFullYear() - new Date((selectedPatient as any).dateOfBirth).getFullYear()} yrs`}
                             </Typography>
                           </Box>
                         </Box>
-                        <Typography variant="caption" sx={{ fontWeight: 800, fontFamily: 'monospace', color: '#428475', fontSize: '0.65rem' }}>
-                          {profile.patientDisplayId}
-                        </Typography>
-                      </Paper>
-                    ))}
-                  </Box>
-                  {!selectedProfile && (
-                    <Typography variant="caption" sx={{ color: '#dc2626', fontWeight: 600, mt: 1, display: 'block', fontSize: '0.7rem' }}>
-                      ⚠️ Please select which family member this prescription is for
-                    </Typography>
-                  )}
-                </Paper>
-              </Grid>
-            )}
-
-            {loadingProfiles && (
-              <Grid item xs={12}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1 }}>
-                  <CircularProgress size={16} sx={{ color: '#428475' }} />
-                  <Typography variant="caption" sx={{ color: '#64748b' }}>Loading family profiles...</Typography>
-                </Box>
-              </Grid>
-            )}
-            
-            {selectedPatient && (
-              <Grid item xs={12}>
-                {/* ═══ Rich Patient Context Card ═══ */}
-                <Paper
-                  elevation={0}
-                  sx={{
-                    borderRadius: '22px',
-                    border: mode === 'dark' ? '1.5px solid rgba(137, 215, 183, 0.3)' : '1.5px solid rgba(18, 48, 41, 0.12)',
-                    bgcolor: mode === 'dark' ? 'rgba(17, 29, 26, 0.85)' : 'rgba(255, 255, 255, 0.95)',
-                    overflow: 'hidden',
-                    backdropFilter: 'blur(16px)',
-                    boxShadow: mode === 'dark' ? '0 8px 32px rgba(0,0,0,0.3)' : '0 8px 32px rgba(18, 48, 41, 0.06)'
-                  }}
-                >
-                  {/* Patient Header - Always Visible */}
-                  <Box
-                    onClick={() => setPatientContextExpanded(!patientContextExpanded)}
-                    sx={{
-                      p: 2,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      cursor: 'pointer',
-                      transition: 'background 0.2s',
-                      '&:hover': { bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.06)' : 'rgba(102, 205, 170, 0.06)' }
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                      <Avatar
-                        sx={{
-                          width: 48,
-                          height: 48,
-                          bgcolor: mode === 'dark' ? '#428475' : '#1A312C',
-                          color: '#89D7B7',
-                          fontWeight: 900,
-                          fontSize: '1.1rem'
-                        }}
-                      >
-                        {selectedPatient.firstName?.[0]?.toUpperCase() || 'P'}
-                      </Avatar>
-                      <Box>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', lineHeight: 1.2 }}>
-                          {selectedPatient.firstName} {selectedPatient.lastName}
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: mode === 'dark' ? '#89D7B7' : '#428475', fontWeight: 700, display: 'block' }}>
-                          {selectedPatient.email}
-                          {(selectedPatient as any).dateOfBirth && ` • ${new Date().getFullYear() - new Date((selectedPatient as any).dateOfBirth).getFullYear()} yrs`}
-                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          {pastDoctorPrescriptions.length > 0 && (
+                            <Chip
+                              label={`${pastDoctorPrescriptions.length} Past Rx`}
+                              size="small"
+                              sx={{ bgcolor: 'rgba(66, 132, 117, 0.15)', color: '#428475', fontWeight: 800, fontSize: '0.68rem', height: 22 }}
+                            />
+                          )}
+                          {patientContextExpanded ? <ExpandLessIcon sx={{ color: '#428475' }} /> : <ExpandMoreIcon sx={{ color: '#428475' }} />}
+                        </Box>
                       </Box>
-                    </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      {pastDoctorPrescriptions.length > 0 && (
-                        <Chip
-                          label={`${pastDoctorPrescriptions.length} Past Rx`}
-                          size="small"
-                          sx={{ bgcolor: 'rgba(66, 132, 117, 0.15)', color: '#428475', fontWeight: 800, fontSize: '0.68rem', height: 22 }}
-                        />
-                      )}
-                      {patientContextExpanded ? <ExpandLessIcon sx={{ color: '#428475' }} /> : <ExpandMoreIcon sx={{ color: '#428475' }} />}
-                    </Box>
-                  </Box>
 
-                  <Collapse in={patientContextExpanded}>
-                    <Divider sx={{ borderColor: mode === 'dark' ? 'rgba(137, 215, 183, 0.15)' : 'rgba(18, 48, 41, 0.08)' }} />
+                      <Collapse in={patientContextExpanded}>
+                        <Divider sx={{ borderColor: mode === 'dark' ? 'rgba(137, 215, 183, 0.15)' : 'rgba(18, 48, 41, 0.08)' }} />
 
-                    {/* Patient Details Grid */}
-                    <Box sx={{ px: 2, py: 1.5 }}>
-                      <Grid container spacing={1.5}>
-                        {selectedPatient.contactNumber && (
-                          <Grid item xs={6} sm={4}>
-                            <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.62rem', display: 'block' }}>📱 Phone</Typography>
-                            <Typography variant="body2" sx={{ fontWeight: 700, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.82rem' }}>{selectedPatient.contactNumber}</Typography>
+                        {/* Patient Details Grid */}
+                        <Box sx={{ px: 2, py: 1.5 }}>
+                          <Grid container spacing={1.5}>
+                            {selectedPatient.contactNumber && (
+                              <Grid item xs={6} sm={4}>
+                                <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.62rem', display: 'block' }}>📱 Phone</Typography>
+                                <Typography variant="body2" sx={{ fontWeight: 700, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.82rem' }}>{selectedPatient.contactNumber}</Typography>
+                              </Grid>
+                            )}
+                            {(selectedPatient as any).dateOfBirth && (
+                              <Grid item xs={6} sm={4}>
+                                <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.62rem', display: 'block' }}>🎂 Date of Birth</Typography>
+                                <Typography variant="body2" sx={{ fontWeight: 700, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.82rem' }}>
+                                  {new Date((selectedPatient as any).dateOfBirth).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                </Typography>
+                              </Grid>
+                            )}
+                            {(selectedPatient as any).address && (
+                              <Grid item xs={12} sm={4}>
+                                <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.62rem', display: 'block' }}>📍 Address</Typography>
+                                <Typography variant="body2" sx={{ fontWeight: 700, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.82rem' }} noWrap>
+                                  {typeof (selectedPatient as any).address === 'object' && (selectedPatient as any).address !== null
+                                    ? [(selectedPatient as any).address.street, (selectedPatient as any).address.city, (selectedPatient as any).address.state].filter(Boolean).join(', ')
+                                    : String((selectedPatient as any).address)}
+                                </Typography>
+                              </Grid>
+                            )}
+                            {(selectedPatient as any).bloodType && (
+                              <Grid item xs={6} sm={4}>
+                                <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.62rem', display: 'block' }}>🩸 Blood Group</Typography>
+                                <Chip label={typeof (selectedPatient as any).bloodType === 'object' ? JSON.stringify((selectedPatient as any).bloodType) : String((selectedPatient as any).bloodType)} size="small" icon={<BloodIcon sx={{ fontSize: 14 }} />} sx={{ bgcolor: '#fee2e2', color: '#dc2626', fontWeight: 800, fontSize: '0.72rem', height: 22 }} />
+                              </Grid>
+                            )}
+                            {(selectedPatient as any).emergencyContact && (
+                              <Grid item xs={6} sm={4}>
+                                <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.62rem', display: 'block' }}>🚨 Emergency</Typography>
+                                <Typography variant="body2" sx={{ fontWeight: 700, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.82rem' }}>
+                                  {typeof (selectedPatient as any).emergencyContact === 'object' && (selectedPatient as any).emergencyContact !== null
+                                    ? [
+                                        (selectedPatient as any).emergencyContact.name,
+                                        (selectedPatient as any).emergencyContact.relationship ? `(${(selectedPatient as any).emergencyContact.relationship})` : '',
+                                        (selectedPatient as any).emergencyContact.phone
+                                      ].filter(Boolean).join(' ')
+                                    : String((selectedPatient as any).emergencyContact)}
+                                </Typography>
+                              </Grid>
+                            )}
                           </Grid>
-                        )}
-                        {(selectedPatient as any).dateOfBirth && (
-                          <Grid item xs={6} sm={4}>
-                            <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.62rem', display: 'block' }}>🎂 Date of Birth</Typography>
-                            <Typography variant="body2" sx={{ fontWeight: 700, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.82rem' }}>
-                              {new Date((selectedPatient as any).dateOfBirth).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                            </Typography>
-                          </Grid>
-                        )}
-                        {(selectedPatient as any).address && (
-                          <Grid item xs={12} sm={4}>
-                            <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.62rem', display: 'block' }}>📍 Address</Typography>
-                            <Typography variant="body2" sx={{ fontWeight: 700, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.82rem' }} noWrap>
-                              {typeof (selectedPatient as any).address === 'object' && (selectedPatient as any).address !== null
-                                ? [(selectedPatient as any).address.street, (selectedPatient as any).address.city, (selectedPatient as any).address.state].filter(Boolean).join(', ')
-                                : String((selectedPatient as any).address)}
-                            </Typography>
-                          </Grid>
-                        )}
-                        {(selectedPatient as any).bloodType && (
-                          <Grid item xs={6} sm={4}>
-                            <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.62rem', display: 'block' }}>🩸 Blood Group</Typography>
-                            <Chip label={typeof (selectedPatient as any).bloodType === 'object' ? JSON.stringify((selectedPatient as any).bloodType) : String((selectedPatient as any).bloodType)} size="small" icon={<BloodIcon sx={{ fontSize: 14 }} />} sx={{ bgcolor: '#fee2e2', color: '#dc2626', fontWeight: 800, fontSize: '0.72rem', height: 22 }} />
-                          </Grid>
-                        )}
-                        {(selectedPatient as any).emergencyContact && (
-                          <Grid item xs={6} sm={4}>
-                            <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.62rem', display: 'block' }}>🚨 Emergency</Typography>
-                            <Typography variant="body2" sx={{ fontWeight: 700, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.82rem' }}>
-                              {typeof (selectedPatient as any).emergencyContact === 'object' && (selectedPatient as any).emergencyContact !== null
-                                ? [
-                                    (selectedPatient as any).emergencyContact.name,
-                                    (selectedPatient as any).emergencyContact.relationship ? `(${(selectedPatient as any).emergencyContact.relationship})` : '',
-                                    (selectedPatient as any).emergencyContact.phone
-                                  ].filter(Boolean).join(' ')
-                                : String((selectedPatient as any).emergencyContact)}
-                            </Typography>
-                          </Grid>
-                        )}
-                      </Grid>
 
-                      {/* Allergies & Medical History */}
-                      {((selectedPatient as any).allergies?.length > 0 || (selectedPatient as any).medicalHistory) && (
-                        <Box sx={{ mt: 1.5 }}>
-                          {(selectedPatient as any).allergies?.length > 0 && (
-                            <Box sx={{ mb: 1 }}>
-                              <Typography variant="caption" sx={{ color: '#dc2626', fontWeight: 800, textTransform: 'uppercase', fontSize: '0.62rem', display: 'block', mb: 0.5 }}>⚠️ Allergies</Typography>
-                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                {((selectedPatient as any).allergies || []).map((allergy: any, i: number) => {
-                                  const labelText = typeof allergy === 'object' && allergy !== null ? (allergy.name || allergy.allergy || JSON.stringify(allergy)) : String(allergy);
+                          {/* Allergies & Medical History */}
+                          {((selectedPatient as any).allergies?.length > 0 || (selectedPatient as any).medicalHistory) && (
+                            <Box sx={{ mt: 1.5 }}>
+                              {(selectedPatient as any).allergies?.length > 0 && (
+                                <Box sx={{ mb: 1 }}>
+                                  <Typography variant="caption" sx={{ color: '#dc2626', fontWeight: 800, textTransform: 'uppercase', fontSize: '0.62rem', display: 'block', mb: 0.5 }}>⚠️ Allergies</Typography>
+                                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                    {((selectedPatient as any).allergies || []).map((allergy: any, i: number) => {
+                                      const labelText = typeof allergy === 'object' && allergy !== null ? (allergy.name || allergy.allergy || JSON.stringify(allergy)) : String(allergy);
+                                      return (
+                                        <Chip key={i} label={labelText} size="small" sx={{ bgcolor: '#fef2f2', color: '#dc2626', fontWeight: 800, fontSize: '0.68rem', height: 22, border: '1px solid #fecaca' }} />
+                                      );
+                                    })}
+                                  </Box>
+                                </Box>
+                              )}
+                              {(selectedPatient as any).medicalHistory && (
+                                <Box>
+                                  <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 800, textTransform: 'uppercase', fontSize: '0.62rem', display: 'block', mb: 0.3 }}>📋 Medical History</Typography>
+                                  <Typography variant="caption" sx={{ color: mode === 'dark' ? '#cbd5e1' : '#475569', fontWeight: 600, fontSize: '0.75rem' }}>
+                                    {typeof (selectedPatient as any).medicalHistory === 'string'
+                                      ? (selectedPatient as any).medicalHistory
+                                      : Array.isArray((selectedPatient as any).medicalHistory)
+                                        ? ((selectedPatient as any).medicalHistory as any[]).map(m => typeof m === 'object' && m !== null ? (m.name || m.condition || JSON.stringify(m)) : String(m)).join(', ')
+                                        : typeof (selectedPatient as any).medicalHistory === 'object'
+                                          ? JSON.stringify((selectedPatient as any).medicalHistory)
+                                          : ''}
+                                  </Typography>
+                                </Box>
+                              )}
+                            </Box>
+                          )}
+                        </Box>
+
+                        <Divider sx={{ borderColor: mode === 'dark' ? 'rgba(137, 215, 183, 0.15)' : 'rgba(18, 48, 41, 0.08)' }} />
+
+                        {/* Past Prescriptions */}
+                        <Box sx={{ px: 2, py: 1.5 }}>
+                          <Box
+                            onClick={() => setPastRxExpanded(!pastRxExpanded)}
+                            sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', mb: pastRxExpanded ? 1 : 0 }}
+                          >
+                            <Typography variant="subtitle2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#1A312C', display: 'flex', alignItems: 'center', gap: 0.8, fontSize: '0.85rem' }}>
+                              <HistoryIcon sx={{ fontSize: 18, color: '#428475' }} /> Your Past Prescriptions ({pastDoctorPrescriptions.length})
+                            </Typography>
+                            {pastRxExpanded ? <ExpandLessIcon sx={{ color: '#428475', fontSize: 20 }} /> : <ExpandMoreIcon sx={{ color: '#428475', fontSize: 20 }} />}
+                          </Box>
+
+                          <Collapse in={pastRxExpanded}>
+                            {loadingPastRx ? (
+                              <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+                                <CircularProgress size={24} sx={{ color: '#428475' }} />
+                              </Box>
+                            ) : pastDoctorPrescriptions.length === 0 ? (
+                              <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600, fontStyle: 'italic', display: 'block', py: 1 }}>
+                                No previous prescriptions found for this patient.
+                              </Typography>
+                            ) : (
+                              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, maxHeight: expandedPastRxId ? 520 : 300, overflowY: 'auto', pr: 0.5, pb: 1, '&::-webkit-scrollbar': { width: 4 }, '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(66,132,117,0.3)', borderRadius: 2 } }}>
+                                {pastDoctorPrescriptions.slice(0, 5).map((rx) => {
+                                  const isExpanded = expandedPastRxId === rx.id;
+                                  const diagnosisText = typeof rx.provisionalDiagnosis?.[0] === 'object'
+                                    ? ((rx.provisionalDiagnosis[0] as any).name || (rx.provisionalDiagnosis[0] as any).diagnosis || JSON.stringify(rx.provisionalDiagnosis[0]))
+                                    : String(rx.provisionalDiagnosis?.[0] || rx.medication || 'Prescription');
+
+                                  const medicationNames = rx.medications && Array.isArray(rx.medications)
+                                    ? rx.medications.map(m => typeof m === 'object' && m !== null ? (m.name || (m as any).medicationName || '') : String(m)).filter(Boolean)
+                                    : [];
+
                                   return (
-                                    <Chip key={i} label={labelText} size="small" sx={{ bgcolor: '#fef2f2', color: '#dc2626', fontWeight: 800, fontSize: '0.68rem', height: 22, border: '1px solid #fecaca' }} />
+                                    <Card
+                                      key={rx.id}
+                                      variant="outlined"
+                                      sx={{
+                                        borderRadius: '14px',
+                                        bgcolor: mode === 'dark' ? 'rgba(0,0,0,0.25)' : 'rgba(244, 248, 246, 0.9)',
+                                        borderColor: isExpanded ? '#428475' : (mode === 'dark' ? 'rgba(137, 215, 183, 0.15)' : 'rgba(18, 48, 41, 0.08)'),
+                                        transition: 'all 0.2s',
+                                        overflow: 'hidden'
+                                      }}
+                                    >
+                                      <Box 
+                                        onClick={() => setExpandedPastRxId(isExpanded ? null : rx.id)}
+                                        sx={{ 
+                                          p: 1.5, 
+                                          display: 'flex', 
+                                          alignItems: 'flex-start', 
+                                          justifyContent: 'space-between', 
+                                          gap: 1,
+                                          cursor: 'pointer',
+                                          '&:hover': { bgcolor: mode === 'dark' ? 'rgba(66, 132, 117, 0.08)' : 'rgba(66, 132, 117, 0.05)' }
+                                        }}
+                                      >
+                                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, mb: 0.5, flexWrap: 'wrap' }}>
+                                            <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.82rem' }} noWrap>
+                                              {diagnosisText}
+                                            </Typography>
+                                            <Chip
+                                              label={typeof rx.status === 'string' ? rx.status : 'active'}
+                                              size="small"
+                                              sx={{
+                                                height: 18,
+                                                fontSize: '0.6rem',
+                                                fontWeight: 800,
+                                                bgcolor: rx.status === 'active' ? '#dcfce7' : rx.status === 'completed' ? '#e0f2fe' : '#fef2f2',
+                                                color: rx.status === 'active' ? '#16a34a' : rx.status === 'completed' ? '#0284c7' : '#dc2626'
+                                              }}
+                                            />
+                                          </Box>
+                                          <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600, display: 'block', fontSize: '0.72rem' }}>
+                                            📅 {new Date(rx.createdAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                            {medicationNames.length > 0 && ` • 💊 ${medicationNames.slice(0, 2).join(', ')}${medicationNames.length > 2 ? ` +${medicationNames.length - 2}` : ''}`}
+                                          </Typography>
+                                        </Box>
+
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+                                          <Tooltip title={isExpanded ? "Hide Details" : "View Details Inline"}>
+                                            <IconButton
+                                              size="small"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setExpandedPastRxId(isExpanded ? null : rx.id);
+                                              }}
+                                              sx={{ bgcolor: isExpanded ? '#428475' : 'rgba(66, 132, 117, 0.1)', color: isExpanded ? '#ffffff' : '#428475', '&:hover': { bgcolor: '#428475', color: '#ffffff' } }}
+                                            >
+                                              {isExpanded ? <ExpandLessIcon sx={{ fontSize: 18 }} /> : <ViewIcon sx={{ fontSize: 16 }} />}
+                                            </IconButton>
+                                          </Tooltip>
+                                        </Box>
+                                      </Box>
+
+                                      <Collapse in={isExpanded}>
+                                        <Box sx={{ p: 2, pt: 1, pb: 2, borderTop: '1px dashed rgba(66, 132, 117, 0.2)', bgcolor: mode === 'dark' ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.7)' }}>
+                                          {rx.medications && rx.medications.length > 0 && (
+                                            <Box sx={{ mb: 1.5 }}>
+                                              <Typography variant="caption" sx={{ fontWeight: 800, color: '#428475', textTransform: 'uppercase', letterSpacing: 0.5, fontSize: '0.65rem', display: 'block', mb: 0.8 }}>
+                                                💊 Prescribed Medications ({rx.medications.length})
+                                              </Typography>
+                                              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.8, maxHeight: 240, overflowY: 'auto', pr: 0.5, '&::-webkit-scrollbar': { width: 4 }, '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(66,132,117,0.2)', borderRadius: 2 } }}>
+                                                {rx.medications.map((m: any, idx: number) => {
+                                                  const getMedNote = (med: any): string | null => {
+                                                    if (!med) return null;
+                                                    const inst = typeof med.instructions === 'string' ? med.instructions.trim() : (med.instructions?.text || med.instructions?.instructions || '');
+                                                    if (inst && inst !== '[object Object]') return inst;
+                                                    const note = typeof med.note === 'string' ? med.note.trim() : (typeof med.notes === 'string' ? med.notes.trim() : '');
+                                                    if (note && note !== '[object Object]') return note;
+                                                    const food = typeof med.foodRelation === 'string' ? med.foodRelation.trim() : (typeof med.mealRelation === 'string' ? med.mealRelation.trim() : '');
+                                                    if (food && food !== '[object Object]') return food;
+                                                    return null;
+                                                  };
+                                                  const noteStr = getMedNote(m);
+
+                                                  return (
+                                                    <Box key={idx} sx={{ p: 1, borderRadius: '8px', bgcolor: mode === 'dark' ? 'rgba(255,255,255,0.04)' : '#ffffff', border: '1px solid rgba(66,132,117,0.12)' }}>
+                                                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.3 }}>
+                                                        <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.78rem' }}>
+                                                          {m.name || m.medicationName || 'Medication'}
+                                                        </Typography>
+                                                        {m.dosage && (
+                                                          <Chip label={m.dosage} size="small" sx={{ height: 18, fontSize: '0.62rem', fontWeight: 700, bgcolor: 'rgba(66,132,117,0.1)', color: '#428475' }} />
+                                                        )}
+                                                      </Box>
+                                                      <Typography variant="caption" sx={{ color: '#64748b', fontSize: '0.7rem', display: 'block' }}>
+                                                        {[
+                                                          m.frequency && m.frequency !== m.dosage ? `Freq: ${m.frequency}` : null,
+                                                          m.duration ? `Duration: ${m.duration}` : null,
+                                                          noteStr ? `Note: ${noteStr}` : null
+                                                        ].filter(Boolean).join(' • ') || 'Standard Dosage'}
+                                                      </Typography>
+                                                    </Box>
+                                                  );
+                                                })}
+                                              </Box>
+                                            </Box>
+                                          )}
+
+                                          {(() => {
+                                            const adviceText = (rx as any).advice || rx.notes;
+                                            if (!adviceText) return null;
+                                            const cleanText = typeof adviceText === 'string'
+                                              ? adviceText.trim()
+                                              : Array.isArray(adviceText)
+                                              ? adviceText.join(', ')
+                                              : typeof adviceText === 'object'
+                                              ? (adviceText.text || adviceText.advice || adviceText.notes || '')
+                                              : String(adviceText);
+                                            if (!cleanText || cleanText === '[object Object]') return null;
+                                            return (
+                                              <Box sx={{ mb: 1.5 }}>
+                                                <Typography variant="caption" sx={{ fontWeight: 800, color: '#428475', textTransform: 'uppercase', letterSpacing: 0.5, fontSize: '0.65rem', display: 'block', mb: 0.3 }}>
+                                                  📝 Doctor Notes & Advice
+                                                </Typography>
+                                                <Typography variant="caption" sx={{ color: mode === 'dark' ? '#cbd5e1' : '#475569', fontSize: '0.73rem', display: 'block', fontStyle: 'italic' }}>
+                                                  {cleanText}
+                                                </Typography>
+                                              </Box>
+                                            );
+                                          })()}
+
+                                          <Box sx={{ display: 'flex', gap: 1, mt: 1.5, pt: 1, borderTop: '1px solid rgba(66,132,117,0.1)', flexWrap: 'wrap' }}>
+                                            <Button
+                                              size="small"
+                                              variant="contained"
+                                              startIcon={<ContinueTrailIcon sx={{ fontSize: 14 }} />}
+                                              onClick={() => handleContinueTreatmentTrail(rx)}
+                                              sx={{ bgcolor: '#428475', '&:hover': { bgcolor: '#2e5e53' }, fontSize: '0.7rem', textTransform: 'none', py: 0.4, px: 1.5, borderRadius: '8px' }}
+                                            >
+                                              Continue Treatment Trail
+                                            </Button>
+                                            <Button
+                                              size="small"
+                                              variant="outlined"
+                                              startIcon={downloadingPdfRxId === rx.id ? <CircularProgress size={14} color="inherit" /> : <DownloadIcon sx={{ fontSize: 14 }} />}
+                                              onClick={() => handleDownloadPastRxPdf(rx.id)}
+                                              disabled={downloadingPdfRxId === rx.id}
+                                              sx={{ borderColor: '#428475', color: '#428475', '&:hover': { borderColor: '#2e5e53', bgcolor: 'rgba(66,132,117,0.08)' }, fontSize: '0.7rem', textTransform: 'none', py: 0.4, px: 1.5, borderRadius: '8px' }}
+                                            >
+                                              {downloadingPdfRxId === rx.id ? 'Generating PDF...' : 'Download PDF'}
+                                            </Button>
+                                          </Box>
+                                        </Box>
+                                      </Collapse>
+                                    </Card>
                                   );
                                 })}
                               </Box>
-                            </Box>
-                          )}
-                          {(selectedPatient as any).medicalHistory && (
-                            <Box>
-                              <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 800, textTransform: 'uppercase', fontSize: '0.62rem', display: 'block', mb: 0.3 }}>📋 Medical History</Typography>
-                              <Typography variant="caption" sx={{ color: mode === 'dark' ? '#cbd5e1' : '#475569', fontWeight: 600, fontSize: '0.75rem' }}>
-                                {typeof (selectedPatient as any).medicalHistory === 'string'
-                                  ? (selectedPatient as any).medicalHistory
-                                  : Array.isArray((selectedPatient as any).medicalHistory)
-                                    ? ((selectedPatient as any).medicalHistory as any[]).map(m => typeof m === 'object' && m !== null ? (m.name || m.condition || JSON.stringify(m)) : String(m)).join(', ')
-                                    : typeof (selectedPatient as any).medicalHistory === 'object'
-                                      ? JSON.stringify((selectedPatient as any).medicalHistory)
-                                      : ''}
-                              </Typography>
-                            </Box>
-                          )}
+                            )}
+                          </Collapse>
                         </Box>
-                      )}
-                    </Box>
 
-                    <Divider sx={{ borderColor: mode === 'dark' ? 'rgba(137, 215, 183, 0.15)' : 'rgba(18, 48, 41, 0.08)' }} />
+                        <Divider sx={{ borderColor: mode === 'dark' ? 'rgba(137, 215, 183, 0.15)' : 'rgba(18, 48, 41, 0.08)' }} />
 
-                    {/* ═══ Your Past Prescriptions for This Patient ═══ */}
-                    <Box sx={{ px: 2, py: 1.5 }}>
-                      <Box
-                        onClick={() => setPastRxExpanded(!pastRxExpanded)}
-                        sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', mb: pastRxExpanded ? 1 : 0 }}
-                      >
-                        <Typography variant="subtitle2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#1A312C', display: 'flex', alignItems: 'center', gap: 0.8, fontSize: '0.85rem' }}>
-                          <HistoryIcon sx={{ fontSize: 18, color: '#428475' }} /> Your Past Prescriptions ({pastDoctorPrescriptions.length})
-                        </Typography>
-                        {pastRxExpanded ? <ExpandLessIcon sx={{ color: '#428475', fontSize: 20 }} /> : <ExpandMoreIcon sx={{ color: '#428475', fontSize: 20 }} />}
-                      </Box>
-
-                      <Collapse in={pastRxExpanded}>
-                        {loadingPastRx ? (
-                          <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
-                            <CircularProgress size={24} sx={{ color: '#428475' }} />
-                          </Box>
-                        ) : pastDoctorPrescriptions.length === 0 ? (
-                          <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600, fontStyle: 'italic', display: 'block', py: 1 }}>
-                            No previous prescriptions found for this patient.
+                        {/* External Prescription Scanner */}
+                        <Box sx={{ px: 2, py: 1.5 }}>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#1A312C', display: 'flex', alignItems: 'center', gap: 0.8, fontSize: '0.85rem', mb: 1 }}>
+                            <QrCodeScannerIcon sx={{ fontSize: 18, color: '#0284c7' }} /> External Doctor Prescriptions
                           </Typography>
-                        ) : (
-                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, maxHeight: expandedPastRxId ? 520 : 300, overflowY: 'auto', pr: 0.5, pb: 1, '&::-webkit-scrollbar': { width: 4 }, '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(66,132,117,0.3)', borderRadius: 2 } }}>
-                            {pastDoctorPrescriptions.slice(0, 5).map((rx) => {
-                              const isExpanded = expandedPastRxId === rx.id;
-                              const diagnosisText = typeof rx.provisionalDiagnosis?.[0] === 'object'
-                                ? ((rx.provisionalDiagnosis[0] as any).name || (rx.provisionalDiagnosis[0] as any).diagnosis || JSON.stringify(rx.provisionalDiagnosis[0]))
-                                : String(rx.provisionalDiagnosis?.[0] || rx.medication || 'Prescription');
+                          <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600, display: 'block', mb: 1.2, fontSize: '0.72rem' }}>
+                            Scan or enter a QR code / verification code from another doctor's prescription to view it during this consultation.
+                          </Typography>
 
-                              const medicationNames = rx.medications && Array.isArray(rx.medications)
-                                ? rx.medications.map(m => typeof m === 'object' && m !== null ? (m.name || (m as any).medicationName || '') : String(m)).filter(Boolean)
-                                : [];
+                          <Box sx={{ display: 'flex', gap: 1, mb: 1.5 }}>
+                            <Button
+                              variant="outlined"
+                              size="small"
+                              startIcon={<QrCodeScannerIcon sx={{ fontSize: 18 }} />}
+                              onClick={() => setExternalQrScannerOpen(true)}
+                              disabled={externalLookupLoading}
+                              sx={{
+                                borderRadius: '14px',
+                                fontWeight: 800,
+                                fontSize: '0.76rem',
+                                borderColor: '#0284c7',
+                                color: '#0284c7',
+                                '&:hover': { bgcolor: 'rgba(2, 132, 199, 0.08)', borderColor: '#0369a1' }
+                              }}
+                            >
+                              Scan QR
+                            </Button>
+                            <TextField
+                              size="small"
+                              placeholder="Enter Rx code..."
+                              value={externalLookupCode}
+                              onChange={(e) => setExternalLookupCode(e.target.value)}
+                              onKeyDown={(e) => e.key === 'Enter' && handleExternalManualLookup()}
+                              InputProps={{
+                                sx: { borderRadius: '14px', fontSize: '0.82rem', fontWeight: 700 },
+                                endAdornment: (
+                                  <InputAdornment position="end">
+                                    <IconButton
+                                      size="small"
+                                      onClick={handleExternalManualLookup}
+                                      disabled={externalLookupLoading || !externalLookupCode.trim()}
+                                    >
+                                      {externalLookupLoading ? <CircularProgress size={16} /> : <SearchIcon sx={{ fontSize: 18 }} />}
+                                    </IconButton>
+                                  </InputAdornment>
+                                )
+                              }}
+                              sx={{ flex: 1 }}
+                            />
+                          </Box>
 
-                              return (
+                          {scannedExternalPrescriptions.length > 0 && (
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                              {scannedExternalPrescriptions.map((rx) => (
                                 <Card
                                   key={rx.id}
                                   variant="outlined"
                                   sx={{
+                                    p: 1.5,
                                     borderRadius: '14px',
-                                    bgcolor: mode === 'dark' ? 'rgba(0,0,0,0.25)' : 'rgba(244, 248, 246, 0.9)',
-                                    borderColor: isExpanded ? '#428475' : (mode === 'dark' ? 'rgba(137, 215, 183, 0.15)' : 'rgba(18, 48, 41, 0.08)'),
-                                    transition: 'all 0.2s',
-                                    overflow: 'hidden'
+                                    bgcolor: mode === 'dark' ? 'rgba(2, 132, 199, 0.08)' : 'rgba(224, 242, 254, 0.5)',
+                                    borderColor: 'rgba(2, 132, 199, 0.3)',
                                   }}
                                 >
-                                  {/* Clickable Card Header */}
-                                  <Box 
-                                    onClick={() => setExpandedPastRxId(isExpanded ? null : rx.id)}
-                                    sx={{ 
-                                      p: 1.5, 
-                                      display: 'flex', 
-                                      alignItems: 'flex-start', 
-                                      justifyContent: 'space-between', 
-                                      gap: 1,
-                                      cursor: 'pointer',
-                                      '&:hover': { bgcolor: mode === 'dark' ? 'rgba(66, 132, 117, 0.08)' : 'rgba(66, 132, 117, 0.05)' }
-                                    }}
-                                  >
-                                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, mb: 0.5, flexWrap: 'wrap' }}>
-                                        <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.82rem' }} noWrap>
-                                          {diagnosisText}
-                                        </Typography>
-                                        <Chip
-                                          label={typeof rx.status === 'string' ? rx.status : 'active'}
-                                          size="small"
-                                          sx={{
-                                            height: 18,
-                                            fontSize: '0.6rem',
-                                            fontWeight: 800,
-                                            bgcolor: rx.status === 'active' ? '#dcfce7' : rx.status === 'completed' ? '#e0f2fe' : '#fef2f2',
-                                            color: rx.status === 'active' ? '#16a34a' : rx.status === 'completed' ? '#0284c7' : '#dc2626'
-                                          }}
-                                        />
-                                      </Box>
-                                      <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600, display: 'block', fontSize: '0.72rem' }}>
-                                        📅 {new Date(rx.createdAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                                        {medicationNames.length > 0 && ` • 💊 ${medicationNames.slice(0, 2).join(', ')}${medicationNames.length > 2 ? ` +${medicationNames.length - 2}` : ''}`}
-                                      </Typography>
-                                    </Box>
-
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
-                                      <Tooltip title={isExpanded ? "Hide Details" : "View Details Inline"}>
-                                        <IconButton
-                                          size="small"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setExpandedPastRxId(isExpanded ? null : rx.id);
-                                          }}
-                                          sx={{ bgcolor: isExpanded ? '#428475' : 'rgba(66, 132, 117, 0.1)', color: isExpanded ? '#ffffff' : '#428475', '&:hover': { bgcolor: '#428475', color: '#ffffff' } }}
-                                        >
-                                          {isExpanded ? <ExpandLessIcon sx={{ fontSize: 18 }} /> : <ViewIcon sx={{ fontSize: 16 }} />}
-                                        </IconButton>
-                                      </Tooltip>
-                                    </Box>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                                    <Chip
+                                      label={`External — Dr. ${(rx as any).doctorName || 'Unknown Doctor'}`}
+                                      size="small"
+                                      sx={{ bgcolor: '#0284c7', color: '#fff', fontWeight: 800, fontSize: '0.65rem', height: 20 }}
+                                    />
+                                    <Chip
+                                      label={rx.status}
+                                      size="small"
+                                      sx={{
+                                        height: 18,
+                                        fontSize: '0.58rem',
+                                        fontWeight: 800,
+                                        bgcolor: rx.status === 'active' ? '#dcfce7' : '#e0f2fe',
+                                        color: rx.status === 'active' ? '#16a34a' : '#0284c7'
+                                      }}
+                                    />
                                   </Box>
-
-                                  {/* Inline Collapsible Prescription Details */}
-                                  <Collapse in={isExpanded}>
-                                    <Box sx={{ p: 2, pt: 1, pb: 2, borderTop: '1px dashed rgba(66, 132, 117, 0.2)', bgcolor: mode === 'dark' ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.7)' }}>
-                                      {/* Medications Detailed List */}
-                                      {rx.medications && rx.medications.length > 0 && (
-                                        <Box sx={{ mb: 1.5 }}>
-                                          <Typography variant="caption" sx={{ fontWeight: 800, color: '#428475', textTransform: 'uppercase', letterSpacing: 0.5, fontSize: '0.65rem', display: 'block', mb: 0.8 }}>
-                                            💊 Prescribed Medications ({rx.medications.length})
-                                          </Typography>
-                                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.8, maxHeight: 240, overflowY: 'auto', pr: 0.5, '&::-webkit-scrollbar': { width: 4 }, '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(66,132,117,0.2)', borderRadius: 2 } }}>
-                                            {rx.medications.map((m: any, idx: number) => {
-                                              const getMedNote = (med: any): string | null => {
-                                                if (!med) return null;
-                                                const inst = typeof med.instructions === 'string' ? med.instructions.trim() : (med.instructions?.text || med.instructions?.instructions || '');
-                                                if (inst && inst !== '[object Object]') return inst;
-                                                const note = typeof med.note === 'string' ? med.note.trim() : (typeof med.notes === 'string' ? med.notes.trim() : '');
-                                                if (note && note !== '[object Object]') return note;
-                                                const food = typeof med.foodRelation === 'string' ? med.foodRelation.trim() : (typeof med.mealRelation === 'string' ? med.mealRelation.trim() : '');
-                                                if (food && food !== '[object Object]') return food;
-                                                return null;
-                                              };
-                                              const noteStr = getMedNote(m);
-
-                                              return (
-                                                <Box key={idx} sx={{ p: 1, borderRadius: '8px', bgcolor: mode === 'dark' ? 'rgba(255,255,255,0.04)' : '#ffffff', border: '1px solid rgba(66,132,117,0.12)' }}>
-                                                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.3 }}>
-                                                    <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.78rem' }}>
-                                                      {m.name || m.medicationName || 'Medication'}
-                                                    </Typography>
-                                                    {m.dosage && (
-                                                      <Chip label={m.dosage} size="small" sx={{ height: 18, fontSize: '0.62rem', fontWeight: 700, bgcolor: 'rgba(66,132,117,0.1)', color: '#428475' }} />
-                                                    )}
-                                                  </Box>
-                                                  <Typography variant="caption" sx={{ color: '#64748b', fontSize: '0.7rem', display: 'block' }}>
-                                                    {[
-                                                      m.frequency && m.frequency !== m.dosage ? `Freq: ${m.frequency}` : null,
-                                                      m.duration ? `Duration: ${m.duration}` : null,
-                                                      noteStr ? `Note: ${noteStr}` : null
-                                                    ].filter(Boolean).join(' • ') || 'Standard Dosage'}
-                                                  </Typography>
-                                                </Box>
-                                              );
-                                            })}
-                                          </Box>
-                                        </Box>
-                                      )}
-
-                                      {/* Advice / Notes */}
-                                      {(() => {
-                                        const adviceText = (rx as any).advice || rx.notes;
-                                        if (!adviceText) return null;
-                                        const cleanText = typeof adviceText === 'string'
-                                          ? adviceText.trim()
-                                          : Array.isArray(adviceText)
-                                          ? adviceText.join(', ')
-                                          : typeof adviceText === 'object'
-                                          ? (adviceText.text || adviceText.advice || adviceText.notes || '')
-                                          : String(adviceText);
-                                        if (!cleanText || cleanText === '[object Object]') return null;
-                                        return (
-                                          <Box sx={{ mb: 1.5 }}>
-                                            <Typography variant="caption" sx={{ fontWeight: 800, color: '#428475', textTransform: 'uppercase', letterSpacing: 0.5, fontSize: '0.65rem', display: 'block', mb: 0.3 }}>
-                                              📝 Doctor Notes & Advice
-                                            </Typography>
-                                            <Typography variant="caption" sx={{ color: mode === 'dark' ? '#cbd5e1' : '#475569', fontSize: '0.73rem', display: 'block', fontStyle: 'italic' }}>
-                                              {cleanText}
-                                            </Typography>
-                                          </Box>
-                                        );
-                                      })()}
-
-                                      {/* Action Toolbar */}
-                                      <Box sx={{ display: 'flex', gap: 1, mt: 1.5, pt: 1, borderTop: '1px solid rgba(66,132,117,0.1)', flexWrap: 'wrap' }}>
-                                        <Button
-                                          size="small"
-                                          variant="contained"
-                                          startIcon={<ContinueTrailIcon sx={{ fontSize: 14 }} />}
-                                          onClick={() => handleContinueTreatmentTrail(rx)}
-                                          sx={{ bgcolor: '#428475', '&:hover': { bgcolor: '#2e5e53' }, fontSize: '0.7rem', textTransform: 'none', py: 0.4, px: 1.5, borderRadius: '8px' }}
-                                        >
-                                          Continue Treatment Trail
-                                        </Button>
-                                        <Button
-                                          size="small"
-                                          variant="outlined"
-                                          startIcon={downloadingPdfRxId === rx.id ? <CircularProgress size={14} color="inherit" /> : <DownloadIcon sx={{ fontSize: 14 }} />}
-                                          onClick={() => handleDownloadPastRxPdf(rx.id)}
-                                          disabled={downloadingPdfRxId === rx.id}
-                                          sx={{ borderColor: '#428475', color: '#428475', '&:hover': { borderColor: '#2e5e53', bgcolor: 'rgba(66,132,117,0.08)' }, fontSize: '0.7rem', textTransform: 'none', py: 0.4, px: 1.5, borderRadius: '8px' }}
-                                        >
-                                          {downloadingPdfRxId === rx.id ? 'Generating PDF...' : 'Download PDF'}
-                                        </Button>
-                                      </Box>
-                                    </Box>
-                                  </Collapse>
+                                  <Typography variant="caption" sx={{ fontWeight: 700, color: mode === 'dark' ? '#FAF2F5' : '#0f172a', fontSize: '0.78rem', display: 'block' }}>
+                                    {rx.provisionalDiagnosis?.[0] || rx.medication || 'Prescription'}
+                                  </Typography>
+                                  <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600, display: 'block', fontSize: '0.7rem' }}>
+                                    📅 {new Date(rx.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                    {rx.medications && rx.medications.length > 0 && ` • 💊 ${rx.medications.map(m => m.name).join(', ')}`}
+                                  </Typography>
                                 </Card>
-                              );
-                            })}
-                          </Box>
-                        )}
-                      </Collapse>
-                    </Box>
-
-                    <Divider sx={{ borderColor: mode === 'dark' ? 'rgba(137, 215, 183, 0.15)' : 'rgba(18, 48, 41, 0.08)' }} />
-
-                    {/* ═══ External Prescription Scanner ═══ */}
-                    <Box sx={{ px: 2, py: 1.5 }}>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#1A312C', display: 'flex', alignItems: 'center', gap: 0.8, fontSize: '0.85rem', mb: 1 }}>
-                        <QrCodeScannerIcon sx={{ fontSize: 18, color: '#0284c7' }} /> External Doctor Prescriptions
-                      </Typography>
-                      <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600, display: 'block', mb: 1.2, fontSize: '0.72rem' }}>
-                        Scan or enter a QR code / verification code from another doctor's prescription to view it during this consultation.
-                      </Typography>
-
-                      <Box sx={{ display: 'flex', gap: 1, mb: 1.5 }}>
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          startIcon={<QrCodeScannerIcon sx={{ fontSize: 18 }} />}
-                          onClick={() => setExternalQrScannerOpen(true)}
-                          disabled={externalLookupLoading}
-                          sx={{
-                            borderRadius: '14px',
-                            fontWeight: 800,
-                            fontSize: '0.76rem',
-                            borderColor: '#0284c7',
-                            color: '#0284c7',
-                            '&:hover': { bgcolor: 'rgba(2, 132, 199, 0.08)', borderColor: '#0369a1' }
-                          }}
-                        >
-                          Scan QR
-                        </Button>
-                        <TextField
-                          size="small"
-                          placeholder="Enter Rx code..."
-                          value={externalLookupCode}
-                          onChange={(e) => setExternalLookupCode(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && handleExternalManualLookup()}
-                          InputProps={{
-                            sx: { borderRadius: '14px', fontSize: '0.82rem', fontWeight: 700 },
-                            endAdornment: (
-                              <InputAdornment position="end">
-                                <IconButton
-                                  size="small"
-                                  onClick={handleExternalManualLookup}
-                                  disabled={externalLookupLoading || !externalLookupCode.trim()}
-                                >
-                                  {externalLookupLoading ? <CircularProgress size={16} /> : <SearchIcon sx={{ fontSize: 18 }} />}
-                                </IconButton>
-                              </InputAdornment>
-                            )
-                          }}
-                          sx={{ flex: 1 }}
-                        />
-                      </Box>
-
-                      {/* Scanned External Prescriptions List */}
-                      {scannedExternalPrescriptions.length > 0 && (
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                          {scannedExternalPrescriptions.map((rx) => (
-                            <Card
-                              key={rx.id}
-                              variant="outlined"
-                              sx={{
-                                p: 1.5,
-                                borderRadius: '14px',
-                                bgcolor: mode === 'dark' ? 'rgba(2, 132, 199, 0.08)' : 'rgba(224, 242, 254, 0.5)',
-                                borderColor: 'rgba(2, 132, 199, 0.3)',
-                              }}
-                            >
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                                <Chip
-                                  label={`External — Dr. ${(rx as any).doctorName || 'Unknown Doctor'}`}
-                                  size="small"
-                                  sx={{ bgcolor: '#0284c7', color: '#fff', fontWeight: 800, fontSize: '0.65rem', height: 20 }}
-                                />
-                                <Chip
-                                  label={rx.status}
-                                  size="small"
-                                  sx={{
-                                    height: 18,
-                                    fontSize: '0.58rem',
-                                    fontWeight: 800,
-                                    bgcolor: rx.status === 'active' ? '#dcfce7' : '#e0f2fe',
-                                    color: rx.status === 'active' ? '#16a34a' : '#0284c7'
-                                  }}
-                                />
-                              </Box>
-                              <Typography variant="caption" sx={{ fontWeight: 700, color: mode === 'dark' ? '#FAF2F5' : '#0f172a', fontSize: '0.78rem', display: 'block' }}>
-                                {rx.provisionalDiagnosis?.[0] || rx.medication || 'Prescription'}
-                              </Typography>
-                              <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600, display: 'block', fontSize: '0.7rem' }}>
-                                📅 {new Date(rx.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                                {rx.medications && rx.medications.length > 0 && ` • 💊 ${rx.medications.map(m => m.name).join(', ')}`}
-                              </Typography>
-                            </Card>
-                          ))}
-                        </Box>
-                      )}
-                    </Box>
-                  </Collapse>
-                </Paper>
-              </Grid>
-            )}
-          </Grid>
-        </Paper>
-
-        {/* ─── 2. Vital Signs Section ─── */}
-        <Accordion 
-          defaultExpanded 
-          className="glass-panel" 
-          sx={{ 
-            mb: 2, 
-            borderRadius: '24px !important', 
-            overflow: 'hidden',
-            bgcolor: mode === 'dark' ? 'rgba(20, 38, 34, 0.94) !important' : 'rgba(255, 255, 255, 0.88) !important',
-            '&:before': { display: 'none' }
-          }}
-        >
-          <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: mode === 'dark' ? '#89D7B7' : '#428475' }} />}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', display: 'flex', alignItems: 'center', gap: 1 }}>
-              <VitalIcon sx={{ color: mode === 'dark' ? '#89D7B7' : '#428475' }} /> 2. Vital Signs (Consultation)
-            </Typography>
-          </AccordionSummary>
-          <AccordionDetails sx={{ pt: 0 }}>
-            <Grid container spacing={1.5}>
-              <Grid item xs={12} sm={4}>
-                <Box sx={{ p: 1, px: 1.5, borderRadius: '14px', bgcolor: 'rgba(66, 132, 117, 0.06)', border: '1px solid rgba(66, 132, 117, 0.2)' }}>
-                  <Typography variant="caption" sx={{ fontWeight: 800, color: '#428475', display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
-                    <BpIcon sx={{ fontSize: 16 }} /> Blood Pressure (Systolic / Diastolic)
-                  </Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
-                    <TextField
-                      size="small"
-                      type="number"
-                      label="SYS"
-                      placeholder="120"
-                      value={(() => {
-                        const parts = (formData.vitalSigns?.bloodPressure || '').split('/');
-                        return parts[0]?.trim() || '';
-                      })()}
-                      onChange={(e) => {
-                        const sys = e.target.value;
-                        const currentParts = (formData.vitalSigns?.bloodPressure || '').split('/');
-                        const dia = currentParts[1] ? currentParts[1].replace('mmHg', '').trim() : '';
-                        const bpStr = (sys || dia) ? `${sys}/${dia}` : '';
-                        setFormData({
-                          ...formData,
-                          vitalSigns: { ...formData.vitalSigns, bloodPressure: bpStr }
-                        });
-                      }}
-                      sx={{ flex: 1, '& input': { textAlign: 'center', fontWeight: 800, p: '6px' }, '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
-                    />
-                    <Typography variant="h6" sx={{ color: '#428475', fontWeight: 900, mx: 0.2 }}>/</Typography>
-                    <TextField
-                      size="small"
-                      type="number"
-                      label="DIA"
-                      placeholder="80"
-                      value={(() => {
-                        const parts = (formData.vitalSigns?.bloodPressure || '').split('/');
-                        return parts[1] ? parts[1].replace('mmHg', '').trim() : '';
-                      })()}
-                      onChange={(e) => {
-                        const dia = e.target.value;
-                        const currentParts = (formData.vitalSigns?.bloodPressure || '').split('/');
-                        const sys = currentParts[0]?.trim() || '';
-                        const bpStr = (sys || dia) ? `${sys}/${dia}` : '';
-                        setFormData({
-                          ...formData,
-                          vitalSigns: { ...formData.vitalSigns, bloodPressure: bpStr }
-                        });
-                      }}
-                      sx={{ flex: 1, '& input': { textAlign: 'center', fontWeight: 800, p: '6px' }, '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
-                    />
-                    <Typography variant="caption" sx={{ fontWeight: 800, color: '#428475', ml: 0.2 }}>
-                      mmHg
-                    </Typography>
-                  </Box>
-                </Box>
-              </Grid>
-              <Grid item xs={6} sm={3}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  label="Pulse Rate"
-                  placeholder="72 bpm"
-                  value={formData.vitalSigns?.pulse || ''}
-                  onChange={handleVitalChange('pulse')}
-                  InputProps={{
-                    startAdornment: <InputAdornment position="start"><PulseIcon sx={{ color: '#ef4444', fontSize: 18 }} /></InputAdornment>,
-                    sx: { borderRadius: '12px' }
-                  }}
-                />
-              </Grid>
-              <Grid item xs={6} sm={3}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  label="Temperature"
-                  placeholder="98.6 °F"
-                  value={formData.vitalSigns?.temperature || ''}
-                  onChange={handleVitalChange('temperature')}
-                  InputProps={{
-                    startAdornment: <InputAdornment position="start"><TempIcon sx={{ color: '#f59e0b', fontSize: 18 }} /></InputAdornment>,
-                    sx: { borderRadius: '12px' }
-                  }}
-                />
-              </Grid>
-              <Grid item xs={6} sm={3}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  label="SpO2 Level"
-                  placeholder="98 %"
-                  value={formData.vitalSigns?.spo2 || ''}
-                  onChange={handleVitalChange('spo2')}
-                  InputProps={{
-                    startAdornment: <InputAdornment position="start"><Spo2Icon sx={{ color: '#06b6d4', fontSize: 18 }} /></InputAdornment>,
-                    sx: { borderRadius: '12px' }
-                  }}
-                />
-              </Grid>
-              <Grid item xs={6} sm={4}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  label="Resp. Rate"
-                  placeholder="16 /min"
-                  value={formData.vitalSigns?.respiratoryRate || ''}
-                  onChange={handleVitalChange('respiratoryRate')}
-                  InputProps={{ sx: { borderRadius: '12px' } }}
-                />
-              </Grid>
-              <Grid item xs={6} sm={4}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  label="BMI"
-                  placeholder="24.5"
-                  value={formData.vitalSigns?.bmi || ''}
-                  onChange={handleVitalChange('bmi')}
-                  InputProps={{
-                    startAdornment: <InputAdornment position="start"><BmiIcon sx={{ color: '#428475', fontSize: 18 }} /></InputAdornment>,
-                    sx: { borderRadius: '12px' }
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={4}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  label="Pain Scale"
-                  placeholder="e.g., 4 / 10"
-                  value={formData.vitalSigns?.painScale || ''}
-                  onChange={handleVitalChange('painScale')}
-                  InputProps={{
-                    startAdornment: <InputAdornment position="start"><PainIcon sx={{ color: '#ef4444', fontSize: 18 }} /></InputAdornment>,
-                    sx: { borderRadius: '12px' }
-                  }}
-                />
-              </Grid>
-            </Grid>
-          </AccordionDetails>
-        </Accordion>
-
-        {/* ─── 3. Chief Complaints & Diagnosis ─── */}
-        <Accordion 
-          defaultExpanded 
-          className="glass-panel" 
-          sx={{ 
-            mb: 2, 
-            borderRadius: '24px !important', 
-            overflow: 'hidden',
-            bgcolor: mode === 'dark' ? 'rgba(20, 38, 34, 0.94) !important' : 'rgba(255, 255, 255, 0.88) !important',
-            '&:before': { display: 'none' }
-          }}
-        >
-          <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: mode === 'dark' ? '#89D7B7' : '#428475' }} />}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', display: 'flex', alignItems: 'center', gap: 1 }}>
-              <MedicalIcon sx={{ color: mode === 'dark' ? '#89D7B7' : '#428475' }} /> 3. Complaints & Diagnosis
-            </Typography>
-          </AccordionSummary>
-          <AccordionDetails sx={{ pt: 0 }}>
-            <Grid container spacing={2.5}>
-              {/* Presenting Complaints */}
-              <Grid item xs={12}>
-                <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                  Presenting Complaints
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 1, mt: 0.5, mb: 1 }}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    placeholder="e.g., Epigastric pain, moderate for 3 days"
-                    value={newComplaint}
-                    onChange={(e) => setNewComplaint(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addToArray('presentingComplaints', newComplaint, setNewComplaint))}
-                    InputProps={{ sx: { borderRadius: '14px' } }}
-                  />
-                  <Button 
-                    variant="contained" 
-                    onClick={() => addToArray('presentingComplaints', newComplaint, setNewComplaint)}
-                    sx={{ bgcolor: mode === 'dark' ? '#2A6B5D' : '#428475', minWidth: 44, borderRadius: '14px', px: 2 }}
-                  >
-                    <AddIcon />
-                  </Button>
-                </Box>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
-                  {formData.presentingComplaints?.map((item, idx) => (
-                    <Chip key={idx} label={item} onDelete={() => removeFromArray('presentingComplaints', idx)} sx={{ fontWeight: 600, bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.2)' : 'rgba(66, 132, 117, 0.12)', color: mode === 'dark' ? '#FAF2F5' : '#1A312C' }} />
-                  ))}
-                </Box>
-              </Grid>
-
-              {/* Clinical Examination Findings */}
-              <Grid item xs={12}>
-                <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                  Clinical Findings
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 1, mt: 0.5, mb: 1 }}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    placeholder="e.g., Tenderness in upper abdomen"
-                    value={newFinding}
-                    onChange={(e) => setNewFinding(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addToArray('clinicalFindings', newFinding, setNewFinding))}
-                    InputProps={{ sx: { borderRadius: '14px' } }}
-                  />
-                  <Button 
-                    variant="contained" 
-                    onClick={() => addToArray('clinicalFindings', newFinding, setNewFinding)}
-                    sx={{ bgcolor: mode === 'dark' ? '#2A6B5D' : '#428475', minWidth: 44, borderRadius: '14px', px: 2 }}
-                  >
-                    <AddIcon />
-                  </Button>
-                </Box>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
-                  {formData.clinicalFindings?.map((item, idx) => (
-                    <Chip key={idx} label={item} onDelete={() => removeFromArray('clinicalFindings', idx)} sx={{ fontWeight: 600, bgcolor: mode === 'dark' ? 'rgba(255, 215, 150, 0.2)' : 'rgba(255, 244, 225, 0.9)', color: mode === 'dark' ? '#FAF2F5' : '#1A312C' }} />
-                  ))}
-                </Box>
-              </Grid>
-
-              {/* Provisional Diagnosis */}
-              <Grid item xs={12}>
-                <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                  Provisional Diagnosis
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 1, mt: 0.5, mb: 1 }}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    placeholder="e.g., Acute Gastritis / GERD"
-                    value={newDiagnosis}
-                    onChange={(e) => setNewDiagnosis(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addToArray('provisionalDiagnosis', newDiagnosis, setNewDiagnosis))}
-                    InputProps={{ sx: { borderRadius: '14px' } }}
-                  />
-                  <Button 
-                    variant="contained" 
-                    onClick={() => addToArray('provisionalDiagnosis', newDiagnosis, setNewDiagnosis)}
-                    sx={{ bgcolor: mode === 'dark' ? '#89D7B7' : '#1A312C', color: mode === 'dark' ? '#1A312C' : '#89D7B7', minWidth: 44, borderRadius: '14px', px: 2 }}
-                  >
-                    <AddIcon />
-                  </Button>
-                </Box>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
-                  {formData.provisionalDiagnosis?.map((item, idx) => (
-                    <Chip 
-                      key={idx} 
-                      label={item} 
-                      onDelete={() => removeFromArray('provisionalDiagnosis', idx)} 
-                      sx={{ fontWeight: 800, bgcolor: mode === 'dark' ? '#89D7B7' : '#1A312C', color: mode === 'dark' ? '#1A312C' : '#89D7B7' }} 
-                    />
-                  ))}
-                </Box>
-              </Grid>
-
-              {/* Current Medications (Ongoing) */}
-              <Grid item xs={12}>
-                <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                  Current Medications (Ongoing)
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 1, mt: 0.5, mb: 1 }}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    placeholder="e.g., Metformin 500mg BD, Amlodipine 5mg OD"
-                    value={newCurrentMed}
-                    onChange={(e) => setNewCurrentMed(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addToArray('currentMedications', newCurrentMed, setNewCurrentMed))}
-                    InputProps={{ sx: { borderRadius: '14px' } }}
-                  />
-                  <Button 
-                    variant="contained" 
-                    onClick={() => addToArray('currentMedications', newCurrentMed, setNewCurrentMed)}
-                    sx={{ bgcolor: mode === 'dark' ? '#2A6B5D' : '#428475', minWidth: 44, borderRadius: '14px', px: 2 }}
-                  >
-                    <AddIcon />
-                  </Button>
-                </Box>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
-                  {formData.currentMedications?.map((item, idx) => (
-                    <Chip key={idx} label={item} onDelete={() => removeFromArray('currentMedications', idx)} sx={{ fontWeight: 600, bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.2)' : 'rgba(66, 132, 117, 0.15)', color: mode === 'dark' ? '#FAF2F5' : '#1A312C' }} />
-                  ))}
-                </Box>
-              </Grid>
-
-              {/* Past Surgical History */}
-              <Grid item xs={12}>
-                <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                  Past Surgical History
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 1, mt: 0.5, mb: 1 }}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    placeholder="e.g., Appendectomy (2019), Cholecystectomy (2021)"
-                    value={newSurgery}
-                    onChange={(e) => setNewSurgery(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addToArray('pastSurgicalHistory', newSurgery, setNewSurgery))}
-                    InputProps={{ sx: { borderRadius: '14px' } }}
-                  />
-                  <Button 
-                    variant="contained" 
-                    onClick={() => addToArray('pastSurgicalHistory', newSurgery, setNewSurgery)}
-                    sx={{ bgcolor: mode === 'dark' ? '#2A6B5D' : '#428475', minWidth: 44, borderRadius: '14px', px: 2 }}
-                  >
-                    <AddIcon />
-                  </Button>
-                </Box>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
-                  {formData.pastSurgicalHistory?.map((item, idx) => (
-                    <Chip key={idx} label={item} onDelete={() => removeFromArray('pastSurgicalHistory', idx)} sx={{ fontWeight: 600, bgcolor: mode === 'dark' ? 'rgba(255, 200, 150, 0.2)' : 'rgba(255, 200, 150, 0.3)', color: mode === 'dark' ? '#FAF2F5' : '#1A312C' }} />
-                  ))}
-                </Box>
-              </Grid>
-            </Grid>
-          </AccordionDetails>
-        </Accordion>
-
-        {/* ─── 4. Prescribed Medications (Rx) Section ─── */}
-        <Accordion 
-          defaultExpanded 
-          className="glass-panel" 
-          sx={{ 
-            mb: 2, 
-            borderRadius: '24px !important', 
-            overflow: 'hidden',
-            bgcolor: mode === 'dark' ? 'rgba(20, 38, 34, 0.94) !important' : 'rgba(255, 255, 255, 0.88) !important',
-            border: '2px solid rgba(137, 215, 183, 0.6) !important',
-            '&:before': { display: 'none' }
-          }}
-        >
-          <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: mode === 'dark' ? '#89D7B7' : '#428475' }} />}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', pr: 1 }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', display: 'flex', alignItems: 'center', gap: 1 }}>
-                <MedicationIcon sx={{ color: mode === 'dark' ? '#89D7B7' : '#428475' }} /> 4. Rx – Prescribed Medications *
-              </Typography>
-              <Chip 
-                label={`${formData.medications?.length || 0} Added`} 
-                size="small" 
-                sx={{ fontWeight: 800, bgcolor: '#89D7B7', color: '#1A312C' }} 
-              />
-            </Box>
-          </AccordionSummary>
-          <AccordionDetails sx={{ pt: 0 }}>
-            
-            {/* Add New Medication Card Container */}
-            <Paper variant="outlined" sx={{ p: 2, mb: 2, borderRadius: '20px', bgcolor: 'rgba(137, 215, 183, 0.08)', borderColor: 'rgba(137, 215, 183, 0.4)' }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', mb: 1.5 }}>
-                + Add Medication Item (Real-time Indian Medicines Autocomplete)
-              </Typography>
-              <Grid container spacing={1.5}>
-                <Grid item xs={12} sm={6}>
-                  <Autocomplete
-                    freeSolo
-                    open={medSearchOpen && (newMedication.name || '').trim().length >= 2 && filteredMedicineOptions.length > 0}
-                    onOpen={() => {
-                      if ((newMedication.name || '').trim().length >= 2) {
-                        setMedSearchOpen(true);
-                      }
-                    }}
-                    onClose={() => setMedSearchOpen(false)}
-                    options={filteredMedicineOptions}
-                    value={newMedication.name}
-                    onInputChange={(e, val) => {
-                      setNewMedication({ ...newMedication, name: val });
-                      if (val.trim().length >= 2) {
-                        setMedSearchOpen(true);
-                      } else {
-                        setMedSearchOpen(false);
-                      }
-                    }}
-                    slotProps={{
-                      paper: {
-                        elevation: 12,
-                        sx: {
-                          borderRadius: '20px',
-                          mt: 1,
-                          bgcolor: mode === 'dark' ? 'rgba(18, 38, 34, 0.96)' : 'rgba(255, 255, 255, 0.98)',
-                          backdropFilter: 'blur(20px)',
-                          border: '1.5px solid var(--color-mint)',
-                          boxShadow: mode === 'dark' 
-                            ? '0 16px 40px rgba(0,0,0,0.6)' 
-                            : '0 16px 40px rgba(42, 107, 93, 0.18)',
-                          overflow: 'hidden',
-                          '& .MuiAutocomplete-listbox': {
-                            p: 1,
-                            maxHeight: '260px',
-                            '&::-webkit-scrollbar': { width: '6px' },
-                            '&::-webkit-scrollbar-thumb': { bgcolor: 'var(--color-forest)', borderRadius: '10px' }
-                          }
-                        }
-                      }
-                    }}
-                    renderOption={(props, option) => {
-                      const isCapsule = option.toLowerCase().includes('capsule');
-                      const isSyrup = option.toLowerCase().includes('syrup') || option.toLowerCase().includes('suspension');
-                      const isInj = option.toLowerCase().includes('injection') || option.toLowerCase().includes('inj');
-                      const isDrop = option.toLowerCase().includes('drop');
-                      const formIcon = isCapsule ? '💊' : isSyrup ? '🧪' : isInj ? '💉' : isDrop ? '💧' : '💊';
-                      
-                      return (
-                        <Box 
-                          component="li" 
-                          {...props} 
-                          sx={{ 
-                            py: 1, 
-                            px: 1.5, 
-                            borderRadius: '12px', 
-                            mb: 0.5,
-                            fontWeight: 700,
-                            fontSize: '0.85rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 1.2,
-                            color: mode === 'dark' ? '#FAF2F5' : '#123029',
-                            transition: 'all 0.15s ease',
-                            '&:hover, &.Mui-focused': {
-                              bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.22) !important' : 'rgba(102, 205, 170, 0.15) !important',
-                              transform: 'translateX(4px)'
-                            }
-                          }}
-                        >
-                          <span style={{ fontSize: '1.1rem' }}>{formIcon}</span>
-                          <Box sx={{ flexGrow: 1 }}>
-                            <Typography variant="body2" sx={{ fontWeight: 700, color: 'inherit' }}>
-                              {option}
-                            </Typography>
-                          </Box>
-                        </Box>
-                      );
-                    }}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        fullWidth
-                        size="small"
-                        label="Medicine Name *"
-                        placeholder="Type at least 2 letters (e.g., Amoxicillin)"
-                        InputProps={{
-                          ...params.InputProps,
-                          startAdornment: (
-                            <>
-                              <InputAdornment position="start">
-                                <SearchIcon sx={{ color: 'var(--color-forest)', fontSize: 20 }} />
-                              </InputAdornment>
-                              {params.InputProps.startAdornment}
-                            </>
-                          ),
-                          sx: { borderRadius: '12px', fontWeight: 700 }
-                        }}
-                      />
-                    )}
-                  />
-                </Grid>
-                <Grid item xs={5} sm={3}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel id="med-type-label">Form</InputLabel>
-                    <Select
-                      labelId="med-type-label"
-                      value={newMedication.type || 'Tablet'}
-                      label="Form"
-                      onChange={(e) => {
-                        const newType = e.target.value;
-                        const updated = recalcMedication({ ...newMedication, type: newType });
-                        setNewMedication(updated);
-                      }}
-                      sx={{ borderRadius: '12px' }}
-                    >
-                      <MenuItem value="Tablet">Tablet</MenuItem>
-                      <MenuItem value="Capsule">Capsule</MenuItem>
-                      <MenuItem value="Syrup">Syrup</MenuItem>
-                      <MenuItem value="Injection">Injection</MenuItem>
-                      <MenuItem value="Ointment">Ointment</MenuItem>
-                      <MenuItem value="Drops">Drops</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={7} sm={3}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="Dosage"
-                    placeholder="Auto: M-A-E-N"
-                    value={buildDosageString(newMedication.timing || { morning: 0, afternoon: 0, evening: 0, night: 0 }, newMedication.type, newMedication.isSOS, newMedication.sosReason)}
-                    InputProps={{
-                      readOnly: true,
-                      sx: { borderRadius: '12px', bgcolor: newMedication.isSOS ? 'rgba(239,68,68,0.08)' : 'rgba(66,132,117,0.06)', fontWeight: 700, fontSize: '0.8rem', color: newMedication.isSOS ? '#dc2626' : 'inherit' }
-                    }}
-                    helperText={(() => {
-                      if (newMedication.isSOS) return '⚡ SOS — Take only when needed';
-                      const t = newMedication.timing || { morning: 0, afternoon: 0, evening: 0, night: 0 };
-                      const total = (t.morning || 0) + (t.afternoon || 0) + (t.evening || 0) + (t.night || 0);
-                      if (total === 0) return 'Select time of day below';
-                      if (newMedication.type === 'Syrup') return `${total * 5}ml/day (${total} tsp)`;
-                      if (newMedication.type === 'Drops') return `${total * 5} drops/day`;
-                      return `${total} ${getDispensaryUnit(newMedication.type).toLowerCase()}/day`;
-                    })()}
-                  />
-                </Grid>
-
-                {/* Time of Day & SOS Toggle Row */}
-                <Grid item xs={12}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.8 }}>
-                    <Typography variant="caption" sx={{ fontWeight: 800, color: 'var(--color-forest)' }}>
-                      Time of Day:
-                    </Typography>
-
-                    {/* SOS / PRN Mode Toggle */}
-                    <Chip
-                      icon={<SosIcon sx={{ fontSize: 16, color: newMedication.isSOS ? '#fff !important' : '#dc2626 !important' }} />}
-                      label={newMedication.isSOS ? '🆘 SOS Mode (ACTIVE)' : '🆘 SOS (When Needed)'}
-                      size="small"
-                      clickable
-                      onClick={() => {
-                        const newSOS = !newMedication.isSOS;
-                        const defaultReason = newSOS ? 'Fever / Pain' : '';
-                        let newInst = newMedication.instructions || '';
-                        if (newSOS && !newInst.toLowerCase().includes('when needed')) {
-                          newInst = newInst ? `${newInst}, Take only when needed for ${defaultReason}` : `Take only when needed for ${defaultReason}`;
-                        }
-                        const updated = recalcMedication({
-                          ...newMedication,
-                          isSOS: newSOS,
-                          sosReason: defaultReason,
-                          instructions: newInst
-                        });
-                        setNewMedication(updated);
-                      }}
-                      sx={{
-                        fontWeight: 800,
-                        fontSize: '0.7rem',
-                        height: 26,
-                        borderRadius: '10px',
-                        bgcolor: newMedication.isSOS ? '#dc2626' : 'rgba(220, 38, 38, 0.1)',
-                        color: newMedication.isSOS ? '#ffffff' : '#dc2626',
-                        border: '1.5px solid #dc2626',
-                        transition: 'all 0.2s ease',
-                        '&:active': { transform: 'scale(0.95)' }
-                      }}
-                    />
-                  </Box>
-
-                  {/* SOS Reason Selector Bar when SOS is active */}
-                  {newMedication.isSOS && (
-                    <Box sx={{ mb: 1.2, p: 1.2, borderRadius: '14px', bgcolor: 'rgba(220, 38, 38, 0.06)', border: '1.5px dashed rgba(220, 38, 38, 0.4)' }}>
-                      <Typography variant="caption" sx={{ fontWeight: 800, color: '#dc2626', display: 'block', mb: 0.6 }}>
-                        🆘 Indicate Reason for SOS (Only When Needed):
-                      </Typography>
-                      <Box sx={{ display: 'flex', gap: 0.6, flexWrap: 'wrap', mb: 1 }}>
-                        {[
-                          { label: 'Fever', icon: '🌡️' },
-                          { label: 'Pain / Headache', icon: '⚡' },
-                          { label: 'Nausea / Vomiting', icon: '🤢' },
-                          { label: 'Acidity / Gas', icon: '💨' },
-                          { label: 'Cough / Breathlessness', icon: '🫁' }
-                        ].map((r) => {
-                          const isSelected = newMedication.sosReason === r.label;
-                          return (
-                            <Chip
-                              key={r.label}
-                              label={`${r.icon} ${r.label}`}
-                              size="small"
-                              clickable
-                              onClick={() => {
-                                const newReason = r.label;
-                                let updatedInst = (newMedication.instructions || '').replace(/,? Take only when needed for .*/i, '');
-                                updatedInst = updatedInst ? `${updatedInst}, Take only when needed for ${newReason}` : `Take only when needed for ${newReason}`;
-                                const updated = recalcMedication({
-                                  ...newMedication,
-                                  sosReason: newReason,
-                                  instructions: updatedInst
-                                });
-                                setNewMedication(updated);
-                              }}
-                              sx={{
-                                fontWeight: 700,
-                                fontSize: '0.68rem',
-                                height: 24,
-                                borderRadius: '8px',
-                                bgcolor: isSelected ? '#dc2626' : 'rgba(255,255,255,0.9)',
-                                color: isSelected ? '#fff' : '#b91c1c',
-                                border: isSelected ? '1.5px solid #dc2626' : '1px solid rgba(220,38,38,0.2)'
-                              }}
-                            />
-                          );
-                        })}
-                      </Box>
-                      <TextField
-                        fullWidth
-                        size="small"
-                        placeholder="Or type custom SOS condition (e.g., High Blood Pressure)"
-                        value={newMedication.sosReason || ''}
-                        onChange={(e) => {
-                          const customR = e.target.value;
-                          let updatedInst = (newMedication.instructions || '').replace(/,? Take only when needed for .*/i, '');
-                          if (customR) {
-                            updatedInst = updatedInst ? `${updatedInst}, Take only when needed for ${customR}` : `Take only when needed for ${customR}`;
-                          }
-                          const updated = recalcMedication({
-                            ...newMedication,
-                            sosReason: customR,
-                            instructions: updatedInst
-                          });
-                          setNewMedication(updated);
-                        }}
-                        InputProps={{ sx: { borderRadius: '10px', bgcolor: '#fff', fontSize: '0.78rem' } }}
-                      />
-                    </Box>
-                  )}
-
-                  <Box sx={{ display: 'flex', gap: 1, width: '100%' }}>
-                    {([
-                      { key: 'morning' as const, label: 'Morn', icon: <MorningIcon />, color: '#F57C00', bg: '#FFF3E0', activeBg: '#FFE0B2', border: '#F57C00' },
-                      { key: 'afternoon' as const, label: 'Day', icon: <AfternoonIcon />, color: '#FBC02D', bg: '#FFFDE7', activeBg: '#FFF9C4', border: '#F9A825' },
-                      { key: 'evening' as const, label: 'Eve', icon: <EveningIcon />, color: '#E64A19', bg: '#FBE9E7', activeBg: '#FFCCBC', border: '#E64A19' },
-                      { key: 'night' as const, label: 'Night', icon: <NightIcon />, color: '#3949AB', bg: '#E8EAF6', activeBg: '#C5CAE9', border: '#3949AB' }
-                    ]).map((time) => {
-                      const doseCount = newMedication.timing?.[time.key] || 0;
-                      const isActive = doseCount > 0;
-                      const mealRel = newMedication.mealRelations?.[time.key] || '';
-                      return (
-                        <Box
-                          key={time.key}
-                          onClick={(e) => {
-                            if (isActive) {
-                              const updated = recalcMedication({
-                                ...newMedication,
-                                timing: { ...newMedication.timing, [time.key]: 0 },
-                                mealRelations: { ...newMedication.mealRelations, [time.key]: '' }
-                              });
-                              setNewMedication(updated);
-                            } else {
-                              const updated = recalcMedication({
-                                ...newMedication,
-                                timing: { ...newMedication.timing, [time.key]: 1 }
-                              });
-                              setNewMedication(updated);
-                              setMealPopoverAnchor(e.currentTarget);
-                              setMealPopoverTimeKey(time.key);
-                            }
-                          }}
-                          sx={{
-                            flex: 1,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            py: 1,
-                            borderRadius: '14px',
-                            border: isActive ? `2.5px solid ${time.border}` : '2px solid #e0e0e0',
-                            bgcolor: isActive ? time.activeBg : 'transparent',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s ease',
-                            WebkitTapHighlightColor: 'transparent',
-                            userSelect: 'none',
-                            '&:active': {
-                              transform: 'scale(0.95)'
-                            },
-                            '& .MuiSvgIcon-root': {
-                              color: isActive ? time.color : '#9e9e9e',
-                              fontSize: 24,
-                              transition: 'color 0.2s'
-                            }
-                          }}
-                        >
-                          {time.icon}
-                          <Typography variant="caption" sx={{ mt: 0.2, fontWeight: isActive ? 800 : 600, color: isActive ? time.color : '#757575', fontSize: '0.65rem', lineHeight: 1.2 }}>
-                            {time.label}
-                          </Typography>
-                          {isActive && (
-                            <Typography variant="caption" sx={{ fontSize: '0.55rem', fontWeight: 800, color: '#fff', bgcolor: time.color, borderRadius: '6px', px: 0.6, mt: 0.2, lineHeight: 1.4, whiteSpace: 'nowrap', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              {getDoseUnitLabel(newMedication.type, doseCount)}{mealRel ? ` · ${mealRel.split(' ')[0]}` : ''}
-                            </Typography>
+                              ))}
+                            </Box>
                           )}
                         </Box>
-                      );
-                    })}
-                  </Box>
-                </Grid>
+                      </Collapse>
+                    </Paper>
+                  </Grid>
+                )}
+              </Grid>
+            </Paper>
 
-                {/* Per-Time-of-Day Meal Relation Popover */}
-                <Popover
-                  open={Boolean(mealPopoverAnchor)}
-                  anchorEl={mealPopoverAnchor}
-                  onClose={() => setMealPopoverAnchor(null)}
-                  anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-                  transformOrigin={{ vertical: 'top', horizontal: 'center' }}
-                  slotProps={{
-                    paper: {
-                      sx: {
-                        p: 2,
-                        borderRadius: '20px',
-                        boxShadow: '0 16px 48px rgba(26, 49, 44, 0.25)',
-                        border: '1.5px solid rgba(137, 215, 183, 0.5)',
-                        bgcolor: mode === 'dark' ? 'rgba(18, 38, 34, 0.98)' : 'rgba(255, 255, 255, 0.99)',
-                        backdropFilter: 'blur(16px)',
-                        width: 'calc(100vw - 32px)',
-                        maxWidth: 360,
-                        mt: 1
-                      }
-                    }
-                  }}
-                >
-                  <Box sx={{ mb: 1.5, textAlign: 'center' }}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#1A312C', fontSize: '0.85rem' }}>
-                      {mealPopoverTimeKey.charAt(0).toUpperCase() + mealPopoverTimeKey.slice(1)} — Dose & Meal
+            {/* ─── 2. Vital Signs Section Card ─── */}
+            <Paper 
+              className={mode === 'dark' ? 'apple-glass-card-dark' : 'apple-glass-card'} 
+              sx={{ 
+                p: { xs: 2.2, sm: 3 }, 
+                mb: 3, 
+                borderRadius: '24px !important'
+              }}
+            >
+              <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)', display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                <VitalIcon sx={{ color: 'var(--color-mint)' }} /> 2. Vital Signs (Consultation)
+              </Typography>
+              <Grid container spacing={1.5}>
+                <Grid item xs={12} sm={4}>
+                  <Box sx={{ p: 1, px: 1.5, borderRadius: '14px', bgcolor: 'rgba(66, 132, 117, 0.06)', border: '1px solid rgba(66, 132, 117, 0.2)' }}>
+                    <Typography variant="caption" sx={{ fontWeight: 800, color: '#428475', display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+                      <BpIcon sx={{ fontSize: 16 }} /> Blood Pressure (Systolic / Diastolic)
                     </Typography>
-                  </Box>
-
-                  {/* Dose Count Selector */}
-                  <Box sx={{ mb: 1.5 }}>
-                    <Typography variant="caption" sx={{ fontWeight: 700, color: '#428475', display: 'block', mb: 0.8, textAlign: 'center' }}>
-                      Select dose per intake ({newMedication.type || 'Tablet'}):
-                    </Typography>
-                    <Box sx={{ display: 'flex', gap: 0.8, justifyContent: 'center', flexWrap: 'wrap' }}>
-                      {[1, 2, 3].map((count) => {
-                        const currentDose = newMedication.timing?.[mealPopoverTimeKey] || 0;
-                        const isSelected = currentDose === count;
-                        const doseLabel = getDoseUnitLabel(newMedication.type, count);
-                        return (
-                          <Box
-                            key={count}
-                            onClick={() => {
-                              const updated = recalcMedication({
-                                ...newMedication,
-                                timing: { ...newMedication.timing, [mealPopoverTimeKey]: count }
-                              });
-                              setNewMedication(updated);
-                            }}
-                            sx={{
-                              minWidth: 64,
-                              height: 44,
-                              px: 1.2,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              borderRadius: '14px',
-                              border: isSelected ? '2.5px solid var(--color-forest)' : '2px solid #e0e0e0',
-                              bgcolor: isSelected ? 'var(--color-forest)' : 'transparent',
-                              color: isSelected ? '#fff' : '#1A312C',
-                              fontWeight: 800,
-                              fontSize: '0.78rem',
-                              cursor: 'pointer',
-                              transition: 'all 0.15s',
-                              WebkitTapHighlightColor: 'transparent',
-                              '&:active': { transform: 'scale(0.92)' }
-                            }}
-                          >
-                            {doseLabel}
-                          </Box>
-                        );
-                      })}
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
                       <TextField
                         size="small"
                         type="number"
-                        placeholder="custom #"
-                        value={(newMedication.timing?.[mealPopoverTimeKey] || 0) > 3 ? (newMedication.timing?.[mealPopoverTimeKey] || '') : ''}
+                        label="SYS"
+                        placeholder="120"
+                        value={(() => {
+                          const parts = (formData.vitalSigns?.bloodPressure || '').split('/');
+                          return parts[0]?.trim() || '';
+                        })()}
                         onChange={(e) => {
-                          const val = parseInt(e.target.value, 10) || 0;
-                          if (val >= 0) {
-                            const updated = recalcMedication({
-                              ...newMedication,
-                              timing: { ...newMedication.timing, [mealPopoverTimeKey]: val }
-                            });
-                            setNewMedication(updated);
-                          }
+                          const sys = e.target.value;
+                          const currentParts = (formData.vitalSigns?.bloodPressure || '').split('/');
+                          const dia = currentParts[1] ? currentParts[1].replace('mmHg', '').trim() : '';
+                          const bpStr = (sys || dia) ? `${sys}/${dia}` : '';
+                          setFormData({
+                            ...formData,
+                            vitalSigns: { ...formData.vitalSigns, bloodPressure: bpStr }
+                          });
                         }}
-                        sx={{ width: 70, '& input': { textAlign: 'center', fontWeight: 700, p: '8px', fontSize: '0.8rem' }, '& .MuiOutlinedInput-root': { borderRadius: '14px' } }}
+                        sx={{ flex: 1, '& input': { textAlign: 'center', fontWeight: 800, p: '6px' }, '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
                       />
+                      <Typography variant="h6" sx={{ color: '#428475', fontWeight: 900, mx: 0.2 }}>/</Typography>
+                      <TextField
+                        size="small"
+                        type="number"
+                        label="DIA"
+                        placeholder="80"
+                        value={(() => {
+                          const parts = (formData.vitalSigns?.bloodPressure || '').split('/');
+                          return parts[1] ? parts[1].replace('mmHg', '').trim() : '';
+                        })()}
+                        onChange={(e) => {
+                          const dia = e.target.value;
+                          const currentParts = (formData.vitalSigns?.bloodPressure || '').split('/');
+                          const sys = currentParts[0]?.trim() || '';
+                          const bpStr = (sys || dia) ? `${sys}/${dia}` : '';
+                          setFormData({
+                            ...formData,
+                            vitalSigns: { ...formData.vitalSigns, bloodPressure: bpStr }
+                          });
+                        }}
+                        sx={{ flex: 1, '& input': { textAlign: 'center', fontWeight: 800, p: '6px' }, '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+                      />
+                      <Typography variant="caption" sx={{ fontWeight: 800, color: '#428475', ml: 0.2 }}>
+                        mmHg
+                      </Typography>
                     </Box>
                   </Box>
-
-                  <Divider sx={{ my: 1 }} />
-
-                  <Typography variant="caption" sx={{ fontWeight: 700, color: '#428475', display: 'block', mb: 0.5, textAlign: 'center' }}>
-                    Meal relation (optional)
-                  </Typography>
-
-                  {/* Meal Relation Row 1 */}
-                  <Box sx={{ display: 'flex', gap: 0.6, mb: 0.6, justifyContent: 'center', flexWrap: 'wrap' }}>
-                    {[
-                      { label: 'With Food', shortLabel: 'With', icon: <WithFoodIcon sx={{ fontSize: 14 }} />, color: '#1565c0', bg: '#e3f2fd' },
-                      { label: 'Before Food', shortLabel: 'Before', icon: <BeforeFoodIcon sx={{ fontSize: 14 }} />, color: '#e65100', bg: '#fff3e0' },
-                      { label: 'After Food', shortLabel: 'After', icon: <AfterFoodIcon sx={{ fontSize: 14 }} />, color: '#6a1b9a', bg: '#f3e5f5' }
-                    ].map((opt) => {
-                      const isSelected = newMedication.mealRelations?.[mealPopoverTimeKey] === opt.label;
-                      return (
-                        <Chip
-                          key={opt.label}
-                          icon={opt.icon}
-                          label={opt.label}
-                          size="small"
-                          clickable
-                          onClick={() => {
-                            setNewMedication({
-                              ...newMedication,
-                              mealRelations: { ...newMedication.mealRelations, [mealPopoverTimeKey]: isSelected ? '' : opt.label }
-                            });
-                            setMealPopoverAnchor(null);
-                          }}
-                          sx={{
-                            fontWeight: 700,
-                            fontSize: '0.72rem',
-                            py: 2,
-                            borderRadius: '14px',
-                            flex: '1 1 auto',
-                            bgcolor: isSelected ? opt.color : opt.bg,
-                            color: isSelected ? '#fff' : opt.color,
-                            border: isSelected ? `2px solid ${opt.color}` : '1.5px solid rgba(0,0,0,0.06)',
-                            '& .MuiChip-icon': { color: isSelected ? '#fff' : opt.color },
-                            '&:active': { transform: 'scale(0.95)' }
-                          }}
-                        />
-                      );
-                    })}
-                  </Box>
-
-                  {/* Meal Relation Row 2 */}
-                  <Box sx={{ display: 'flex', gap: 0.6, justifyContent: 'center', flexWrap: 'wrap' }}>
-                    {[
-                      { label: 'Empty Stomach', icon: <EmptyStomachIcon sx={{ fontSize: 14 }} />, color: '#00695c', bg: '#e0f2f1' },
-                      { label: 'Any Time', icon: <AnyTimeIcon sx={{ fontSize: 14 }} />, color: '#37474f', bg: '#eceff1' }
-                    ].map((opt) => {
-                      const isSelected = newMedication.mealRelations?.[mealPopoverTimeKey] === opt.label;
-                      return (
-                        <Chip
-                          key={opt.label}
-                          icon={opt.icon}
-                          label={opt.label}
-                          size="small"
-                          clickable
-                          onClick={() => {
-                            setNewMedication({
-                              ...newMedication,
-                              mealRelations: { ...newMedication.mealRelations, [mealPopoverTimeKey]: isSelected ? '' : opt.label }
-                            });
-                            setMealPopoverAnchor(null);
-                          }}
-                          sx={{
-                            fontWeight: 700,
-                            fontSize: '0.72rem',
-                            py: 2,
-                            borderRadius: '14px',
-                            flex: '1 1 auto',
-                            bgcolor: isSelected ? opt.color : opt.bg,
-                            color: isSelected ? '#fff' : opt.color,
-                            border: isSelected ? `2px solid ${opt.color}` : '1.5px solid rgba(0,0,0,0.06)',
-                            '& .MuiChip-icon': { color: isSelected ? '#fff' : opt.color },
-                            '&:active': { transform: 'scale(0.95)' }
-                          }}
-                        />
-                      );
-                    })}
-                  </Box>
-                </Popover>
-
-                {/* Duration Inputs & Presets */}
-                <Grid item xs={7} sm={4}>
+                </Grid>
+                <Grid item xs={6} sm={3}>
                   <TextField
                     fullWidth
                     size="small"
-                    label="Duration Value"
-                    type="number"
-                    value={newMedication.durationValue || ''}
-                    onChange={(e) => {
-                      const num = parseInt(e.target.value, 10) || 0;
-                      const unit = newMedication.durationUnit || 'Days';
-                      const durStr = `${num} ${unit}`;
-                      const updated = recalcMedication({
-                        ...newMedication,
-                        durationValue: num,
-                        duration: durStr
-                      });
-                      setNewMedication(updated);
+                    label="Pulse Rate"
+                    placeholder="72 bpm"
+                    value={formData.vitalSigns?.pulse || ''}
+                    onChange={handleVitalChange('pulse')}
+                    InputProps={{
+                      startAdornment: <InputAdornment position="start"><PulseIcon sx={{ color: '#ef4444', fontSize: 18 }} /></InputAdornment>,
+                      sx: { borderRadius: '12px' }
                     }}
+                  />
+                </Grid>
+                <Grid item xs={6} sm={3}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Temperature"
+                    placeholder="98.6 °F"
+                    value={formData.vitalSigns?.temperature || ''}
+                    onChange={handleVitalChange('temperature')}
+                    InputProps={{
+                      startAdornment: <InputAdornment position="start"><TempIcon sx={{ color: '#f59e0b', fontSize: 18 }} /></InputAdornment>,
+                      sx: { borderRadius: '12px' }
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={6} sm={3}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="SpO2 Level"
+                    placeholder="98 %"
+                    value={formData.vitalSigns?.spo2 || ''}
+                    onChange={handleVitalChange('spo2')}
+                    InputProps={{
+                      startAdornment: <InputAdornment position="start"><Spo2Icon sx={{ color: '#06b6d4', fontSize: 18 }} /></InputAdornment>,
+                      sx: { borderRadius: '12px' }
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={6} sm={4}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Resp. Rate"
+                    placeholder="16 /min"
+                    value={formData.vitalSigns?.respiratoryRate || ''}
+                    onChange={handleVitalChange('respiratoryRate')}
                     InputProps={{ sx: { borderRadius: '12px' } }}
                   />
                 </Grid>
-                <Grid item xs={5} sm={2}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel id="dur-unit-label">Unit</InputLabel>
-                    <Select
-                      labelId="dur-unit-label"
-                      value={newMedication.durationUnit || 'Days'}
-                      label="Unit"
-                      onChange={(e) => {
-                        const unit = e.target.value;
-                        const num = newMedication.durationValue || 5;
-                        const durStr = `${num} ${unit}`;
-                        const updated = recalcMedication({
-                          ...newMedication,
-                          durationUnit: unit,
-                          duration: durStr
-                        });
-                        setNewMedication(updated);
-                      }}
-                      sx={{ borderRadius: '12px' }}
+                <Grid item xs={6} sm={4}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="BMI"
+                    placeholder="24.5"
+                    value={formData.vitalSigns?.bmi || ''}
+                    onChange={handleVitalChange('bmi')}
+                    InputProps={{
+                      startAdornment: <InputAdornment position="start"><BmiIcon sx={{ color: '#428475', fontSize: 18 }} /></InputAdornment>,
+                      sx: { borderRadius: '12px' }
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Pain Scale"
+                    placeholder="e.g., 4 / 10"
+                    value={formData.vitalSigns?.painScale || ''}
+                    onChange={handleVitalChange('painScale')}
+                    InputProps={{
+                      startAdornment: <InputAdornment position="start"><PainIcon sx={{ color: '#ef4444', fontSize: 18 }} /></InputAdornment>,
+                      sx: { borderRadius: '12px' }
+                    }}
+                  />
+                </Grid>
+              </Grid>
+            </Paper>
+          </Box>
+        )}
+
+        {/* ═══ STEP 2: CLINICAL ASSESSMENT & DIAGNOSIS ═══ */}
+        {(viewMode === 'all' || activeStep === 1) && (
+          <Box 
+            key={activeStep === 1 ? 'step-1' : 'step-all-1'}
+            sx={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: 0,
+              animation: 'stepCardFadeIn 0.38s cubic-bezier(0.16, 1, 0.3, 1)',
+              '@keyframes stepCardFadeIn': {
+                '0%': { opacity: 0, transform: 'translateY(16px) scale(0.992)' },
+                '100%': { opacity: 1, transform: 'translateY(0) scale(1)' }
+              }
+            }}
+          >
+            {/* ─── 3. Chief Complaints & Diagnosis ─── */}
+            <Paper 
+              className={mode === 'dark' ? 'apple-glass-card-dark' : 'apple-glass-card'} 
+              sx={{ 
+                p: { xs: 2.2, sm: 3 }, 
+                mb: 3, 
+                borderRadius: '24px !important'
+              }}
+            >
+              <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)', display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                <MedicalIcon sx={{ color: 'var(--color-mint)' }} /> 3. Complaints & Diagnosis
+              </Typography>
+              <Grid container spacing={2.5}>
+                {/* Presenting Complaints */}
+                <Grid item xs={12}>
+                  <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    Presenting Complaints
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1, mt: 0.5, mb: 1 }}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      placeholder="e.g., Epigastric pain, moderate for 3 days"
+                      value={newComplaint}
+                      onChange={(e) => setNewComplaint(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addToArray('presentingComplaints', newComplaint, setNewComplaint))}
+                      InputProps={{ sx: { borderRadius: '14px' } }}
+                    />
+                    <Button 
+                      variant="contained" 
+                      onClick={() => addToArray('presentingComplaints', newComplaint, setNewComplaint)}
+                      sx={{ bgcolor: mode === 'dark' ? '#2A6B5D' : '#428475', minWidth: 44, borderRadius: '14px', px: 2 }}
                     >
-                      <MenuItem value="Days">Days</MenuItem>
-                      <MenuItem value="Weeks">Weeks</MenuItem>
-                      <MenuItem value="Months">Months</MenuItem>
-                    </Select>
-                  </FormControl>
+                      <AddIcon />
+                    </Button>
+                  </Box>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
+                    {formData.presentingComplaints?.map((item, idx) => (
+                      <Chip key={idx} label={item} onDelete={() => removeFromArray('presentingComplaints', idx)} sx={{ fontWeight: 600, bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.2)' : 'rgba(66, 132, 117, 0.12)', color: mode === 'dark' ? '#FAF2F5' : '#1A312C' }} />
+                    ))}
+                  </Box>
                 </Grid>
 
-                {/* Duration Presets */}
+                {/* Clinical Examination Findings */}
                 <Grid item xs={12}>
-                  <Typography variant="caption" sx={{ fontWeight: 800, color: 'var(--color-forest)', display: 'block', mb: 0.5 }}>
-                    Quick Duration Presets:
+                  <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    Clinical Findings
                   </Typography>
-                  <Box sx={{ display: 'flex', gap: 0.8, flexWrap: 'wrap' }}>
-                    {[
-                      { num: 3, unit: 'Days', label: '3 Days' },
-                      { num: 5, unit: 'Days', label: '5 Days' },
-                      { num: 7, unit: 'Days', label: '7 Days' },
-                      { num: 10, unit: 'Days', label: '10 Days' },
-                      { num: 14, unit: 'Days', label: '14 Days' },
-                      { num: 1, unit: 'Months', label: '1 Month' },
-                      { num: 3, unit: 'Months', label: '3 Months' }
-                    ].map(p => (
-                      <Chip
-                        key={p.label}
-                        label={p.label}
-                        size="small"
-                        onClick={() => {
-                          const durStr = `${p.num} ${p.unit}`;
-                          const updated = recalcMedication({
-                            ...newMedication,
-                            durationValue: p.num,
-                            durationUnit: p.unit,
-                            duration: durStr
-                          });
-                          setNewMedication(updated);
-                        }}
-                        sx={{
-                          fontWeight: 700,
-                          fontSize: '0.7rem',
-                          cursor: 'pointer',
-                          bgcolor: (newMedication.durationValue === p.num && newMedication.durationUnit === p.unit) ? 'var(--color-forest)' : 'rgba(0,0,0,0.06)',
-                          color: (newMedication.durationValue === p.num && newMedication.durationUnit === p.unit) ? '#ffffff' : 'inherit'
-                        }}
+                  <Box sx={{ display: 'flex', gap: 1, mt: 0.5, mb: 1 }}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      placeholder="e.g., Tenderness in upper abdomen"
+                      value={newFinding}
+                      onChange={(e) => setNewFinding(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addToArray('clinicalFindings', newFinding, setNewFinding))}
+                      InputProps={{ sx: { borderRadius: '14px' } }}
+                    />
+                    <Button 
+                      variant="contained" 
+                      onClick={() => addToArray('clinicalFindings', newFinding, setNewFinding)}
+                      sx={{ bgcolor: mode === 'dark' ? '#2A6B5D' : '#428475', minWidth: 44, borderRadius: '14px', px: 2 }}
+                    >
+                      <AddIcon />
+                    </Button>
+                  </Box>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
+                    {formData.clinicalFindings?.map((item, idx) => (
+                      <Chip key={idx} label={item} onDelete={() => removeFromArray('clinicalFindings', idx)} sx={{ fontWeight: 600, bgcolor: mode === 'dark' ? 'rgba(255, 215, 150, 0.2)' : 'rgba(255, 244, 225, 0.9)', color: mode === 'dark' ? '#FAF2F5' : '#1A312C' }} />
+                    ))}
+                  </Box>
+                </Grid>
+
+                {/* Provisional Diagnosis */}
+                <Grid item xs={12}>
+                  <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    Provisional Diagnosis
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1, mt: 0.5, mb: 1 }}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      placeholder="e.g., Acute Gastritis / GERD"
+                      value={newDiagnosis}
+                      onChange={(e) => setNewDiagnosis(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addToArray('provisionalDiagnosis', newDiagnosis, setNewDiagnosis))}
+                      InputProps={{ sx: { borderRadius: '14px' } }}
+                    />
+                    <Button 
+                      variant="contained" 
+                      onClick={() => addToArray('provisionalDiagnosis', newDiagnosis, setNewDiagnosis)}
+                      sx={{ bgcolor: mode === 'dark' ? '#89D7B7' : '#1A312C', color: mode === 'dark' ? '#1A312C' : '#89D7B7', minWidth: 44, borderRadius: '14px', px: 2 }}
+                    >
+                      <AddIcon />
+                    </Button>
+                  </Box>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
+                    {formData.provisionalDiagnosis?.map((item, idx) => (
+                      <Chip 
+                        key={idx} 
+                        label={item} 
+                        onDelete={() => removeFromArray('provisionalDiagnosis', idx)} 
+                        sx={{ fontWeight: 800, bgcolor: mode === 'dark' ? '#89D7B7' : '#1A312C', color: mode === 'dark' ? '#1A312C' : '#89D7B7' }} 
                       />
                     ))}
                   </Box>
                 </Grid>
 
-                {/* Quantity Field & Presets */}
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="Total Quantity prescribed"
-                    placeholder="Auto-calculated"
-                    value={newMedication.quantity || ''}
-                    onChange={(e) => setNewMedication({ ...newMedication, quantity: e.target.value })}
-                    helperText={(() => {
-                      const t = newMedication.timing || { morning: 0, afternoon: 0, evening: 0, night: 0 };
-                      const calc = calculateQuantityFromTiming(t, newMedication.durationValue || 5, newMedication.durationUnit || 'Days', newMedication.type);
-                      return calc.detailStr || 'Select time of day to auto-calculate';
-                    })()}
-                    InputProps={{ sx: { borderRadius: '12px', fontWeight: 700 } }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="Special Instructions"
-                    placeholder="e.g., Drink plenty of water"
-                    value={newMedication.instructions}
-                    onChange={(e) => setNewMedication({ ...newMedication, instructions: e.target.value })}
-                    InputProps={{ sx: { borderRadius: '12px' } }}
-                  />
+                {/* Current Medications (Ongoing) */}
+                <Grid item xs={12}>
+                  <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    Current Medications (Ongoing)
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1, mt: 0.5, mb: 1 }}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      placeholder="e.g., Metformin 500mg BD, Amlodipine 5mg OD"
+                      value={newCurrentMed}
+                      onChange={(e) => setNewCurrentMed(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addToArray('currentMedications', newCurrentMed, setNewCurrentMed))}
+                      InputProps={{ sx: { borderRadius: '14px' } }}
+                    />
+                    <Button 
+                      variant="contained" 
+                      onClick={() => addToArray('currentMedications', newCurrentMed, setNewCurrentMed)}
+                      sx={{ bgcolor: mode === 'dark' ? '#2A6B5D' : '#428475', minWidth: 44, borderRadius: '14px', px: 2 }}
+                    >
+                      <AddIcon />
+                    </Button>
+                  </Box>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
+                    {formData.currentMedications?.map((item, idx) => (
+                      <Chip key={idx} label={item} onDelete={() => removeFromArray('currentMedications', idx)} sx={{ fontWeight: 600, bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.2)' : 'rgba(66, 132, 117, 0.15)', color: mode === 'dark' ? '#FAF2F5' : '#1A312C' }} />
+                    ))}
+                  </Box>
                 </Grid>
 
-                {/* Quick Quantity Presets — ONLY visible when no time of day is selected */}
-                {(!newMedication.timing || ((newMedication.timing.morning || 0) === 0 && (newMedication.timing.afternoon || 0) === 0 && (newMedication.timing.evening || 0) === 0 && (newMedication.timing.night || 0) === 0)) && !newMedication.isSOS && (
+                {/* Past Surgical History */}
+                <Grid item xs={12}>
+                  <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    Past Surgical History
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1, mt: 0.5, mb: 1 }}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      placeholder="e.g., Appendectomy (2019), Cholecystectomy (2021)"
+                      value={newSurgery}
+                      onChange={(e) => setNewSurgery(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addToArray('pastSurgicalHistory', newSurgery, setNewSurgery))}
+                      InputProps={{ sx: { borderRadius: '14px' } }}
+                    />
+                    <Button 
+                      variant="contained" 
+                      onClick={() => addToArray('pastSurgicalHistory', newSurgery, setNewSurgery)}
+                      sx={{ bgcolor: mode === 'dark' ? '#2A6B5D' : '#428475', minWidth: 44, borderRadius: '14px', px: 2 }}
+                    >
+                      <AddIcon />
+                    </Button>
+                  </Box>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
+                    {formData.pastSurgicalHistory?.map((item, idx) => (
+                      <Chip key={idx} label={item} onDelete={() => removeFromArray('pastSurgicalHistory', idx)} sx={{ fontWeight: 600, bgcolor: mode === 'dark' ? 'rgba(255, 200, 150, 0.2)' : 'rgba(255, 200, 150, 0.3)', color: mode === 'dark' ? '#FAF2F5' : '#1A312C' }} />
+                    ))}
+                  </Box>
+                </Grid>
+              </Grid>
+            </Paper>
+          </Box>
+        )}
+
+        {/* ═══ STEP 3: RX MEDICATIONS & LAB TESTS ═══ */}
+        {(viewMode === 'all' || activeStep === 2) && (
+          <Box 
+            key={activeStep === 2 ? 'step-2' : 'step-all-2'}
+            sx={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: 0,
+              animation: 'stepCardFadeIn 0.38s cubic-bezier(0.16, 1, 0.3, 1)',
+              '@keyframes stepCardFadeIn': {
+                '0%': { opacity: 0, transform: 'translateY(16px) scale(0.992)' },
+                '100%': { opacity: 1, transform: 'translateY(0) scale(1)' }
+              }
+            }}
+          >
+            {/* ─── 4. Prescribed Medications (Rx) Section ─── */}
+            <Paper 
+              className={mode === 'dark' ? 'apple-glass-card-dark' : 'apple-glass-card'} 
+              sx={{ 
+                p: { xs: 2.2, sm: 3 }, 
+                mb: 3, 
+                borderRadius: '24px !important',
+                border: '2px solid rgba(137, 215, 183, 0.6) !important'
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)', display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <MedicationIcon sx={{ color: 'var(--color-mint)' }} /> 4. Rx – Prescribed Medications *
+                </Typography>
+                <Chip 
+                  label={`${formData.medications?.length || 0} Added`} 
+                  size="small" 
+                  sx={{ fontWeight: 800, bgcolor: '#89D7B7', color: '#1A312C' }} 
+                />
+              </Box>
+
+              {/* Add New Medication Card Container */}
+              <Paper variant="outlined" sx={{ p: 2, mb: 2, borderRadius: '20px', bgcolor: 'rgba(137, 215, 183, 0.08)', borderColor: 'rgba(137, 215, 183, 0.4)' }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', mb: 1.5 }}>
+                  + Add Medication Item (Real-time Indian Medicines Autocomplete)
+                </Typography>
+                <Grid container spacing={1.5}>
+                  <Grid item xs={12} sm={6}>
+                    <Autocomplete
+                      freeSolo
+                      open={medSearchOpen && (newMedication.name || '').trim().length >= 2 && filteredMedicineOptions.length > 0}
+                      onOpen={() => {
+                        if ((newMedication.name || '').trim().length >= 2) {
+                          setMedSearchOpen(true);
+                        }
+                      }}
+                      onClose={() => setMedSearchOpen(false)}
+                      options={filteredMedicineOptions}
+                      value={newMedication.name}
+                      onInputChange={(e, val) => {
+                        setNewMedication({ ...newMedication, name: val });
+                        if (val.trim().length >= 2) {
+                          setMedSearchOpen(true);
+                        } else {
+                          setMedSearchOpen(false);
+                        }
+                      }}
+                      slotProps={{
+                        paper: {
+                          elevation: 12,
+                          sx: {
+                            borderRadius: '20px',
+                            mt: 1,
+                            bgcolor: mode === 'dark' ? 'rgba(18, 38, 34, 0.96)' : 'rgba(255, 255, 255, 0.98)',
+                            backdropFilter: 'blur(20px)',
+                            border: '1.5px solid var(--color-mint)',
+                            boxShadow: mode === 'dark' 
+                              ? '0 16px 40px rgba(0,0,0,0.6)' 
+                              : '0 16px 40px rgba(42, 107, 93, 0.18)',
+                            overflow: 'hidden',
+                            '& .MuiAutocomplete-listbox': {
+                              p: 1,
+                              maxHeight: '260px',
+                              '&::-webkit-scrollbar': { width: '6px' },
+                              '&::-webkit-scrollbar-thumb': { bgcolor: 'var(--color-forest)', borderRadius: '10px' }
+                            }
+                          }
+                        }
+                      }}
+                      renderOption={(props, option) => {
+                        const isCapsule = option.toLowerCase().includes('capsule');
+                        const isSyrup = option.toLowerCase().includes('syrup') || option.toLowerCase().includes('suspension');
+                        const isInj = option.toLowerCase().includes('injection') || option.toLowerCase().includes('inj');
+                        const isDrop = option.toLowerCase().includes('drop');
+                        const formIcon = isCapsule ? '💊' : isSyrup ? '🧪' : isInj ? '💉' : isDrop ? '💧' : '💊';
+                        
+                        return (
+                          <Box 
+                            component="li" 
+                            {...props} 
+                            sx={{ 
+                              py: 1, 
+                              px: 1.5, 
+                              borderRadius: '12px', 
+                              mb: 0.5,
+                              fontWeight: 700,
+                              fontSize: '0.85rem',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 1.2,
+                              color: mode === 'dark' ? '#FAF2F5' : '#123029',
+                              transition: 'all 0.15s ease',
+                              '&:hover, &.Mui-focused': {
+                                bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.22) !important' : 'rgba(102, 205, 170, 0.15) !important',
+                                transform: 'translateX(4px)'
+                              }
+                            }}
+                          >
+                            <span style={{ fontSize: '1.1rem' }}>{formIcon}</span>
+                            <Box sx={{ flexGrow: 1 }}>
+                              <Typography variant="body2" sx={{ fontWeight: 700, color: 'inherit' }}>
+                                {option}
+                              </Typography>
+                            </Box>
+                          </Box>
+                        );
+                      }}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          fullWidth
+                          size="small"
+                          label="Medicine Name *"
+                          placeholder="Type at least 2 letters (e.g., Amoxicillin)"
+                          InputProps={{
+                            ...params.InputProps,
+                            startAdornment: (
+                              <>
+                                <InputAdornment position="start">
+                                  <SearchIcon sx={{ color: 'var(--color-forest)', fontSize: 20 }} />
+                                </InputAdornment>
+                                {params.InputProps.startAdornment}
+                              </>
+                            ),
+                            sx: { borderRadius: '12px', fontWeight: 700 }
+                          }}
+                        />
+                      )}
+                    />
+                  </Grid>
+                  <Grid item xs={5} sm={3}>
+                    <FormControl fullWidth size="small">
+                      <InputLabel id="med-type-label">Form</InputLabel>
+                      <Select
+                        labelId="med-type-label"
+                        value={newMedication.type || 'Tablet'}
+                        label="Form"
+                        onChange={(e) => {
+                          const newType = e.target.value;
+                          const updated = recalcMedication({ ...newMedication, type: newType });
+                          setNewMedication(updated);
+                        }}
+                        sx={{ borderRadius: '12px' }}
+                      >
+                        <MenuItem value="Tablet">Tablet</MenuItem>
+                        <MenuItem value="Capsule">Capsule</MenuItem>
+                        <MenuItem value="Syrup">Syrup</MenuItem>
+                        <MenuItem value="Injection">Injection</MenuItem>
+                        <MenuItem value="Ointment">Ointment</MenuItem>
+                        <MenuItem value="Drops">Drops</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={7} sm={3}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="Dosage"
+                      placeholder="Auto: M-A-E-N"
+                      value={buildDosageString(newMedication.timing || { morning: 0, afternoon: 0, evening: 0, night: 0 }, newMedication.type, newMedication.isSOS, newMedication.sosReason)}
+                      InputProps={{
+                        readOnly: true,
+                        sx: { borderRadius: '12px', bgcolor: newMedication.isSOS ? 'rgba(239,68,68,0.08)' : 'rgba(66,132,117,0.06)', fontWeight: 700, fontSize: '0.8rem', color: newMedication.isSOS ? '#dc2626' : 'inherit' }
+                      }}
+                      helperText={(() => {
+                        if (newMedication.isSOS) return '⚡ SOS — Take only when needed';
+                        const t = newMedication.timing || { morning: 0, afternoon: 0, evening: 0, night: 0 };
+                        const total = (t.morning || 0) + (t.afternoon || 0) + (t.evening || 0) + (t.night || 0);
+                        if (total === 0) return 'Select time of day below';
+                        if (newMedication.type === 'Syrup') return `${total * 5}ml/day (${total} tsp)`;
+                        if (newMedication.type === 'Drops') return `${total * 5} drops/day`;
+                        return `${total} ${getDispensaryUnit(newMedication.type).toLowerCase()}/day`;
+                      })()}
+                    />
+                  </Grid>
+
+                  {/* Time of Day & SOS Toggle Row */}
+                  <Grid item xs={12}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.8 }}>
+                      <Typography variant="caption" sx={{ fontWeight: 800, color: 'var(--color-forest)' }}>
+                        Time of Day:
+                      </Typography>
+
+                      <Chip
+                        icon={<SosIcon sx={{ fontSize: 16, color: newMedication.isSOS ? '#fff !important' : '#dc2626 !important' }} />}
+                        label={newMedication.isSOS ? '🆘 SOS Mode (ACTIVE)' : '🆘 SOS (When Needed)'}
+                        size="small"
+                        clickable
+                        onClick={() => {
+                          const newSOS = !newMedication.isSOS;
+                          const defaultReason = newSOS ? 'Fever / Pain' : '';
+                          let newInst = newMedication.instructions || '';
+                          if (newSOS && !newInst.toLowerCase().includes('when needed')) {
+                            newInst = newInst ? `${newInst}, Take only when needed for ${defaultReason}` : `Take only when needed for ${defaultReason}`;
+                          }
+                          const updated = recalcMedication({
+                            ...newMedication,
+                            isSOS: newSOS,
+                            sosReason: defaultReason,
+                            instructions: newInst
+                          });
+                          setNewMedication(updated);
+                        }}
+                        sx={{
+                          fontWeight: 800,
+                          fontSize: '0.7rem',
+                          height: 26,
+                          borderRadius: '10px',
+                          bgcolor: newMedication.isSOS ? '#dc2626' : 'rgba(220, 38, 38, 0.1)',
+                          color: newMedication.isSOS ? '#ffffff' : '#dc2626',
+                          border: '1.5px solid #dc2626',
+                          transition: 'all 0.2s ease',
+                          '&:active': { transform: 'scale(0.95)' }
+                        }}
+                      />
+                    </Box>
+
+                    {newMedication.isSOS && (
+                      <Box sx={{ mb: 1.2, p: 1.2, borderRadius: '14px', bgcolor: 'rgba(220, 38, 38, 0.06)', border: '1.5px dashed rgba(220, 38, 38, 0.4)' }}>
+                        <Typography variant="caption" sx={{ fontWeight: 800, color: '#dc2626', display: 'block', mb: 0.6 }}>
+                          🆘 Indicate Reason for SOS (Only When Needed):
+                        </Typography>
+                        <Box sx={{ display: 'flex', gap: 0.6, flexWrap: 'wrap', mb: 1 }}>
+                          {[
+                            { label: 'Fever', icon: '🌡️' },
+                            { label: 'Pain / Headache', icon: '⚡' },
+                            { label: 'Nausea / Vomiting', icon: '🤢' },
+                            { label: 'Acidity / Gas', icon: '💨' },
+                            { label: 'Cough / Breathlessness', icon: '🫁' }
+                          ].map((r) => {
+                            const isSelected = newMedication.sosReason === r.label;
+                            return (
+                              <Chip
+                                key={r.label}
+                                label={`${r.icon} ${r.label}`}
+                                size="small"
+                                clickable
+                                onClick={() => {
+                                  const newReason = r.label;
+                                  let updatedInst = (newMedication.instructions || '').replace(/,? Take only when needed for .*/i, '');
+                                  updatedInst = updatedInst ? `${updatedInst}, Take only when needed for ${newReason}` : `Take only when needed for ${newReason}`;
+                                  const updated = recalcMedication({
+                                    ...newMedication,
+                                    sosReason: newReason,
+                                    instructions: updatedInst
+                                  });
+                                  setNewMedication(updated);
+                                }}
+                                sx={{
+                                  fontWeight: 700,
+                                  fontSize: '0.68rem',
+                                  height: 24,
+                                  borderRadius: '8px',
+                                  bgcolor: isSelected ? '#dc2626' : 'rgba(255,255,255,0.9)',
+                                  color: isSelected ? '#fff' : '#b91c1c',
+                                  border: isSelected ? '1.5px solid #dc2626' : '1px solid rgba(220,38,38,0.2)'
+                                }}
+                              />
+                            );
+                          })}
+                        </Box>
+                        <TextField
+                          fullWidth
+                          size="small"
+                          placeholder="Or type custom SOS condition (e.g., High Blood Pressure)"
+                          value={newMedication.sosReason || ''}
+                          onChange={(e) => {
+                            const customR = e.target.value;
+                            let updatedInst = (newMedication.instructions || '').replace(/,? Take only when needed for .*/i, '');
+                            if (customR) {
+                              updatedInst = updatedInst ? `${updatedInst}, Take only when needed for ${customR}` : `Take only when needed for ${customR}`;
+                            }
+                            const updated = recalcMedication({
+                              ...newMedication,
+                              sosReason: customR,
+                              instructions: updatedInst
+                            });
+                            setNewMedication(updated);
+                          }}
+                          InputProps={{ sx: { borderRadius: '10px', bgcolor: '#fff', fontSize: '0.78rem' } }}
+                        />
+                      </Box>
+                    )}
+
+                    <Box sx={{ display: 'flex', gap: 1, width: '100%' }}>
+                      {([
+                        { key: 'morning' as const, label: 'Morn', icon: <MorningIcon />, color: '#F57C00', bg: '#FFF3E0', activeBg: '#FFE0B2', border: '#F57C00' },
+                        { key: 'afternoon' as const, label: 'Day', icon: <AfternoonIcon />, color: '#FBC02D', bg: '#FFFDE7', activeBg: '#FFF9C4', border: '#F9A825' },
+                        { key: 'evening' as const, label: 'Eve', icon: <EveningIcon />, color: '#E64A19', bg: '#FBE9E7', activeBg: '#FFCCBC', border: '#E64A19' },
+                        { key: 'night' as const, label: 'Night', icon: <NightIcon />, color: '#3949AB', bg: '#E8EAF6', activeBg: '#C5CAE9', border: '#3949AB' }
+                      ]).map((time) => {
+                        const doseCount = newMedication.timing?.[time.key] || 0;
+                        const isActive = doseCount > 0;
+                        const mealRel = newMedication.mealRelations?.[time.key] || '';
+                        return (
+                          <Box
+                            key={time.key}
+                            onClick={(e) => {
+                              if (isActive) {
+                                const updated = recalcMedication({
+                                  ...newMedication,
+                                  timing: { ...newMedication.timing, [time.key]: 0 },
+                                  mealRelations: { ...newMedication.mealRelations, [time.key]: '' }
+                                });
+                                setNewMedication(updated);
+                              } else {
+                                const updated = recalcMedication({
+                                  ...newMedication,
+                                  timing: { ...newMedication.timing, [time.key]: 1 }
+                                });
+                                setNewMedication(updated);
+                                openMealPopover(e as any, time.key);
+                              }
+                            }}
+                            sx={{
+                              flex: 1,
+                              p: 1,
+                              borderRadius: '16px',
+                              border: isActive ? `2.5px solid ${time.border}` : '1.5px solid rgba(0,0,0,0.08)',
+                              bgcolor: isActive ? time.activeBg : (mode === 'dark' ? 'rgba(255,255,255,0.03)' : '#ffffff'),
+                              cursor: 'pointer',
+                              textAlign: 'center',
+                              transition: 'all 0.2s ease',
+                              boxShadow: isActive ? `0 4px 12px ${time.color}33` : 'none',
+                              '&:hover': { transform: 'translateY(-2px)' }
+                            }}
+                          >
+                            <Typography variant="caption" sx={{ fontWeight: 800, color: time.color, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.4, fontSize: '0.72rem' }}>
+                              {time.icon} {time.label}
+                            </Typography>
+                            <Typography variant="h6" sx={{ fontWeight: 900, color: isActive ? time.color : '#94a3b8', my: 0.2 }}>
+                              {isActive ? `×${doseCount}` : '-'}
+                            </Typography>
+                            <Typography variant="caption" sx={{ fontSize: '0.62rem', color: time.color, fontWeight: 700, display: 'block', height: 16 }} noWrap>
+                              {isActive ? (mealRel || 'Set meal') : 'Off'}
+                            </Typography>
+                          </Box>
+                        );
+                      })}
+                    </Box>
+                  </Grid>
+
+                  {/* Popover for dose count & meal relation */}
+                  <Popover
+                    open={Boolean(mealPopoverAnchor)}
+                    anchorEl={mealPopoverAnchor}
+                    onClose={() => setMealPopoverAnchor(null)}
+                    anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+                    transformOrigin={{ vertical: 'top', horizontal: 'center' }}
+                    slotProps={{
+                      paper: {
+                        sx: {
+                          p: 2,
+                          borderRadius: '20px',
+                          boxShadow: '0 16px 48px rgba(26, 49, 44, 0.25)',
+                          border: '1.5px solid rgba(137, 215, 183, 0.5)',
+                          bgcolor: mode === 'dark' ? 'rgba(18, 38, 34, 0.98)' : 'rgba(255, 255, 255, 0.99)',
+                          backdropFilter: 'blur(16px)',
+                          width: 'calc(100vw - 32px)',
+                          maxWidth: 360,
+                          mt: 1
+                        }
+                      }
+                    }}
+                  >
+                    <Box sx={{ mb: 1.5, textAlign: 'center' }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#1A312C', fontSize: '0.85rem' }}>
+                        {mealPopoverTimeKey.charAt(0).toUpperCase() + mealPopoverTimeKey.slice(1)} — Dose & Meal
+                      </Typography>
+                    </Box>
+
+                    <Box sx={{ mb: 1.5 }}>
+                      <Typography variant="caption" sx={{ fontWeight: 700, color: '#428475', display: 'block', mb: 0.8, textAlign: 'center' }}>
+                        Select dose per intake ({newMedication.type || 'Tablet'}):
+                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 0.8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                        {[1, 2, 3].map((count) => {
+                          const currentDose = newMedication.timing?.[mealPopoverTimeKey] || 0;
+                          const isSelected = currentDose === count;
+                          const doseLabel = getDoseUnitLabel(newMedication.type, count);
+                          return (
+                            <Box
+                              key={count}
+                              onClick={() => {
+                                const updated = recalcMedication({
+                                  ...newMedication,
+                                  timing: { ...newMedication.timing, [mealPopoverTimeKey]: count }
+                                });
+                                setNewMedication(updated);
+                              }}
+                              sx={{
+                                minWidth: 64,
+                                height: 44,
+                                px: 1.2,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                borderRadius: '14px',
+                                border: isSelected ? '2.5px solid var(--color-forest)' : '2px solid #e0e0e0',
+                                bgcolor: isSelected ? 'var(--color-forest)' : 'transparent',
+                                color: isSelected ? '#fff' : '#1A312C',
+                                fontWeight: 800,
+                                fontSize: '0.78rem',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s',
+                                WebkitTapHighlightColor: 'transparent',
+                                '&:active': { transform: 'scale(0.92)' }
+                              }}
+                            >
+                              {doseLabel}
+                            </Box>
+                          );
+                        })}
+                        <TextField
+                          size="small"
+                          type="number"
+                          placeholder="custom #"
+                          value={(newMedication.timing?.[mealPopoverTimeKey] || 0) > 3 ? (newMedication.timing?.[mealPopoverTimeKey] || '') : ''}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value, 10) || 0;
+                            if (val >= 0) {
+                              const updated = recalcMedication({
+                                ...newMedication,
+                                timing: { ...newMedication.timing, [mealPopoverTimeKey]: val }
+                              });
+                              setNewMedication(updated);
+                            }
+                          }}
+                          sx={{ width: 70, '& input': { textAlign: 'center', fontWeight: 700, p: '8px', fontSize: '0.8rem' }, '& .MuiOutlinedInput-root': { borderRadius: '14px' } }}
+                        />
+                      </Box>
+                    </Box>
+
+                    <Divider sx={{ my: 1 }} />
+
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: '#428475', display: 'block', mb: 0.5, textAlign: 'center' }}>
+                      Meal relation (optional)
+                    </Typography>
+
+                    <Box sx={{ display: 'flex', gap: 0.6, mb: 0.6, justifyContent: 'center', flexWrap: 'wrap' }}>
+                      {[
+                        { label: 'With Food', shortLabel: 'With', icon: <WithFoodIcon sx={{ fontSize: 14 }} />, color: '#1565c0', bg: '#e3f2fd' },
+                        { label: 'Before Food', shortLabel: 'Before', icon: <BeforeFoodIcon sx={{ fontSize: 14 }} />, color: '#e65100', bg: '#fff3e0' },
+                        { label: 'After Food', shortLabel: 'After', icon: <AfterFoodIcon sx={{ fontSize: 14 }} />, color: '#6a1b9a', bg: '#f3e5f5' }
+                      ].map((opt) => {
+                        const isSelected = newMedication.mealRelations?.[mealPopoverTimeKey] === opt.label;
+                        return (
+                          <Chip
+                            key={opt.label}
+                            icon={opt.icon}
+                            label={opt.label}
+                            size="small"
+                            clickable
+                            onClick={() => {
+                              setNewMedication({
+                                ...newMedication,
+                                mealRelations: { ...newMedication.mealRelations, [mealPopoverTimeKey]: isSelected ? '' : opt.label }
+                              });
+                              setMealPopoverAnchor(null);
+                            }}
+                            sx={{
+                              fontWeight: 700,
+                              fontSize: '0.72rem',
+                              py: 2,
+                              borderRadius: '14px',
+                              flex: '1 1 auto',
+                              bgcolor: isSelected ? opt.color : opt.bg,
+                              color: isSelected ? '#fff' : opt.color,
+                              border: isSelected ? `2px solid ${opt.color}` : '1.5px solid rgba(0,0,0,0.06)',
+                              '& .MuiChip-icon': { color: isSelected ? '#fff' : opt.color },
+                              '&:active': { transform: 'scale(0.95)' }
+                            }}
+                          />
+                        );
+                      })}
+                    </Box>
+
+                    <Box sx={{ display: 'flex', gap: 0.6, justifyContent: 'center', flexWrap: 'wrap' }}>
+                      {[
+                        { label: 'Empty Stomach', icon: <EmptyStomachIcon sx={{ fontSize: 14 }} />, color: '#00695c', bg: '#e0f2f1' },
+                        { label: 'Any Time', icon: <AnyTimeIcon sx={{ fontSize: 14 }} />, color: '#37474f', bg: '#eceff1' }
+                      ].map((opt) => {
+                        const isSelected = newMedication.mealRelations?.[mealPopoverTimeKey] === opt.label;
+                        return (
+                          <Chip
+                            key={opt.label}
+                            icon={opt.icon}
+                            label={opt.label}
+                            size="small"
+                            clickable
+                            onClick={() => {
+                              setNewMedication({
+                                ...newMedication,
+                                mealRelations: { ...newMedication.mealRelations, [mealPopoverTimeKey]: isSelected ? '' : opt.label }
+                              });
+                              setMealPopoverAnchor(null);
+                            }}
+                            sx={{
+                              fontWeight: 700,
+                              fontSize: '0.72rem',
+                              py: 2,
+                              borderRadius: '14px',
+                              flex: '1 1 auto',
+                              bgcolor: isSelected ? opt.color : opt.bg,
+                              color: isSelected ? '#fff' : opt.color,
+                              border: isSelected ? `2px solid ${opt.color}` : '1.5px solid rgba(0,0,0,0.06)',
+                              '& .MuiChip-icon': { color: isSelected ? '#fff' : opt.color },
+                              '&:active': { transform: 'scale(0.95)' }
+                            }}
+                          />
+                        );
+                      })}
+                    </Box>
+                  </Popover>
+
+                  {/* Duration Inputs & Presets */}
+                  <Grid item xs={7} sm={4}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="Duration Value"
+                      type="number"
+                      value={newMedication.durationValue || ''}
+                      onChange={(e) => {
+                        const num = parseInt(e.target.value, 10) || 0;
+                        const unit = newMedication.durationUnit || 'Days';
+                        const durStr = `${num} ${unit}`;
+                        const updated = recalcMedication({
+                          ...newMedication,
+                          durationValue: num,
+                          duration: durStr
+                        });
+                        setNewMedication(updated);
+                      }}
+                      InputProps={{ sx: { borderRadius: '12px' } }}
+                    />
+                  </Grid>
+                  <Grid item xs={5} sm={2}>
+                    <FormControl fullWidth size="small">
+                      <InputLabel id="dur-unit-label">Unit</InputLabel>
+                      <Select
+                        labelId="dur-unit-label"
+                        value={newMedication.durationUnit || 'Days'}
+                        label="Unit"
+                        onChange={(e) => {
+                          const unit = e.target.value;
+                          const num = newMedication.durationValue || 5;
+                          const durStr = `${num} ${unit}`;
+                          const updated = recalcMedication({
+                            ...newMedication,
+                            durationUnit: unit,
+                            duration: durStr
+                          });
+                          setNewMedication(updated);
+                        }}
+                        sx={{ borderRadius: '12px' }}
+                      >
+                        <MenuItem value="Days">Days</MenuItem>
+                        <MenuItem value="Weeks">Weeks</MenuItem>
+                        <MenuItem value="Months">Months</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+
+                  {/* Duration Presets */}
                   <Grid item xs={12}>
                     <Typography variant="caption" sx={{ fontWeight: 800, color: 'var(--color-forest)', display: 'block', mb: 0.5 }}>
-                      Quick Quantity Presets:
+                      Quick Duration Presets:
                     </Typography>
                     <Box sx={{ display: 'flex', gap: 0.8, flexWrap: 'wrap' }}>
                       {[
-                        '10 Tablets', '14 Tablets', '20 Tablets', '30 Tablets',
-                        '10 Capsules', '14 Capsules', '1 Bottle (100ml)', '1 Strip', '2 Vials', '1 Tube'
-                      ].map(q => (
+                        { num: 3, unit: 'Days', label: '3 Days' },
+                        { num: 5, unit: 'Days', label: '5 Days' },
+                        { num: 7, unit: 'Days', label: '7 Days' },
+                        { num: 10, unit: 'Days', label: '10 Days' },
+                        { num: 14, unit: 'Days', label: '14 Days' },
+                        { num: 1, unit: 'Months', label: '1 Month' },
+                        { num: 3, unit: 'Months', label: '3 Months' }
+                      ].map(p => (
                         <Chip
-                          key={q}
-                          label={q}
+                          key={p.label}
+                          label={p.label}
                           size="small"
-                          onClick={() => setNewMedication({ ...newMedication, quantity: q })}
+                          onClick={() => {
+                            const durStr = `${p.num} ${p.unit}`;
+                            const updated = recalcMedication({
+                              ...newMedication,
+                              durationValue: p.num,
+                              durationUnit: p.unit,
+                              duration: durStr
+                            });
+                            setNewMedication(updated);
+                          }}
                           sx={{
                             fontWeight: 700,
                             fontSize: '0.7rem',
                             cursor: 'pointer',
-                            bgcolor: newMedication.quantity === q ? 'var(--color-forest)' : 'rgba(0,100,0,0.06)',
-                            color: newMedication.quantity === q ? '#ffffff' : 'inherit'
+                            bgcolor: (newMedication.durationValue === p.num && newMedication.durationUnit === p.unit) ? 'var(--color-forest)' : 'rgba(0,0,0,0.06)',
+                            color: (newMedication.durationValue === p.num && newMedication.durationUnit === p.unit) ? '#ffffff' : 'inherit'
                           }}
                         />
                       ))}
                     </Box>
                   </Grid>
-                )}
 
+                  {/* Quantity Field & Presets */}
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="Total Quantity prescribed"
+                      placeholder="Auto-calculated"
+                      value={newMedication.quantity || ''}
+                      onChange={(e) => setNewMedication({ ...newMedication, quantity: e.target.value })}
+                      helperText={(() => {
+                        const t = newMedication.timing || { morning: 0, afternoon: 0, evening: 0, night: 0 };
+                        const calc = calculateQuantityFromTiming(t, newMedication.durationValue || 5, newMedication.durationUnit || 'Days', newMedication.type);
+                        return calc.detailStr || 'Select time of day to auto-calculate';
+                      })()}
+                      InputProps={{ sx: { borderRadius: '12px', fontWeight: 700 } }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="Special Instructions"
+                      placeholder="e.g., Drink plenty of water"
+                      value={newMedication.instructions}
+                      onChange={(e) => setNewMedication({ ...newMedication, instructions: e.target.value })}
+                      InputProps={{ sx: { borderRadius: '12px' } }}
+                    />
+                  </Grid>
+
+                  {(!newMedication.timing || ((newMedication.timing.morning || 0) === 0 && (newMedication.timing.afternoon || 0) === 0 && (newMedication.timing.evening || 0) === 0 && (newMedication.timing.night || 0) === 0)) && !newMedication.isSOS && (
+                    <Grid item xs={12}>
+                      <Typography variant="caption" sx={{ fontWeight: 800, color: 'var(--color-forest)', display: 'block', mb: 0.5 }}>
+                        Quick Quantity Presets:
+                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 0.8, flexWrap: 'wrap' }}>
+                        {[
+                          '10 Tablets', '14 Tablets', '20 Tablets', '30 Tablets',
+                          '10 Capsules', '14 Capsules', '1 Bottle (100ml)', '1 Strip', '2 Vials', '1 Tube'
+                        ].map(q => (
+                          <Chip
+                            key={q}
+                            label={q}
+                            size="small"
+                            onClick={() => setNewMedication({ ...newMedication, quantity: q })}
+                            sx={{
+                              fontWeight: 700,
+                              fontSize: '0.7rem',
+                              cursor: 'pointer',
+                              bgcolor: newMedication.quantity === q ? 'var(--color-forest)' : 'rgba(0,100,0,0.06)',
+                              color: newMedication.quantity === q ? '#ffffff' : 'inherit'
+                            }}
+                          />
+                        ))}
+                      </Box>
+                    </Grid>
+                  )}
+
+                  <Grid item xs={12}>
+                    <Button 
+                      variant="contained" 
+                      fullWidth 
+                      onClick={addMedication}
+                      startIcon={<AddIcon />}
+                      sx={{ 
+                        height: 44, 
+                        bgcolor: 'var(--color-forest)', 
+                        color: '#ffffff', 
+                        fontWeight: 800, 
+                        borderRadius: '14px',
+                        '&:hover': { bgcolor: '#1a433a' }
+                      }}
+                    >
+                      + Add Medication to Prescription
+                    </Button>
+                  </Grid>
+                </Grid>
+              </Paper>
+
+              {/* Mobile-Friendly Added Medication Cards */}
+              {formData.medications && formData.medications.length > 0 && (
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="caption" sx={{ fontWeight: 800, color: '#428475', textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', mb: 1 }}>
+                    Prescribed Items List ({formData.medications.length})
+                  </Typography>
+                  {formData.medications.map((med, idx) => (
+                    <Card 
+                      key={idx} 
+                      variant="outlined" 
+                      className="touch-active"
+                      sx={{ 
+                        mb: 1.5, 
+                        p: 2, 
+                        borderRadius: '16px', 
+                        bgcolor: mode === 'dark' ? 'rgba(18, 38, 34, 0.85)' : 'rgba(255, 255, 255, 0.95)',
+                        borderColor: mode === 'dark' ? 'rgba(137, 215, 183, 0.3)' : 'rgba(137, 215, 183, 0.5)',
+                        boxShadow: mode === 'dark' ? '0 4px 14px rgba(0, 0, 0, 0.3)' : '0 4px 14px rgba(26, 49, 44, 0.04)'
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <Box sx={{ width: '100%' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 1 }}>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C' }}>
+                              {idx + 1}. {med.name}
+                            </Typography>
+                            {med.type && (
+                              <Chip label={med.type} size="small" sx={{ height: 20, fontSize: '0.65rem', fontWeight: 800, bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.2)' : 'rgba(66, 132, 117, 0.15)', color: mode === 'dark' ? '#89D7B7' : '#428475' }} />
+                            )}
+                          </Box>
+                          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 0.8 }}>
+                            <Chip 
+                              label={`Dosage: ${med.dosage || 'As directed'}`} 
+                              size="small" 
+                              sx={{ fontWeight: 700, bgcolor: 'rgba(19, 79, 77, 0.08)', color: '#134F4D', fontSize: '0.72rem' }} 
+                            />
+                            <Chip 
+                              label={`⏱️ Duration: ${med.duration || 'N/A'}`} 
+                              size="small" 
+                              sx={{ fontWeight: 700, bgcolor: 'rgba(59, 130, 246, 0.1)', color: '#1d4ed8', fontSize: '0.72rem' }} 
+                            />
+                            {med.quantity && (
+                              <Chip 
+                                label={`📦 Quantity: ${med.quantity}`} 
+                                size="small" 
+                                sx={{ fontWeight: 800, bgcolor: 'rgba(16, 185, 129, 0.12)', color: '#047857', fontSize: '0.72rem' }} 
+                              />
+                            )}
+                          </Box>
+
+                          {med.isSOS && (
+                            <Box sx={{ mb: 0.8 }}>
+                              <Chip
+                                icon={<SosIcon sx={{ fontSize: 14, color: '#fff !important' }} />}
+                                label={`🆘 SOS (Only When Needed)${med.sosReason ? `: ${med.sosReason}` : ''}`}
+                                size="small"
+                                sx={{ fontWeight: 800, bgcolor: '#dc2626', color: '#fff', fontSize: '0.68rem', height: 22 }}
+                              />
+                            </Box>
+                          )}
+
+                          {med.timing && ((med.timing.morning || 0) > 0 || (med.timing.afternoon || 0) > 0 || (med.timing.evening || 0) > 0 || (med.timing.night || 0) > 0) && (
+                            <Box sx={{ display: 'flex', gap: 0.6, flexWrap: 'wrap', mb: 0.8 }}>
+                              {(med.timing.morning || 0) > 0 && (
+                                <Chip
+                                  label={`🌅 ×${med.timing.morning} Morning${med.mealRelations?.morning ? ` · ${med.mealRelations.morning}` : ''}`}
+                                  size="small"
+                                  sx={{ fontWeight: 700, bgcolor: '#FFF3E0', color: '#F57C00', fontSize: '0.68rem', height: 22 }}
+                                />
+                              )}
+                              {(med.timing.afternoon || 0) > 0 && (
+                                <Chip
+                                  label={`☀️ ×${med.timing.afternoon} Afternoon${med.mealRelations?.afternoon ? ` · ${med.mealRelations.afternoon}` : ''}`}
+                                  size="small"
+                                  sx={{ fontWeight: 700, bgcolor: '#FFFDE7', color: '#F9A825', fontSize: '0.68rem', height: 22 }}
+                                />
+                              )}
+                              {(med.timing.evening || 0) > 0 && (
+                                <Chip
+                                  label={`🌆 ×${med.timing.evening} Evening${med.mealRelations?.evening ? ` · ${med.mealRelations.evening}` : ''}`}
+                                  size="small"
+                                  sx={{ fontWeight: 700, bgcolor: '#FBE9E7', color: '#E64A19', fontSize: '0.68rem', height: 22 }}
+                                />
+                              )}
+                              {(med.timing.night || 0) > 0 && (
+                                <Chip
+                                  label={`🌙 ×${med.timing.night} Night${med.mealRelations?.night ? ` · ${med.mealRelations.night}` : ''}`}
+                                  size="small"
+                                  sx={{ fontWeight: 700, bgcolor: '#E8EAF6', color: '#3949AB', fontSize: '0.68rem', height: 22 }}
+                                />
+                              )}
+                            </Box>
+                          )}
+
+                          {med.instructions && (
+                            <Typography variant="caption" sx={{ display: 'block', color: '#64748b', fontStyle: 'italic', mt: 0.5 }}>
+                              "{med.instructions}"
+                            </Typography>
+                          )}
+                        </Box>
+                        <IconButton size="small" onClick={() => removeMedication(idx)} sx={{ color: '#ef4444', bgcolor: 'rgba(239, 68, 68, 0.08)', ml: 1 }}>
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
+                    </Card>
+                  ))}
+                </Box>
+              )}
+
+              {/* Medication Notes */}
+              <Typography variant="caption" sx={{ fontWeight: 800, color: '#428475', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                Medication Warnings / Notes
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1, mt: 0.5, mb: 1 }}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  placeholder="e.g., Avoid taking with milk or antacids"
+                  value={newMedNote}
+                  onChange={(e) => setNewMedNote(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addToArray('medicationNotes', newMedNote, setNewMedNote))}
+                  InputProps={{ sx: { borderRadius: '14px' } }}
+                />
+                <Button 
+                  variant="contained" 
+                  onClick={() => addToArray('medicationNotes', newMedNote, setNewMedNote)}
+                  sx={{ bgcolor: '#428475', minWidth: 44, borderRadius: '14px', px: 2 }}
+                >
+                  <AddIcon />
+                </Button>
+              </Box>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
+                {formData.medicationNotes?.map((item, idx) => (
+                  <Chip key={idx} label={item} color="warning" onDelete={() => removeFromArray('medicationNotes', idx)} sx={{ fontWeight: 600 }} />
+                ))}
+              </Box>
+            </Paper>
+
+            {/* ─── 5. Required Investigations ─── */}
+            <Paper 
+              className={mode === 'dark' ? 'apple-glass-card-dark' : 'apple-glass-card'} 
+              sx={{ 
+                p: { xs: 2.2, sm: 3 }, 
+                mb: 3, 
+                borderRadius: '24px !important'
+              }}
+            >
+              <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)', display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                <ScienceIcon sx={{ color: 'var(--color-mint)' }} /> 5. Required Investigations & Lab Tests
+              </Typography>
+
+              <Typography variant="caption" sx={{ fontWeight: 800, color: 'var(--color-forest)', display: 'block', mb: 1.5, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                Systematic Diagnostic Test Presets:
+              </Typography>
+
+              {[
+                {
+                  category: '🩺 Radiology & Imaging',
+                  items: [
+                    { name: 'X-Ray', label: '🩻 X-Ray' },
+                    { name: 'MRI', label: '🧠 MRI Scan' },
+                    { name: 'CT Scan', label: '💻 CT Scan' },
+                    { name: 'Ultrasound', label: '📡 Ultrasound (USG)' }
+                  ]
+                },
+                {
+                  category: '🩸 Blood & Hematology',
+                  items: [
+                    { name: 'Blood Test', label: '🩸 Routine Blood Test' },
+                    { name: 'CBC', label: '🔬 Complete Blood Count (CBC)' },
+                    { name: 'ESR', label: '🧪 ESR' },
+                    { name: 'CRP', label: '🌡️ CRP' },
+                    { name: 'HbA1c', label: '🩺 HbA1c (Diabetes)' }
+                  ]
+                },
+                {
+                  category: '🫀 Biochemistry & Organ Panels',
+                  items: [
+                    { name: 'Lipid Profile', label: '🫀 Lipid Profile' },
+                    { name: 'Liver Function Test', label: '🧪 Liver Function (LFT)' },
+                    { name: 'Kidney Function Test', label: '🫘 Kidney Function (KFT)' },
+                    { name: 'Thyroid Profile', label: '🦋 Thyroid Profile (T3/T4/TSH)' },
+                    { name: 'Vitamin D', label: '☀️ Vitamin D' },
+                    { name: 'Vitamin B12', label: '💊 Vitamin B12' }
+                  ]
+                },
+                {
+                  category: '⚡ Pathology & Cardiac',
+                  items: [
+                    { name: 'Urine Test', label: '🧪 Routine Urine Test' },
+                    { name: 'ECG', label: '📈 Electrocardiogram (ECG)' },
+                    { name: 'EEG', label: '⚡ Electroencephalogram (EEG)' }
+                  ]
+                }
+              ].map(cat => (
+                <Box key={cat.category} sx={{ mb: 1.5 }}>
+                  <Typography variant="caption" sx={{ fontWeight: 700, color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-teal)', display: 'block', mb: 0.6 }}>
+                    {cat.category}
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
+                    {cat.items.map(item => {
+                      const isSelected = formData.investigations?.some(i => i.testName === item.name);
+                      return (
+                        <Chip
+                          key={item.name}
+                          label={item.label}
+                          size="small"
+                          onClick={() => {
+                            if (isSelected) {
+                              setFormData({
+                                ...formData,
+                                investigations: formData.investigations?.filter(i => i.testName !== item.name)
+                              });
+                            } else {
+                              openInvDialogForTest(item.name);
+                            }
+                          }}
+                          sx={{
+                            fontWeight: 700,
+                            fontSize: '0.72rem',
+                            cursor: 'pointer',
+                            bgcolor: isSelected ? 'var(--color-forest)' : mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0, 0, 0, 0.05)',
+                            color: isSelected ? '#ffffff' : mode === 'dark' ? '#FAF2F5' : '#123029',
+                            border: isSelected ? '1px solid var(--color-mint)' : '1px solid transparent'
+                          }}
+                        />
+                      );
+                    })}
+                  </Box>
+                </Box>
+              ))}
+
+              <Box sx={{ mt: 1.5, mb: 2 }}>
+                <Chip
+                  label="➕ + Other (Add Custom Test Not Listed)"
+                  onClick={() => openInvDialogCustom()}
+                  sx={{
+                    fontWeight: 800,
+                    fontSize: '0.75rem',
+                    cursor: 'pointer',
+                    bgcolor: 'rgba(102, 205, 170, 0.25)',
+                    color: 'var(--color-forest)',
+                    border: '1px solid var(--color-mint)',
+                    py: 0.5
+                  }}
+                />
+              </Box>
+
+              {formData.investigations && formData.investigations.length > 0 && (
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', display: 'block', mb: 1, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    Added Investigations ({formData.investigations.length})
+                  </Typography>
+                  {formData.investigations.map((inv, idx) => {
+                    const priorityColor = inv.priority === 'Urgent' ? '#ef4444' : inv.priority === 'Routine' ? '#22c55e' : '#f59e0b';
+                    return (
+                      <Card key={idx} variant="outlined" sx={{ mb: 1, p: 1.5, borderRadius: '14px', bgcolor: mode === 'dark' ? 'rgba(18, 38, 34, 0.85)' : '#ffffff', borderColor: mode === 'dark' ? 'rgba(137, 215, 183, 0.3)' : 'rgba(0,0,0,0.12)', transition: 'all 0.2s ease', '&:hover': { borderColor: mode === 'dark' ? 'rgba(137, 215, 183, 0.6)' : 'rgba(66, 132, 117, 0.4)' } }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <Box sx={{ flex: 1 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                              <Typography variant="body2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C' }}>
+                                {idx + 1}. {inv.testName}
+                              </Typography>
+                              <Chip
+                                label={inv.priority || 'Normal'}
+                                size="small"
+                                sx={{
+                                  height: 20,
+                                  fontWeight: 800,
+                                  fontSize: '0.65rem',
+                                  bgcolor: `${priorityColor}22`,
+                                  color: priorityColor,
+                                  border: `1px solid ${priorityColor}44`
+                                }}
+                              />
+                            </Box>
+                            <Typography variant="caption" sx={{ color: mode === 'dark' ? '#89D7B7' : '#428475', display: 'block', fontWeight: 600 }}>
+                              {inv.reason || 'Standard check'} • Fasting: {inv.fasting || 'Not specified'}
+                            </Typography>
+                            {inv.specialInstructions && (
+                              <Typography variant="caption" sx={{ color: mode === 'dark' ? 'rgba(250, 242, 245, 0.6)' : 'rgba(26, 49, 44, 0.6)', display: 'block', fontStyle: 'italic', mt: 0.3 }}>
+                                📋 {inv.specialInstructions}
+                              </Typography>
+                            )}
+                          </Box>
+                          <Box sx={{ display: 'flex', gap: 0.5 }}>
+                            <IconButton size="small" onClick={() => openInvDialogForEdit(idx)} sx={{ color: mode === 'dark' ? '#89D7B7' : '#428475' }}>
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                            <IconButton size="small" onClick={() => removeInvestigation(idx)} sx={{ color: '#ef4444' }}>
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Box>
+                        </Box>
+                      </Card>
+                    );
+                  })}
+                </Box>
+              )}
+
+              <TextField
+                fullWidth
+                size="small"
+                label="Investigation Instructions"
+                placeholder="e.g., Bring all report hardcopies on next visit"
+                value={formData.investigationNotes || ''}
+                onChange={(e) => setFormData({ ...formData, investigationNotes: e.target.value })}
+                InputProps={{ sx: { borderRadius: '14px' } }}
+              />
+            </Paper>
+          </Box>
+        )}
+
+        {/* ═══ STEP 4: ADVICE, FOLLOW-UP & REMARKS ═══ */}
+        {(viewMode === 'all' || activeStep === 3) && (
+          <Box 
+            key={activeStep === 3 ? 'step-3' : 'step-all-3'}
+            sx={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: 0,
+              animation: 'stepCardFadeIn 0.38s cubic-bezier(0.16, 1, 0.3, 1)',
+              '@keyframes stepCardFadeIn': {
+                '0%': { opacity: 0, transform: 'translateY(16px) scale(0.992)' },
+                '100%': { opacity: 1, transform: 'translateY(0) scale(1)' }
+              }
+            }}
+          >
+            {/* ─── 6. Diet & Lifestyle Recommendations ─── */}
+            <Paper 
+              className={mode === 'dark' ? 'apple-glass-card-dark' : 'apple-glass-card'} 
+              sx={{ 
+                p: { xs: 2.2, sm: 3 }, 
+                mb: 3, 
+                borderRadius: '24px !important'
+              }}
+            >
+              <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)', display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                <DietIcon sx={{ color: 'var(--color-mint)' }} /> 6. Diet & Lifestyle Advice
+              </Typography>
+              <Grid container spacing={2}>
+                {/* Diet Modifications */}
                 <Grid item xs={12}>
-                  <Button 
-                    variant="contained" 
-                    fullWidth 
-                    onClick={addMedication}
-                    startIcon={<AddIcon />}
-                    sx={{ 
-                      height: 44, 
-                      bgcolor: 'var(--color-forest)', 
-                      color: '#ffffff', 
-                      fontWeight: 800, 
-                      borderRadius: '14px',
-                      '&:hover': { bgcolor: '#1a433a' }
-                    }}
-                  >
-                    + Add Medication to Prescription
-                  </Button>
+                  <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    Diet Restrictions & Modifications
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1, mt: 0.5, mb: 1 }}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      placeholder="e.g., Avoid spicy foods, caffeine, late night meals"
+                      value={newDiet}
+                      onChange={(e) => setNewDiet(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addToArray('dietModifications', newDiet, setNewDiet))}
+                      InputProps={{ sx: { borderRadius: '14px' } }}
+                    />
+                    <Button 
+                      variant="contained" 
+                      onClick={() => addToArray('dietModifications', newDiet, setNewDiet)}
+                      sx={{ bgcolor: mode === 'dark' ? '#2A6B5D' : '#428475', minWidth: 44, borderRadius: '14px', px: 2 }}
+                    >
+                      <AddIcon />
+                    </Button>
+                  </Box>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
+                    {formData.dietModifications?.map((item, idx) => (
+                      <Chip key={idx} label={item} color="success" variant="outlined" onDelete={() => removeFromArray('dietModifications', idx)} sx={{ fontWeight: 600 }} />
+                    ))}
+                  </Box>
+                </Grid>
+
+                {/* Lifestyle Changes */}
+                <Grid item xs={12}>
+                  <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    Lifestyle Modifications
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1, mt: 0.5, mb: 1 }}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      placeholder="e.g., Walk 30 minutes daily after dinner"
+                      value={newLifestyle}
+                      onChange={(e) => setNewLifestyle(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addToArray('lifestyleChanges', newLifestyle, setNewLifestyle))}
+                      InputProps={{ sx: { borderRadius: '14px' } }}
+                    />
+                    <Button 
+                      variant="contained" 
+                      onClick={() => addToArray('lifestyleChanges', newLifestyle, setNewLifestyle)}
+                      sx={{ bgcolor: mode === 'dark' ? '#2A6B5D' : '#428475', minWidth: 44, borderRadius: '14px', px: 2 }}
+                    >
+                      <AddIcon />
+                    </Button>
+                  </Box>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
+                    {formData.lifestyleChanges?.map((item, idx) => (
+                      <Chip key={idx} label={item} color="info" variant="outlined" onDelete={() => removeFromArray('lifestyleChanges', idx)} sx={{ fontWeight: 600 }} />
+                    ))}
+                  </Box>
+                </Grid>
+
+                {/* Warning Signs */}
+                <Grid item xs={12}>
+                  <Typography variant="caption" sx={{ fontWeight: '#ef4444', color: '#ef4444', textTransform: 'uppercase', letterSpacing: 0.5, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <WarningIcon sx={{ fontSize: 16 }} /> Seek Immediate ER Attention If:
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1, mt: 0.5, mb: 1 }}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      placeholder="e.g., Black stools, severe sudden abdominal pain"
+                      value={newWarning}
+                      onChange={(e) => setNewWarning(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addToArray('warningSigns', newWarning, setNewWarning))}
+                      InputProps={{ sx: { borderRadius: '14px' } }}
+                    />
+                    <Button 
+                      variant="contained" 
+                      onClick={() => addToArray('warningSigns', newWarning, setNewWarning)}
+                      sx={{ bgcolor: '#ef4444', color: '#ffffff', minWidth: 44, borderRadius: '14px', px: 2 }}
+                    >
+                      <AddIcon />
+                    </Button>
+                  </Box>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
+                    {formData.warningSigns?.map((item, idx) => (
+                      <Chip key={idx} label={item} color="error" onDelete={() => removeFromArray('warningSigns', idx)} sx={{ fontWeight: 700 }} />
+                    ))}
+                  </Box>
                 </Grid>
               </Grid>
             </Paper>
 
-            {/* Mobile-Friendly Added Medication Cards */}
-            {formData.medications && formData.medications.length > 0 && (
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="caption" sx={{ fontWeight: 800, color: '#428475', textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', mb: 1 }}>
-                  Prescribed Items List ({formData.medications.length})
-                </Typography>
-                {formData.medications.map((med, idx) => (
-                  <Card 
-                    key={idx} 
-                    variant="outlined" 
-                    className="touch-active"
-                    sx={{ 
-                      mb: 1.5, 
-                      p: 2, 
-                      borderRadius: '16px', 
-                      bgcolor: mode === 'dark' ? 'rgba(18, 38, 34, 0.85)' : 'rgba(255, 255, 255, 0.95)',
-                      borderColor: mode === 'dark' ? 'rgba(137, 215, 183, 0.3)' : 'rgba(137, 215, 183, 0.5)',
-                      boxShadow: mode === 'dark' ? '0 4px 14px rgba(0, 0, 0, 0.3)' : '0 4px 14px rgba(26, 49, 44, 0.04)'
+            {/* ─── 7. Follow-Up Schedule ─── */}
+            <Paper 
+              className={mode === 'dark' ? 'apple-glass-card-dark' : 'apple-glass-card'} 
+              sx={{ 
+                p: { xs: 2.2, sm: 3 }, 
+                mb: 3, 
+                borderRadius: '24px !important'
+              }}
+            >
+              <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)', display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                <EventIcon sx={{ color: 'var(--color-mint)' }} /> 7. Follow-Up Schedule
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={6} sm={4}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Next Appointment Date"
+                    type="date"
+                    InputLabelProps={{ shrink: true }}
+                    inputProps={{ min: new Date().toISOString().split('T')[0] }}
+                    value={formData.followUpInfo?.appointmentDate || ''}
+                    onChange={handleFollowUpChange('appointmentDate')}
+                    InputProps={{ sx: { borderRadius: '12px' } }}
+                  />
+                </Grid>
+                <Grid item xs={6} sm={4}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Time Slot"
+                    type="time"
+                    InputLabelProps={{ shrink: true }}
+                    value={formData.followUpInfo?.appointmentTime || ''}
+                    onChange={handleFollowUpChange('appointmentTime')}
+                    InputProps={{ sx: { borderRadius: '12px' } }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Emergency Helpline"
+                    placeholder="+91-9876543210"
+                    value={formData.emergencyHelpline || ''}
+                    onChange={(e) => setFormData({ ...formData, emergencyHelpline: e.target.value })}
+                    InputProps={{
+                      startAdornment: <InputAdornment position="start"><EmergencyIcon sx={{ color: '#ef4444', fontSize: 18 }} /></InputAdornment>,
+                      sx: { borderRadius: '12px' }
                     }}
-                  >
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <Box sx={{ width: '100%' }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 1 }}>
-                          <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C' }}>
-                            {idx + 1}. {med.name}
-                          </Typography>
-                          {med.type && (
-                            <Chip label={med.type} size="small" sx={{ height: 20, fontSize: '0.65rem', fontWeight: 800, bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.2)' : 'rgba(66, 132, 117, 0.15)', color: mode === 'dark' ? '#89D7B7' : '#428475' }} />
-                          )}
-                        </Box>
-                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 0.8 }}>
-                          <Chip 
-                            label={`Dosage: ${med.dosage || 'As directed'}`} 
-                            size="small" 
-                            sx={{ fontWeight: 700, bgcolor: 'rgba(19, 79, 77, 0.08)', color: '#134F4D', fontSize: '0.72rem' }} 
-                          />
-                          <Chip 
-                            label={`⏱️ Duration: ${med.duration || 'N/A'}`} 
-                            size="small" 
-                            sx={{ fontWeight: 700, bgcolor: 'rgba(59, 130, 246, 0.1)', color: '#1d4ed8', fontSize: '0.72rem' }} 
-                          />
-                          {med.quantity && (
-                            <Chip 
-                              label={`📦 Quantity: ${med.quantity}`} 
-                              size="small" 
-                              sx={{ fontWeight: 800, bgcolor: 'rgba(16, 185, 129, 0.12)', color: '#047857', fontSize: '0.72rem' }} 
-                            />
-                          )}
-                        </Box>
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Purpose of Next Visit"
+                    placeholder="e.g., Review endoscopy report and symptom resolution"
+                    value={formData.followUpInfo?.purpose || ''}
+                    onChange={handleFollowUpChange('purpose')}
+                    InputProps={{ sx: { borderRadius: '14px' } }}
+                  />
+                </Grid>
 
-                        {/* SOS / PRN Badge if marked SOS */}
-                        {med.isSOS && (
-                          <Box sx={{ mb: 0.8 }}>
-                            <Chip
-                              icon={<SosIcon sx={{ fontSize: 14, color: '#fff !important' }} />}
-                              label={`🆘 SOS (Only When Needed)${med.sosReason ? `: ${med.sosReason}` : ''}`}
-                              size="small"
-                              sx={{ fontWeight: 800, bgcolor: '#dc2626', color: '#fff', fontSize: '0.68rem', height: 22 }}
-                            />
-                          </Box>
-                        )}
+                <Grid item xs={12}>
+                  <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    📋 Bring to Next Visit
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1, mt: 0.5, mb: 1 }}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      placeholder="e.g., Previous blood reports, insurance card"
+                      value={newBringItem}
+                      onChange={(e) => setNewBringItem(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addBringItem())}
+                      InputProps={{ sx: { borderRadius: '14px' } }}
+                    />
+                    <Button 
+                      variant="contained" 
+                      onClick={addBringItem}
+                      sx={{ bgcolor: mode === 'dark' ? '#2A6B5D' : '#428475', minWidth: 44, borderRadius: '14px', px: 2 }}
+                    >
+                      <AddIcon />
+                    </Button>
+                  </Box>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
+                    {formData.followUpInfo?.bringItems?.map((item, idx) => (
+                      <Chip key={idx} label={item} onDelete={() => removeBringItem(idx)} sx={{ fontWeight: 600, bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.2)' : 'rgba(66, 132, 117, 0.15)', color: mode === 'dark' ? '#FAF2F5' : '#1A312C' }} />
+                    ))}
+                  </Box>
+                </Grid>
+              </Grid>
+            </Paper>
 
-                        {/* Per-time-of-day dose & meal relation summary chips */}
-                        {med.timing && ((med.timing.morning || 0) > 0 || (med.timing.afternoon || 0) > 0 || (med.timing.evening || 0) > 0 || (med.timing.night || 0) > 0) && (
-                          <Box sx={{ display: 'flex', gap: 0.6, flexWrap: 'wrap', mb: 0.8 }}>
-                            {(med.timing.morning || 0) > 0 && (
-                              <Chip
-                                label={`🌅 ×${med.timing.morning} Morning${med.mealRelations?.morning ? ` · ${med.mealRelations.morning}` : ''}`}
-                                size="small"
-                                sx={{ fontWeight: 700, bgcolor: '#FFF3E0', color: '#F57C00', fontSize: '0.68rem', height: 22 }}
-                              />
-                            )}
-                            {(med.timing.afternoon || 0) > 0 && (
-                              <Chip
-                                label={`☀️ ×${med.timing.afternoon} Afternoon${med.mealRelations?.afternoon ? ` · ${med.mealRelations.afternoon}` : ''}`}
-                                size="small"
-                                sx={{ fontWeight: 700, bgcolor: '#FFFDE7', color: '#F9A825', fontSize: '0.68rem', height: 22 }}
-                              />
-                            )}
-                            {(med.timing.evening || 0) > 0 && (
-                              <Chip
-                                label={`🌆 ×${med.timing.evening} Evening${med.mealRelations?.evening ? ` · ${med.mealRelations.evening}` : ''}`}
-                                size="small"
-                                sx={{ fontWeight: 700, bgcolor: '#FBE9E7', color: '#E64A19', fontSize: '0.68rem', height: 22 }}
-                              />
-                            )}
-                            {(med.timing.night || 0) > 0 && (
-                              <Chip
-                                label={`🌙 ×${med.timing.night} Night${med.mealRelations?.night ? ` · ${med.mealRelations.night}` : ''}`}
-                                size="small"
-                                sx={{ fontWeight: 700, bgcolor: '#E8EAF6', color: '#3949AB', fontSize: '0.68rem', height: 22 }}
-                              />
-                            )}
-                          </Box>
-                        )}
-
-                        {med.instructions && (
-                          <Typography variant="caption" sx={{ display: 'block', color: '#64748b', fontStyle: 'italic', mt: 0.5 }}>
-                            "{med.instructions}"
-                          </Typography>
-                        )}
-                      </Box>
-                      <IconButton size="small" onClick={() => removeMedication(idx)} sx={{ color: '#ef4444', bgcolor: 'rgba(239, 68, 68, 0.08)', ml: 1 }}>
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </Box>
-                  </Card>
-                ))}
-              </Box>
-            )}
-
-            {/* Medication Notes */}
-            <Typography variant="caption" sx={{ fontWeight: 800, color: '#428475', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-              Medication Warnings / Notes
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 1, mt: 0.5, mb: 1 }}>
+            {/* Additional Clinical Notes Paper */}
+            <Paper className="glass-panel" sx={{ p: 2.5, mb: 3, borderRadius: '24px !important', bgcolor: mode === 'dark' ? 'rgba(20, 38, 34, 0.94) !important' : 'rgba(255, 255, 255, 0.9) !important' }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', mb: 1 }}>
+                Additional Clinical Remarks
+              </Typography>
               <TextField
                 fullWidth
-                size="small"
-                placeholder="e.g., Avoid taking with milk or antacids"
-                value={newMedNote}
-                onChange={(e) => setNewMedNote(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addToArray('medicationNotes', newMedNote, setNewMedNote))}
-                InputProps={{ sx: { borderRadius: '14px' } }}
+                multiline
+                rows={2}
+                placeholder="Any extra instructions or notes for the patient..."
+                value={formData.notes || ''}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                InputProps={{ sx: { borderRadius: '16px' } }}
               />
-              <Button 
-                variant="contained" 
-                onClick={() => addToArray('medicationNotes', newMedNote, setNewMedNote)}
-                sx={{ bgcolor: '#428475', minWidth: 44, borderRadius: '14px', px: 2 }}
-              >
-                <AddIcon />
-              </Button>
-            </Box>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
-              {formData.medicationNotes?.map((item, idx) => (
-                <Chip key={idx} label={item} color="warning" onDelete={() => removeFromArray('medicationNotes', idx)} sx={{ fontWeight: 600 }} />
-              ))}
-            </Box>
-          </AccordionDetails>
-        </Accordion>
+            </Paper>
+          </Box>
+        )}
 
-        {/* ─── 5. Required Investigations ─── */}
-        <Accordion 
-          className="glass-panel" 
+        {/* ─── Step Navigation Control Bar (Desktop/Tablet) ─── */}
+        <Paper 
+          elevation={8}
+          className={mode === 'dark' ? 'apple-glass-card-dark' : 'apple-glass-card'} 
           sx={{ 
-            mb: 2, 
-            borderRadius: '24px !important', 
-            overflow: 'hidden',
-            bgcolor: mode === 'dark' ? 'rgba(20, 38, 34, 0.94) !important' : 'rgba(255, 255, 255, 0.88) !important',
-            '&:before': { display: 'none' }
+            display: { xs: 'none', sm: 'block' },
+            p: 2.5, 
+            mt: 3, 
+            mb: 4, 
+            borderRadius: '24px !important',
+            background: mode === 'dark' 
+              ? 'linear-gradient(135deg, rgba(20, 42, 36, 0.95), rgba(13, 27, 23, 0.98))' 
+              : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(240, 253, 246, 0.98))',
+            backdropFilter: 'blur(20px)',
+            border: mode === 'dark' ? '1px solid rgba(137, 215, 183, 0.2)' : '1px solid rgba(66, 132, 117, 0.15)'
           }}
         >
-          <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: mode === 'dark' ? '#89D7B7' : '#428475' }} />}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', display: 'flex', alignItems: 'center', gap: 1 }}>
-              <ScienceIcon sx={{ color: mode === 'dark' ? '#89D7B7' : '#428475' }} /> 5. Required Investigations & Lab Tests
-            </Typography>
-          </AccordionSummary>
-          <AccordionDetails sx={{ pt: 0 }}>
-            {/* Systematic Categorized Common Lab Tests with Icons */}
-            <Typography variant="caption" sx={{ fontWeight: 800, color: 'var(--color-forest)', display: 'block', mb: 1.5, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-              Systematic Diagnostic Test Presets:
-            </Typography>
+          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
+            {/* Left side: Cancel & Prev Step */}
+            <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+              <Button
+                variant="outlined"
+                onClick={() => navigate('/dashboard')}
+                sx={{ 
+                  height: 46, 
+                  px: 2.5,
+                  borderColor: mode === 'dark' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)', 
+                  color: mode === 'dark' ? 'rgba(255, 255, 255, 0.8)' : 'rgba(0, 0, 0, 0.7)',
+                  borderRadius: '16px',
+                  fontWeight: 700,
+                  textTransform: 'none',
+                  '&:hover': { borderColor: mode === 'dark' ? '#89D7B7' : '#428475', bgcolor: 'rgba(137,215,183,0.08)' }
+                }}
+              >
+                Cancel
+              </Button>
 
-            {[
-              {
-                category: '🩺 Radiology & Imaging',
-                items: [
-                  { name: 'X-Ray', label: '🩻 X-Ray' },
-                  { name: 'MRI', label: '🧠 MRI Scan' },
-                  { name: 'CT Scan', label: '💻 CT Scan' },
-                  { name: 'Ultrasound', label: '📡 Ultrasound (USG)' }
-                ]
-              },
-              {
-                category: '🩸 Blood & Hematology',
-                items: [
-                  { name: 'Blood Test', label: '🩸 Routine Blood Test' },
-                  { name: 'CBC', label: '🔬 Complete Blood Count (CBC)' },
-                  { name: 'ESR', label: '🧪 ESR' },
-                  { name: 'CRP', label: '🌡️ CRP' },
-                  { name: 'HbA1c', label: '🩺 HbA1c (Diabetes)' }
-                ]
-              },
-              {
-                category: '🫀 Biochemistry & Organ Panels',
-                items: [
-                  { name: 'Lipid Profile', label: '🫀 Lipid Profile' },
-                  { name: 'Liver Function Test', label: '🧪 Liver Function (LFT)' },
-                  { name: 'Kidney Function Test', label: '🫘 Kidney Function (KFT)' },
-                  { name: 'Thyroid Profile', label: '🦋 Thyroid Profile (T3/T4/TSH)' },
-                  { name: 'Vitamin D', label: '☀️ Vitamin D' },
-                  { name: 'Vitamin B12', label: '💊 Vitamin B12' }
-                ]
-              },
-              {
-                category: '⚡ Pathology & Cardiac',
-                items: [
-                  { name: 'Urine Test', label: '🧪 Routine Urine Test' },
-                  { name: 'ECG', label: '📈 Electrocardiogram (ECG)' },
-                  { name: 'EEG', label: '⚡ Electroencephalogram (EEG)' }
-                ]
-              }
-            ].map(cat => (
-              <Box key={cat.category} sx={{ mb: 1.5 }}>
-                <Typography variant="caption" sx={{ fontWeight: 700, color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-teal)', display: 'block', mb: 0.6 }}>
-                  {cat.category}
-                </Typography>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
-                  {cat.items.map(item => {
-                    const isSelected = formData.investigations?.some(i => i.testName === item.name);
-                    return (
-                      <Chip
-                        key={item.name}
-                        label={item.label}
-                        size="small"
-                        onClick={() => {
-                          if (isSelected) {
-                            setFormData({
-                              ...formData,
-                              investigations: formData.investigations?.filter(i => i.testName !== item.name)
-                            });
-                          } else {
-                            // Open the investigation detail popup instead of adding with defaults
-                            openInvDialogForTest(item.name);
-                          }
-                        }}
-                        sx={{
-                          fontWeight: 700,
-                          fontSize: '0.72rem',
-                          cursor: 'pointer',
-                          bgcolor: isSelected ? 'var(--color-forest)' : mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0, 0, 0, 0.05)',
-                          color: isSelected ? '#ffffff' : mode === 'dark' ? '#FAF2F5' : '#123029',
-                          border: isSelected ? '1px solid var(--color-mint)' : '1px solid transparent'
-                        }}
-                      />
-                    );
-                  })}
-                </Box>
-              </Box>
-            ))}
+              {viewMode === 'cards' && activeStep > 0 && (
+                <Button
+                  variant="outlined"
+                  onClick={handlePrevStep}
+                  startIcon={<PrevIcon />}
+                  sx={{ 
+                    height: 46, 
+                    px: 2.5,
+                    borderColor: 'var(--color-mint)', 
+                    color: mode === 'dark' ? '#89D7B7' : '#2A6B5D',
+                    borderRadius: '16px',
+                    fontWeight: 800,
+                    textTransform: 'none',
+                    bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.1)' : 'rgba(66, 132, 117, 0.06)',
+                    '&:hover': { bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.2)' : 'rgba(66, 132, 117, 0.12)' }
+                  }}
+                >
+                  Previous Step
+                </Button>
+              )}
+            </Box>
 
-            {/* Custom Other Test — Opens the detail popup */}
-            <Box sx={{ mt: 1.5, mb: 2 }}>
+            {/* Center: Step badge */}
+            {viewMode === 'cards' && (
               <Chip
-                label="➕ + Other (Add Custom Test Not Listed)"
-                onClick={() => openInvDialogCustom()}
+                label={`Step ${activeStep + 1} of ${FORM_STEPS.length} — ${FORM_STEPS[activeStep].label}`}
+                size="medium"
                 sx={{
+                  bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.15)' : 'rgba(66, 132, 117, 0.1)',
+                  color: mode === 'dark' ? '#89D7B7' : '#1A312C',
                   fontWeight: 800,
-                  fontSize: '0.75rem',
-                  cursor: 'pointer',
-                  bgcolor: 'rgba(102, 205, 170, 0.25)',
-                  color: 'var(--color-forest)',
-                  border: '1px solid var(--color-mint)',
-                  py: 0.5
+                  fontSize: '0.82rem',
+                  borderRadius: '12px',
+                  py: 0.5,
+                  px: 1
                 }}
               />
-            </Box>
-
-            {formData.investigations && formData.investigations.length > 0 && (
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', display: 'block', mb: 1, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                  Added Investigations ({formData.investigations.length})
-                </Typography>
-                {formData.investigations.map((inv, idx) => {
-                  const priorityColor = inv.priority === 'Urgent' ? '#ef4444' : inv.priority === 'Routine' ? '#22c55e' : '#f59e0b';
-                  return (
-                    <Card key={idx} variant="outlined" sx={{ mb: 1, p: 1.5, borderRadius: '14px', bgcolor: mode === 'dark' ? 'rgba(18, 38, 34, 0.85)' : '#ffffff', borderColor: mode === 'dark' ? 'rgba(137, 215, 183, 0.3)' : 'rgba(0,0,0,0.12)', transition: 'all 0.2s ease', '&:hover': { borderColor: mode === 'dark' ? 'rgba(137, 215, 183, 0.6)' : 'rgba(66, 132, 117, 0.4)' } }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <Box sx={{ flex: 1 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                            <Typography variant="body2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C' }}>
-                              {idx + 1}. {inv.testName}
-                            </Typography>
-                            <Chip
-                              label={inv.priority || 'Normal'}
-                              size="small"
-                              sx={{
-                                height: 20,
-                                fontWeight: 800,
-                                fontSize: '0.65rem',
-                                bgcolor: `${priorityColor}22`,
-                                color: priorityColor,
-                                border: `1px solid ${priorityColor}44`
-                              }}
-                            />
-                          </Box>
-                          <Typography variant="caption" sx={{ color: mode === 'dark' ? '#89D7B7' : '#428475', display: 'block', fontWeight: 600 }}>
-                            {inv.reason || 'Standard check'} • Fasting: {inv.fasting || 'Not specified'}
-                          </Typography>
-                          {inv.specialInstructions && (
-                            <Typography variant="caption" sx={{ color: mode === 'dark' ? 'rgba(250, 242, 245, 0.6)' : 'rgba(26, 49, 44, 0.6)', display: 'block', fontStyle: 'italic', mt: 0.3 }}>
-                              📋 {inv.specialInstructions}
-                            </Typography>
-                          )}
-                        </Box>
-                        <Box sx={{ display: 'flex', gap: 0.5 }}>
-                          <IconButton size="small" onClick={() => openInvDialogForEdit(idx)} sx={{ color: mode === 'dark' ? '#89D7B7' : '#428475' }}>
-                            <EditIcon fontSize="small" />
-                          </IconButton>
-                          <IconButton size="small" onClick={() => removeInvestigation(idx)} sx={{ color: '#ef4444' }}>
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        </Box>
-                      </Box>
-                    </Card>
-                  );
-                })}
-              </Box>
             )}
 
-            <TextField
-              fullWidth
-              size="small"
-              label="Investigation Instructions"
-              placeholder="e.g., Bring all report hardcopies on next visit"
-              value={formData.investigationNotes || ''}
-              onChange={(e) => setFormData({ ...formData, investigationNotes: e.target.value })}
-              InputProps={{ sx: { borderRadius: '14px' } }}
-            />
-          </AccordionDetails>
-        </Accordion>
-
-        {/* ─── 6. Diet & Lifestyle Recommendations ─── */}
-        <Accordion 
-          className="glass-panel" 
-          sx={{ 
-            mb: 2, 
-            borderRadius: '24px !important', 
-            overflow: 'hidden',
-            bgcolor: mode === 'dark' ? 'rgba(20, 38, 34, 0.94) !important' : 'rgba(255, 255, 255, 0.88) !important',
-            '&:before': { display: 'none' }
-          }}
-        >
-          <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: mode === 'dark' ? '#89D7B7' : '#428475' }} />}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', display: 'flex', alignItems: 'center', gap: 1 }}>
-              <DietIcon sx={{ color: mode === 'dark' ? '#89D7B7' : '#428475' }} /> 6. Diet & Lifestyle Advice
-            </Typography>
-          </AccordionSummary>
-          <AccordionDetails sx={{ pt: 0 }}>
-            <Grid container spacing={2}>
-              {/* Diet Modifications */}
-              <Grid item xs={12}>
-                <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                  Diet Restrictions & Modifications
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 1, mt: 0.5, mb: 1 }}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    placeholder="e.g., Avoid spicy foods, caffeine, late night meals"
-                    value={newDiet}
-                    onChange={(e) => setNewDiet(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addToArray('dietModifications', newDiet, setNewDiet))}
-                    InputProps={{ sx: { borderRadius: '14px' } }}
-                  />
-                  <Button 
-                    variant="contained" 
-                    onClick={() => addToArray('dietModifications', newDiet, setNewDiet)}
-                    sx={{ bgcolor: mode === 'dark' ? '#2A6B5D' : '#428475', minWidth: 44, borderRadius: '14px', px: 2 }}
-                  >
-                    <AddIcon />
-                  </Button>
-                </Box>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
-                  {formData.dietModifications?.map((item, idx) => (
-                    <Chip key={idx} label={item} color="success" variant="outlined" onDelete={() => removeFromArray('dietModifications', idx)} sx={{ fontWeight: 600 }} />
-                  ))}
-                </Box>
-              </Grid>
-
-              {/* Lifestyle Changes */}
-              <Grid item xs={12}>
-                <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                  Lifestyle Modifications
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 1, mt: 0.5, mb: 1 }}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    placeholder="e.g., Walk 30 minutes daily after dinner"
-                    value={newLifestyle}
-                    onChange={(e) => setNewLifestyle(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addToArray('lifestyleChanges', newLifestyle, setNewLifestyle))}
-                    InputProps={{ sx: { borderRadius: '14px' } }}
-                  />
-                  <Button 
-                    variant="contained" 
-                    onClick={() => addToArray('lifestyleChanges', newLifestyle, setNewLifestyle)}
-                    sx={{ bgcolor: mode === 'dark' ? '#2A6B5D' : '#428475', minWidth: 44, borderRadius: '14px', px: 2 }}
-                  >
-                    <AddIcon />
-                  </Button>
-                </Box>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
-                  {formData.lifestyleChanges?.map((item, idx) => (
-                    <Chip key={idx} label={item} color="info" variant="outlined" onDelete={() => removeFromArray('lifestyleChanges', idx)} sx={{ fontWeight: 600 }} />
-                  ))}
-                </Box>
-              </Grid>
-
-              {/* Warning Signs */}
-              <Grid item xs={12}>
-                <Typography variant="caption" sx={{ fontWeight: 800, color: '#ef4444', textTransform: 'uppercase', letterSpacing: 0.5, display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  <WarningIcon sx={{ fontSize: 16 }} /> Seek Immediate ER Attention If:
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 1, mt: 0.5, mb: 1 }}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    placeholder="e.g., Black stools, severe sudden abdominal pain"
-                    value={newWarning}
-                    onChange={(e) => setNewWarning(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addToArray('warningSigns', newWarning, setNewWarning))}
-                    InputProps={{ sx: { borderRadius: '14px' } }}
-                  />
-                  <Button 
-                    variant="contained" 
-                    onClick={() => addToArray('warningSigns', newWarning, setNewWarning)}
-                    sx={{ bgcolor: '#ef4444', color: '#ffffff', minWidth: 44, borderRadius: '14px', px: 2 }}
-                  >
-                    <AddIcon />
-                  </Button>
-                </Box>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
-                  {formData.warningSigns?.map((item, idx) => (
-                    <Chip key={idx} label={item} color="error" onDelete={() => removeFromArray('warningSigns', idx)} sx={{ fontWeight: 700 }} />
-                  ))}
-                </Box>
-              </Grid>
-            </Grid>
-          </AccordionDetails>
-        </Accordion>
-
-        {/* ─── 7. Follow-Up Schedule ─── */}
-        <Accordion 
-          className="glass-panel" 
-          sx={{ 
-            mb: 3, 
-            borderRadius: '24px !important', 
-            overflow: 'hidden',
-            bgcolor: mode === 'dark' ? 'rgba(20, 38, 34, 0.94) !important' : 'rgba(255, 255, 255, 0.88) !important',
-            '&:before': { display: 'none' }
-          }}
-        >
-          <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: mode === 'dark' ? '#89D7B7' : '#428475' }} />}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', display: 'flex', alignItems: 'center', gap: 1 }}>
-              <EventIcon sx={{ color: mode === 'dark' ? '#89D7B7' : '#428475' }} /> 7. Follow-Up Schedule
-            </Typography>
-          </AccordionSummary>
-          <AccordionDetails sx={{ pt: 0 }}>
-            <Grid container spacing={2}>
-              <Grid item xs={6} sm={4}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  label="Next Appointment Date"
-                  type="date"
-                  InputLabelProps={{ shrink: true }}
-                  inputProps={{ min: new Date().toISOString().split('T')[0] }}
-                  value={formData.followUpInfo?.appointmentDate || ''}
-                  onChange={handleFollowUpChange('appointmentDate')}
-                  InputProps={{ sx: { borderRadius: '12px' } }}
-                />
-              </Grid>
-              <Grid item xs={6} sm={4}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  label="Time Slot"
-                  type="time"
-                  InputLabelProps={{ shrink: true }}
-                  value={formData.followUpInfo?.appointmentTime || ''}
-                  onChange={handleFollowUpChange('appointmentTime')}
-                  InputProps={{ sx: { borderRadius: '12px' } }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={4}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  label="Emergency Helpline"
-                  placeholder="+91-9876543210"
-                  value={formData.emergencyHelpline || ''}
-                  onChange={(e) => setFormData({ ...formData, emergencyHelpline: e.target.value })}
-                  InputProps={{
-                    startAdornment: <InputAdornment position="start"><EmergencyIcon sx={{ color: '#ef4444', fontSize: 18 }} /></InputAdornment>,
-                    sx: { borderRadius: '12px' }
+            {/* Right side: Next Step or Submit */}
+            <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+              {viewMode === 'cards' && activeStep < FORM_STEPS.length - 1 ? (
+                <Button
+                  type="button"
+                  variant="contained"
+                  onClick={handleNextStep}
+                  endIcon={<NextIcon />}
+                  sx={{ 
+                    height: 48, 
+                    px: 3.5,
+                    bgcolor: 'var(--color-forest)', 
+                    color: '#ffffff',
+                    borderRadius: '16px',
+                    fontWeight: 800,
+                    fontSize: '0.92rem',
+                    textTransform: 'none',
+                    boxShadow: '0 6px 20px rgba(42, 107, 93, 0.4)',
+                    '&:hover': { bgcolor: mode === 'dark' ? '#2A6B5D' : '#123029', boxShadow: '0 8px 24px rgba(42, 107, 93, 0.5)' }
                   }}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  label="Purpose of Next Visit"
-                  placeholder="e.g., Review endoscopy report and symptom resolution"
-                  value={formData.followUpInfo?.purpose || ''}
-                  onChange={handleFollowUpChange('purpose')}
-                  InputProps={{ sx: { borderRadius: '14px' } }}
-                />
-              </Grid>
-
-              {/* Bring Items for Follow-Up */}
-              <Grid item xs={12}>
-                <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                  📋 Bring to Next Visit
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 1, mt: 0.5, mb: 1 }}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    placeholder="e.g., Previous blood reports, insurance card"
-                    value={newBringItem}
-                    onChange={(e) => setNewBringItem(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addBringItem())}
-                    InputProps={{ sx: { borderRadius: '14px' } }}
-                  />
-                  <Button 
-                    variant="contained" 
-                    onClick={addBringItem}
-                    sx={{ bgcolor: mode === 'dark' ? '#2A6B5D' : '#428475', minWidth: 44, borderRadius: '14px', px: 2 }}
-                  >
-                    <AddIcon />
-                  </Button>
-                </Box>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
-                  {formData.followUpInfo?.bringItems?.map((item, idx) => (
-                    <Chip key={idx} label={item} onDelete={() => removeBringItem(idx)} sx={{ fontWeight: 600, bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.2)' : 'rgba(66, 132, 117, 0.15)', color: mode === 'dark' ? '#FAF2F5' : '#1A312C' }} />
-                  ))}
-                </Box>
-              </Grid>
-            </Grid>
-          </AccordionDetails>
-        </Accordion>
-
-        {/* Additional Clinical Notes Paper */}
-        <Paper className="glass-panel" sx={{ p: 2.5, mb: 3, borderRadius: '24px !important', bgcolor: mode === 'dark' ? 'rgba(20, 38, 34, 0.94) !important' : 'rgba(255, 255, 255, 0.9) !important' }}>
-          <Typography variant="subtitle2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', mb: 1 }}>
-            Additional Clinical Remarks
-          </Typography>
-          <TextField
-            fullWidth
-            multiline
-            rows={2}
-            placeholder="Any extra instructions or notes for the patient..."
-            value={formData.notes || ''}
-            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-            InputProps={{ sx: { borderRadius: '16px' } }}
-          />
+                >
+                  Next Step Card
+                </Button>
+              ) : (
+                <Button
+                  type="submit"
+                  variant="contained"
+                  disabled={loading}
+                  startIcon={loading ? <CircularProgress size={22} sx={{ color: '#ffffff' }} /> : <SendIcon />}
+                  sx={{ 
+                    height: 48, 
+                    px: 4,
+                    bgcolor: 'var(--color-forest)', 
+                    color: '#ffffff',
+                    borderRadius: '16px',
+                    fontWeight: 800,
+                    fontSize: '0.95rem',
+                    textTransform: 'none',
+                    boxShadow: '0 8px 24px rgba(42, 107, 93, 0.4)',
+                    '&:hover': { bgcolor: mode === 'dark' ? '#2A6B5D' : '#123029' }
+                  }}
+                >
+                  {loading ? 'Issuing Prescription...' : 'Issue Prescription'}
+                </Button>
+              )}
+            </Box>
+          </Box>
         </Paper>
 
-        {/* ─── Submit Action Bar ─── */}
-        <Paper 
-          elevation={12}
-          className="glass-panel" 
-          sx={{ 
-            p: 2, 
-            borderRadius: '24px !important', 
-            bgcolor: 'rgba(26, 49, 44, 0.94) !important',
-            border: '1px solid rgba(137, 215, 183, 0.4) !important',
-            boxShadow: '0 12px 36px rgba(15, 29, 26, 0.3) !important'
+        {/* ─── Mobile Centered Floating Stepper Dock ─── */}
+        <Paper
+          elevation={0}
+          className="specular-sheen"
+          sx={{
+            display: { xs: 'block', sm: 'none' },
+            position: 'fixed',
+            bottom: 'calc(12px + env(safe-area-inset-bottom, 0px))',
+            left: '50% !important',
+            right: 'auto !important',
+            transform: 'translateX(-50%) !important',
+            width: 'calc(100% - 24px)',
+            maxWidth: '480px',
+            zIndex: 1400,
+            p: 1.5,
+            pt: 1.5,
+            borderRadius: '28px !important',
+            overflow: 'hidden',
+            bgcolor: mode === 'dark' ? 'rgba(15, 30, 26, 0.96)' : 'rgba(255, 255, 255, 0.96)',
+            backdropFilter: 'blur(30px) saturate(220%)',
+            WebkitBackdropFilter: 'blur(30px) saturate(220%)',
+            border: mode === 'dark' ? '1px solid rgba(137, 215, 183, 0.3)' : '1px solid rgba(66, 132, 117, 0.2)',
+            boxShadow: '0 12px 40px rgba(0, 0, 0, 0.2)'
           }}
         >
-          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'space-between', alignItems: 'center' }}>
+          {/* Top Thin Progress Line */}
+          <LinearProgress
+            variant="determinate"
+            value={((activeStep + 1) / 4) * 100}
+            sx={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: 3,
+              bgcolor: 'transparent',
+              '& .MuiLinearProgress-bar': {
+                background: 'linear-gradient(90deg, #428475 0%, #89D7B7 100%)'
+              }
+            }}
+          />
+
+          {/* Compact Step Tabs & Mode Toggle */}
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.2, px: 0.5 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
+              {FORM_STEPS.map((step, idx) => {
+                const isActive = activeStep === idx;
+                const isCompleted = activeStep > idx;
+                return (
+                  <Box
+                    key={idx}
+                    onClick={() => {
+                      setActiveStep(idx);
+                      window.scrollTo({ top: 120, behavior: 'smooth' });
+                    }}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 0.4,
+                      px: isActive ? 1.2 : 0.8,
+                      py: 0.4,
+                      borderRadius: '12px',
+                      cursor: 'pointer',
+                      bgcolor: isActive
+                        ? (mode === 'dark' ? 'rgba(137, 215, 183, 0.2)' : 'rgba(66, 132, 117, 0.12)')
+                        : (mode === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'),
+                      border: isActive
+                        ? (mode === 'dark' ? '1.5px solid #89D7B7' : '1.5px solid #428475')
+                        : '1px solid transparent',
+                      transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
+                    }}
+                  >
+                    <Typography sx={{ fontSize: '0.85rem', lineHeight: 1 }}>{step.icon}</Typography>
+                    {isActive && (
+                      <Typography variant="caption" sx={{ fontWeight: 800, fontSize: '0.7rem', color: mode === 'dark' ? '#FAF2F5' : '#1A312C', lineHeight: 1 }}>
+                        {step.label.split(' ')[0]}
+                      </Typography>
+                    )}
+                    {isCompleted && !isActive && <CheckIcon sx={{ fontSize: 11, color: '#89D7B7' }} />}
+                  </Box>
+                );
+              })}
+            </Box>
+
             <Button
-              variant="outlined"
-              onClick={() => navigate('/dashboard')}
-              sx={{ 
-                height: 48, 
-                px: 3,
-                borderColor: 'rgba(255, 244, 225, 0.4)', 
-                color: '#FFF4E1',
-                borderRadius: '16px',
-                fontWeight: 700,
-                '&:hover': { borderColor: '#FFF4E1', bgcolor: 'rgba(255,255,255,0.08)' }
-              }}
-            >
-              Cancel
-            </Button>
-            
-            <Button
-              type="submit"
-              variant="contained"
-              disabled={loading}
-              startIcon={loading ? <CircularProgress size={22} sx={{ color: '#1A312C' }} /> : <SendIcon />}
-              sx={{ 
-                height: 48, 
-                px: 4,
-                bgcolor: '#89D7B7', 
-                color: '#1A312C',
-                borderRadius: '16px',
+              size="small"
+              type="button"
+              onClick={() => setViewMode(prev => prev === 'cards' ? 'all' : 'cards')}
+              sx={{
+                borderRadius: '8px',
                 fontWeight: 800,
-                fontSize: '0.95rem',
-                boxShadow: '0 8px 24px rgba(137, 215, 183, 0.4)',
-                '&:hover': { bgcolor: '#78caa8' }
+                fontSize: '0.65rem',
+                px: 1,
+                py: 0.3,
+                color: mode === 'dark' ? '#89D7B7' : '#2A6B5D',
+                bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.12)' : 'rgba(66, 132, 117, 0.08)',
+                border: '1px solid var(--color-mint)',
+                textTransform: 'none',
+                minWidth: 0
               }}
             >
-              {loading ? 'Issuing...' : 'Issue Prescription'}
+              {viewMode === 'cards' ? '🎴 Cards' : '📄 All'}
             </Button>
+          </Box>
+
+          {/* Bottom Action Controls */}
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            {viewMode === 'cards' && activeStep > 0 && (
+              <Button
+                size="small"
+                type="button"
+                variant="outlined"
+                onClick={handlePrevStep}
+                startIcon={<PrevIcon sx={{ fontSize: 16 }} />}
+                sx={{
+                  height: 42,
+                  borderRadius: '14px',
+                  fontWeight: 800,
+                  fontSize: '0.78rem',
+                  px: 2,
+                  borderColor: mode === 'dark' ? 'rgba(137, 215, 183, 0.3)' : 'rgba(66, 132, 117, 0.3)',
+                  color: mode === 'dark' ? '#89D7B7' : '#2A6B5D',
+                  bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.08)' : 'rgba(66, 132, 117, 0.04)',
+                  textTransform: 'none'
+                }}
+              >
+                Prev
+              </Button>
+            )}
+
+            {viewMode === 'cards' && activeStep < FORM_STEPS.length - 1 ? (
+              <Button
+                fullWidth
+                type="button"
+                size="small"
+                variant="contained"
+                onClick={handleNextStep}
+                endIcon={<NextIcon sx={{ fontSize: 18 }} />}
+                sx={{
+                  height: 42,
+                  borderRadius: '14px',
+                  fontWeight: 800,
+                  fontSize: '0.88rem',
+                  bgcolor: 'var(--color-forest)',
+                  color: '#ffffff',
+                  boxShadow: '0 4px 14px rgba(42, 107, 93, 0.3)',
+                  textTransform: 'none'
+                }}
+              >
+                Next Step Card
+              </Button>
+            ) : (
+              <Button
+                fullWidth
+                type="submit"
+                size="small"
+                variant="contained"
+                disabled={loading}
+                startIcon={loading ? <CircularProgress size={18} sx={{ color: '#ffffff' }} /> : <SendIcon sx={{ fontSize: 18 }} />}
+                sx={{
+                  height: 42,
+                  borderRadius: '14px',
+                  fontWeight: 800,
+                  fontSize: '0.88rem',
+                  bgcolor: 'var(--color-forest)',
+                  color: '#ffffff',
+                  boxShadow: '0 4px 14px rgba(42, 107, 93, 0.3)',
+                  textTransform: 'none'
+                }}
+              >
+                {loading ? 'Issuing...' : 'Issue Prescription'}
+              </Button>
+            )}
           </Box>
         </Paper>
 
@@ -3393,6 +3827,198 @@ const NewPrescription = () => {
               />
             </Grid>
           </Grid>
+
+          {/* ─── Guardian Section (Minors under 15) ─── */}
+          {isMinorPatient && (
+            <Box sx={{ mt: 2.5 }}>
+              <Alert
+                severity="warning"
+                sx={{
+                  borderRadius: '14px',
+                  mb: 2,
+                  py: 0.8,
+                  bgcolor: mode === 'dark' ? 'rgba(245, 158, 11, 0.12)' : 'rgba(245, 158, 11, 0.08)',
+                  border: '1px solid rgba(245, 158, 11, 0.3)',
+                  '& .MuiAlert-message': { fontSize: '0.82rem', fontWeight: 700 }
+                }}
+              >
+                ⚠️ This patient is under 15 years old. A legal guardian is required.
+              </Alert>
+
+              {/* Guardian Mode Toggle */}
+              <Box sx={{ display: 'flex', gap: 0.8, mb: 2 }}>
+                <Button
+                  size="small"
+                  type="button"
+                  onClick={() => { setGuardianMode('link'); setGuardianFound(null); }}
+                  sx={{
+                    flex: 1,
+                    borderRadius: '12px',
+                    fontWeight: 800,
+                    fontSize: '0.75rem',
+                    py: 0.8,
+                    bgcolor: guardianMode === 'link' ? '#428475' : (mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'),
+                    color: guardianMode === 'link' ? '#ffffff' : (mode === 'dark' ? '#89D7B7' : '#1A312C'),
+                    border: guardianMode === 'link' ? '1.5px solid #89D7B7' : '1px solid rgba(0,0,0,0.1)',
+                    textTransform: 'none',
+                    '&:hover': { bgcolor: guardianMode === 'link' ? '#356d61' : 'rgba(66,132,117,0.08)' }
+                  }}
+                >
+                  🔗 Link Existing Account
+                </Button>
+                <Button
+                  size="small"
+                  type="button"
+                  onClick={() => { setGuardianMode('create'); setGuardianFound(null); }}
+                  sx={{
+                    flex: 1,
+                    borderRadius: '12px',
+                    fontWeight: 800,
+                    fontSize: '0.75rem',
+                    py: 0.8,
+                    bgcolor: guardianMode === 'create' ? '#428475' : (mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'),
+                    color: guardianMode === 'create' ? '#ffffff' : (mode === 'dark' ? '#89D7B7' : '#1A312C'),
+                    border: guardianMode === 'create' ? '1.5px solid #89D7B7' : '1px solid rgba(0,0,0,0.1)',
+                    textTransform: 'none',
+                    '&:hover': { bgcolor: guardianMode === 'create' ? '#356d61' : 'rgba(66,132,117,0.08)' }
+                  }}
+                >
+                  ➕ Create Guardian Account
+                </Button>
+              </Box>
+
+              {/* Link Existing Guardian */}
+              {guardianMode === 'link' && (
+                <Box>
+                  <Grid container spacing={1.5} alignItems="center">
+                    <Grid item xs={8}>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        label="Search by Email, Phone, or Patient ID"
+                        value={guardianSearchQuery}
+                        onChange={(e) => setGuardianSearchQuery(e.target.value)}
+                        InputProps={{ sx: { borderRadius: '12px' } }}
+                      />
+                    </Grid>
+                    <Grid item xs={4}>
+                      <Button
+                        fullWidth
+                        size="small"
+                        type="button"
+                        variant="contained"
+                        disabled={!guardianSearchQuery.trim() || guardianSearching}
+                        onClick={async () => {
+                          setGuardianSearching(true);
+                          setGuardianFound(null);
+                          try {
+                            const result = await usersAPI.lookupPatientById(guardianSearchQuery.trim());
+                            if (result && result.id) {
+                              setGuardianFound(result);
+                            } else {
+                              setNewPatientError('Guardian not found. Try a different email, phone, or ID.');
+                            }
+                          } catch {
+                            setNewPatientError('Guardian not found. Try a different email, phone, or ID.');
+                          } finally {
+                            setGuardianSearching(false);
+                          }
+                        }}
+                        sx={{
+                          height: 40,
+                          borderRadius: '12px',
+                          bgcolor: 'var(--color-forest)',
+                          fontWeight: 800,
+                          fontSize: '0.78rem',
+                          textTransform: 'none'
+                        }}
+                      >
+                        {guardianSearching ? <CircularProgress size={18} sx={{ color: '#fff' }} /> : 'Find'}
+                      </Button>
+                    </Grid>
+                  </Grid>
+
+                  {/* Guardian Found Card */}
+                  {guardianFound && (
+                    <Card
+                      variant="outlined"
+                      sx={{
+                        mt: 1.5,
+                        p: 1.5,
+                        borderRadius: '14px',
+                        bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.12)' : 'rgba(102, 205, 170, 0.1)',
+                        borderColor: 'var(--color-mint)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1.5
+                      }}
+                    >
+                      <Avatar sx={{ bgcolor: '#428475', width: 36, height: 36, fontSize: '0.85rem', fontWeight: 900 }}>
+                        {(guardianFound.firstName || '?')[0]}
+                      </Avatar>
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#123029' }}>
+                          {guardianFound.firstName} {guardianFound.lastName}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: mode === 'dark' ? '#89D7B7' : '#428475', fontWeight: 600, display: 'block' }}>
+                          {guardianFound.email || guardianFound.phone || guardianFound.id}
+                        </Typography>
+                      </Box>
+                      <Chip label="✓ Guardian" size="small" sx={{ bgcolor: '#428475', color: '#ffffff', fontWeight: 800, fontSize: '0.68rem' }} />
+                    </Card>
+                  )}
+                </Box>
+              )}
+
+              {/* Create New Guardian */}
+              {guardianMode === 'create' && (
+                <Grid container spacing={1.5}>
+                  <Grid item xs={6}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="Guardian First Name *"
+                      value={guardianCreateData.firstName}
+                      onChange={(e) => setGuardianCreateData({ ...guardianCreateData, firstName: e.target.value })}
+                      InputProps={{ sx: { borderRadius: '12px' } }}
+                    />
+                  </Grid>
+                  <Grid item xs={6}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="Guardian Last Name *"
+                      value={guardianCreateData.lastName}
+                      onChange={(e) => setGuardianCreateData({ ...guardianCreateData, lastName: e.target.value })}
+                      InputProps={{ sx: { borderRadius: '12px' } }}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="Guardian Email"
+                      type="email"
+                      value={guardianCreateData.email}
+                      onChange={(e) => setGuardianCreateData({ ...guardianCreateData, email: e.target.value })}
+                      InputProps={{ sx: { borderRadius: '12px' } }}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="Guardian Phone"
+                      value={guardianCreateData.phone}
+                      onChange={(e) => setGuardianCreateData({ ...guardianCreateData, phone: e.target.value })}
+                      InputProps={{ sx: { borderRadius: '12px' } }}
+                    />
+                  </Grid>
+                </Grid>
+              )}
+            </Box>
+          )}
+
           {newPatientError && (
             <Typography variant="caption" sx={{ color: '#dc2626', fontWeight: 700, mt: 1, display: 'block', px: 1 }}>
               ⚠️ {newPatientError}
@@ -3400,7 +4026,7 @@ const NewPrescription = () => {
           )}
         </DialogContent>
         <DialogActions sx={{ p: 2, gap: 1 }}>
-          <Button onClick={() => setNewPatientDialogOpen(false)} sx={{ borderRadius: '12px' }}>
+          <Button onClick={() => { setNewPatientDialogOpen(false); setGuardianFound(null); setGuardianSearchQuery(''); setGuardianCreateData({ firstName: '', lastName: '', email: '', phone: '' }); }} sx={{ borderRadius: '12px' }}>
             Cancel
           </Button>
           <Button
@@ -3410,12 +4036,29 @@ const NewPrescription = () => {
               !newPatientData.firstName ||
               !newPatientData.lastName ||
               !newPatientData.dateOfBirth ||
-              (newPatientData.noEmail ? !newPatientData.phone : !newPatientData.email)
+              (newPatientData.noEmail ? !newPatientData.phone : !newPatientData.email) ||
+              (isMinorPatient && !isGuardianResolved)
             }
             onClick={async () => {
               try {
                 setCreatingPatient(true);
                 setNewPatientError('');
+
+                // Build guardian payload for minors
+                let guardianPayload: any = {};
+                if (isMinorPatient) {
+                  if (guardianMode === 'link' && guardianFound) {
+                    guardianPayload.guardianId = guardianFound.id;
+                  } else if (guardianMode === 'create') {
+                    guardianPayload.guardianData = {
+                      firstName: guardianCreateData.firstName,
+                      lastName: guardianCreateData.lastName,
+                      email: guardianCreateData.email,
+                      phone: guardianCreateData.phone,
+                    };
+                  }
+                }
+
                 // Create patient via real API (auto-links to doctor on backend)
                 const result = await usersAPI.createPatient({
                   firstName: newPatientData.firstName,
@@ -3425,7 +4068,8 @@ const NewPrescription = () => {
                   dateOfBirth: newPatientData.dateOfBirth,
                   gender: newPatientData.gender,
                   address: newPatientData.address,
-                  noEmail: newPatientData.noEmail
+                  noEmail: newPatientData.noEmail,
+                  ...guardianPayload
                 });
                 const newP = result.patient || result;
                 const tempPwd = result.tempPassword || '';
@@ -3435,9 +4079,14 @@ const NewPrescription = () => {
                 setFormData(prev => ({ ...prev, patientId: newP.id }));
                 setNewPatientDialogOpen(false);
                 setNewPatientData({ firstName: '', lastName: '', email: '', phone: '', dateOfBirth: '', gender: 'male', address: '', noEmail: false });
+                // Reset guardian state
+                setGuardianFound(null);
+                setGuardianSearchQuery('');
+                setGuardianCreateData({ firstName: '', lastName: '', email: '', phone: '' });
                 // Show temp password in success snackbar
+                const guardianInfo = result.guardianName ? ` | Guardian: ${result.guardianName}` : '';
                 if (tempPwd) {
-                  setNewPatientSuccess(`✅ Patient created! Temporary password: ${tempPwd}`);
+                  setNewPatientSuccess(`✅ Patient created! Temporary password: ${tempPwd}${guardianInfo}`);
                 }
               } catch (err: any) {
                 console.error('Create patient error:', err);

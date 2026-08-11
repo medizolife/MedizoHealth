@@ -696,188 +696,378 @@ export default function Header() {
         anchor="right"
         open={drawerOpen}
         onClose={() => toggleDrawer(false)}
+        transitionDuration={{ enter: 450, exit: 350 }}
+        SlideProps={{
+          easing: {
+            enter: 'cubic-bezier(0.16, 1, 0.3, 1)',
+            exit: 'cubic-bezier(0.4, 0, 0.2, 1)',
+          }
+        }}
         PaperProps={{
           sx: {
-            width: 300,
-            borderRadius: '24px 0 0 24px',
-            bgcolor: mode === 'dark' ? 'rgba(15, 15, 15, 0.96)' : 'rgba(255, 255, 255, 0.96)',
-            backdropFilter: 'blur(24px)',
-            borderLeft: '1px solid var(--glass-border)'
+            width: { xs: 310, sm: 340 },
+            borderRadius: '28px 0 0 28px !important',
+            bgcolor: mode === 'dark' ? 'rgba(15, 30, 26, 0.98)' : 'rgba(255, 255, 255, 0.98)',
+            backdropFilter: 'blur(30px)',
+            borderLeft: mode === 'dark' ? '1px solid rgba(137, 215, 183, 0.2)' : '1px solid rgba(66, 132, 117, 0.15)',
+            boxShadow: '-16px 0 48px rgba(0, 0, 0, 0.35)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden'
           }
         }}
       >
-        <Box sx={{ p: 3, bgcolor: 'var(--color-forest)', color: '#ffffff', borderBottom: '1px solid var(--glass-border)' }}>
+        {/* Drawer Glass Header */}
+        <Box 
+          sx={{ 
+            p: 2.5, 
+            background: mode === 'dark'
+              ? 'linear-gradient(135deg, rgba(26, 52, 45, 0.98) 0%, rgba(15, 30, 26, 0.99) 100%)'
+              : 'linear-gradient(135deg, rgba(42, 107, 93, 0.95) 0%, rgba(20, 49, 44, 0.98) 100%)',
+            color: '#ffffff',
+            borderRadius: '0 0 24px 24px',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.2)'
+          }}
+        >
+          {/* Top Header Row with Close Button */}
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <MedicationIcon sx={{ color: '#89D7B7', fontSize: 24 }} />
+              <Typography variant="subtitle1" sx={{ fontWeight: 900, letterSpacing: '-0.02em', color: '#ffffff', fontSize: '1rem' }}>
+                Medizo Life
+              </Typography>
+            </Box>
+            <IconButton 
+              onClick={() => toggleDrawer(false)} 
+              size="small" 
+              sx={{ color: '#ffffff', bgcolor: 'rgba(255,255,255,0.12)', '&:hover': { bgcolor: 'rgba(255,255,255,0.25)' } }}
+            >
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          </Box>
+
+          {/* User Profile Info */}
           {isAuthenticated && user ? (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Avatar sx={{ width: 50, height: 50, bgcolor: 'rgba(255, 255, 255, 0.2)', color: '#ffffff', fontSize: '1.25rem', fontWeight: 800, border: '2px solid #ffffff' }}>
+              <Avatar 
+                sx={{ 
+                  width: 52, 
+                  height: 52, 
+                  bgcolor: 'rgba(137, 215, 183, 0.25)', 
+                  color: '#89D7B7', 
+                  fontSize: '1.3rem', 
+                  fontWeight: 900, 
+                  border: '2.5px solid #89D7B7',
+                  boxShadow: '0 0 16px rgba(137, 215, 183, 0.4)'
+                }}
+              >
                 {user.firstName?.[0] || 'U'}
               </Avatar>
-              <Box>
-                <Typography variant="subtitle1" sx={{ fontWeight: 800, lineHeight: 1.2, color: '#ffffff' }}>
+              <Box sx={{ minWidth: 0, flex: 1 }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 800, lineHeight: 1.2, color: '#ffffff', fontSize: '1rem' }} noWrap>
                   {user.role === 'doctor' ? `Dr. ${user.firstName} ${user.lastName}` : `${user.firstName} ${user.lastName}`}
                 </Typography>
-                <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.85)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>
-                  {user.role} Account
-                </Typography>
+                <Chip
+                  label={`${user.role?.toUpperCase() || 'USER'} ACCOUNT`}
+                  size="small"
+                  sx={{
+                    mt: 0.5,
+                    height: 20,
+                    fontSize: '0.62rem',
+                    fontWeight: 800,
+                    bgcolor: 'rgba(137, 215, 183, 0.2)',
+                    color: '#89D7B7',
+                    border: '1px solid rgba(137, 215, 183, 0.4)',
+                    letterSpacing: 0.8
+                  }}
+                />
               </Box>
             </Box>
           ) : (
             <Box>
-              <Typography variant="h6" sx={{ fontWeight: 800, color: '#ffffff' }}>Medizo Health</Typography>
-              <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.85)' }}>Digital Prescriptions and Healthcare</Typography>
+              <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#ffffff' }}>Welcome to Medizo</Typography>
+              <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.8)' }}>Digital Health & Prescriptions</Typography>
             </Box>
           )}
         </Box>
 
-        <List sx={{ pt: 2, px: 1.5 }}>
+        {/* Scrollable Main Navigation Content */}
+        <Box sx={{ flex: 1, overflowY: 'auto', p: 2, px: 2 }}>
           {isAuthenticated ? (
-            <Box>
-              {user?.role === 'pharmacist' ? (
-                <>
-                  <ListItemButton onClick={() => handleNavigation('/dashboard')} sx={{ borderRadius: '14px', mb: 0.8, py: 1.2 }}>
-                    <ListItemIcon><LocalPharmacyIcon sx={{ color: '#0D9488' }} /></ListItemIcon>
-                    <ListItemText primary="Pharmacy Portal" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }} />
-                  </ListItemButton>
-                  
-                  <ListItemButton onClick={() => { handleNavigation('/dashboard'); setTimeout(() => window.dispatchEvent(new CustomEvent('open-qr-scanner')), 300); }} sx={{ borderRadius: '14px', mb: 0.8, py: 1.2 }}>
-                    <ListItemIcon><QrCodeScannerIcon sx={{ color: '#0D9488' }} /></ListItemIcon>
-                    <ListItemText primary="Scan & Dispense Rx" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }} />
-                  </ListItemButton>
-
-                  <ListItemButton onClick={() => handleNavigation('/prescriptions/all')} sx={{ borderRadius: '14px', mb: 0.8, py: 1.2 }}>
-                    <ListItemIcon><HistoryIcon sx={{ color: '#0D9488' }} /></ListItemIcon>
-                    <ListItemText primary="Dispense History Log" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }} />
-                  </ListItemButton>
-
-                  <ListItemButton onClick={() => handleNavigation('/profile')} sx={{ borderRadius: '14px', mb: 0.8, py: 1.2 }}>
-                    <ListItemIcon><PersonIcon sx={{ color: '#0D9488' }} /></ListItemIcon>
-                    <ListItemText primary="Pharmacy Profile" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }} />
-                  </ListItemButton>
-                </>
-              ) : (
-                <>
-                  <ListItemButton onClick={() => handleNavigation('/dashboard')} sx={{ borderRadius: '14px', mb: 0.8, py: 1.2 }}>
-                    <ListItemIcon><LocalHospitalIcon sx={{ color: 'var(--color-teal)' }} /></ListItemIcon>
-                    <ListItemText primary="Dashboard Feed" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }} />
-                  </ListItemButton>
-                  
-                  <ListItemButton onClick={() => handleNavigation('/prescriptions/all')} sx={{ borderRadius: '14px', mb: 0.8, py: 1.2 }}>
-                    <ListItemIcon><MedicationIcon sx={{ color: 'var(--color-teal)' }} /></ListItemIcon>
-                    <ListItemText primary={user?.role === 'doctor' ? 'All Prescriptions' : 'My Prescriptions'} primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }} />
-                  </ListItemButton>
-                  
-                  {user?.role === 'doctor' && (
-                    <ListItemButton onClick={() => handleNavigation('/patients')} sx={{ borderRadius: '14px', mb: 0.8, py: 1.2 }}>
-                      <ListItemIcon><VerifiedUserIcon sx={{ color: 'var(--color-teal)' }} /></ListItemIcon>
-                      <ListItemText primary="Patient Management" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }} />
-                    </ListItemButton>
-                  )}
-                  
-                  <ListItemButton onClick={() => handleNavigation('/profile')} sx={{ borderRadius: '14px', mb: 0.8, py: 1.2 }}>
-                    <ListItemIcon><PersonIcon sx={{ color: 'var(--color-teal)' }} /></ListItemIcon>
-                    <ListItemText primary="My Profile" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }} />
-                  </ListItemButton>
-                </>
-              )}
-              
-              <Divider sx={{ my: 2, borderColor: 'var(--glass-border)' }} />
-
-              {/* Drawer Theme Swatches */}
-              <Box sx={{ px: 1, py: 1 }}>
-                <Typography variant="caption" sx={{ fontWeight: 800, color: 'var(--color-teal)', textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', mb: 1.2 }}>
-                  Theme Accent
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {/* Navigation Section */}
+              <Box>
+                <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#2A6B5D', textTransform: 'uppercase', letterSpacing: 1.2, display: 'block', px: 1, mb: 1, fontSize: '0.68rem' }}>
+                  Navigation Menu
                 </Typography>
-                <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
-                  <Box
-                    onClick={() => setPalette('seafoam')}
-                    title="Seafoam"
-                    sx={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: '50%',
-                      bgcolor: '#2A6B5D',
-                      cursor: 'pointer',
-                      border: palette === 'seafoam' ? '3px solid var(--color-mint)' : '2px solid transparent',
-                      boxShadow: palette === 'seafoam' ? '0 0 10px rgba(42, 107, 93, 0.7)' : 'none',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      transition: 'all 0.2s ease',
-                      '&:hover': { transform: 'scale(1.1)' }
-                    }}
-                  >
-                    {palette === 'seafoam' ? <CheckCircleIcon sx={{ fontSize: 18, color: '#ffffff' }} /> : <span style={{ fontSize: 14 }}>🌿</span>}
-                  </Box>
+                
+                {user?.role === 'pharmacist' ? (
+                  <>
+                    <ListItemButton 
+                      onClick={() => handleNavigation('/dashboard')} 
+                      sx={{ 
+                        borderRadius: '16px', 
+                        mb: 0.8, 
+                        py: 1.2,
+                        transition: 'all 0.2s ease',
+                        '&:hover': { transform: 'translateX(4px)', bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.12)' : 'rgba(66, 132, 117, 0.08)' }
+                      }}
+                    >
+                      <ListItemIcon sx={{ minWidth: 38 }}>
+                        <Box sx={{ p: 0.8, borderRadius: '10px', bgcolor: 'rgba(13, 148, 136, 0.15)', color: '#0D9488', display: 'flex' }}>
+                          <LocalPharmacyIcon sx={{ fontSize: 20 }} />
+                        </Box>
+                      </ListItemIcon>
+                      <ListItemText primary="Pharmacy Portal" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.9rem' }} />
+                    </ListItemButton>
 
-                  <Box
-                    onClick={() => setPalette('beige')}
-                    title="Beige"
-                    sx={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: '50%',
-                      bgcolor: '#735740',
-                      cursor: 'pointer',
-                      border: palette === 'beige' ? '3px solid #D4B89B' : '2px solid transparent',
-                      boxShadow: palette === 'beige' ? '0 0 10px rgba(115, 87, 64, 0.7)' : 'none',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      transition: 'all 0.2s ease',
-                      '&:hover': { transform: 'scale(1.1)' }
-                    }}
-                  >
-                    {palette === 'beige' ? <CheckCircleIcon sx={{ fontSize: 18, color: '#ffffff' }} /> : <span style={{ fontSize: 14 }}>🌾</span>}
-                  </Box>
+                    <ListItemButton 
+                      onClick={() => { handleNavigation('/dashboard'); setTimeout(() => window.dispatchEvent(new CustomEvent('open-qr-scanner')), 300); }} 
+                      sx={{ 
+                        borderRadius: '16px', 
+                        mb: 0.8, 
+                        py: 1.2,
+                        transition: 'all 0.2s ease',
+                        '&:hover': { transform: 'translateX(4px)', bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.12)' : 'rgba(66, 132, 117, 0.08)' }
+                      }}
+                    >
+                      <ListItemIcon sx={{ minWidth: 38 }}>
+                        <Box sx={{ p: 0.8, borderRadius: '10px', bgcolor: 'rgba(13, 148, 136, 0.15)', color: '#0D9488', display: 'flex' }}>
+                          <QrCodeScannerIcon sx={{ fontSize: 20 }} />
+                        </Box>
+                      </ListItemIcon>
+                      <ListItemText primary="Scan & Dispense Rx" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.9rem' }} />
+                    </ListItemButton>
 
-                  <Box
-                    onClick={() => setPalette('pink')}
-                    title="Pink"
-                    sx={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: '50%',
-                      bgcolor: '#8A3859',
-                      cursor: 'pointer',
-                      border: palette === 'pink' ? '3px solid #F4C2D7' : '2px solid transparent',
-                      boxShadow: palette === 'pink' ? '0 0 10px rgba(138, 56, 89, 0.7)' : 'none',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      transition: 'all 0.2s ease',
-                      '&:hover': { transform: 'scale(1.1)' }
-                    }}
-                  >
-                    {palette === 'pink' ? <CheckCircleIcon sx={{ fontSize: 18, color: '#ffffff' }} /> : <span style={{ fontSize: 14 }}>🌸</span>}
-                  </Box>
-                </Box>
+                    <ListItemButton 
+                      onClick={() => handleNavigation('/prescriptions/all')} 
+                      sx={{ 
+                        borderRadius: '16px', 
+                        mb: 0.8, 
+                        py: 1.2,
+                        transition: 'all 0.2s ease',
+                        '&:hover': { transform: 'translateX(4px)', bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.12)' : 'rgba(66, 132, 117, 0.08)' }
+                      }}
+                    >
+                      <ListItemIcon sx={{ minWidth: 38 }}>
+                        <Box sx={{ p: 0.8, borderRadius: '10px', bgcolor: 'rgba(13, 148, 136, 0.15)', color: '#0D9488', display: 'flex' }}>
+                          <HistoryIcon sx={{ fontSize: 20 }} />
+                        </Box>
+                      </ListItemIcon>
+                      <ListItemText primary="Dispense History Log" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.9rem' }} />
+                    </ListItemButton>
+
+                    <ListItemButton 
+                      onClick={() => handleNavigation('/profile')} 
+                      sx={{ 
+                        borderRadius: '16px', 
+                        mb: 0.8, 
+                        py: 1.2,
+                        transition: 'all 0.2s ease',
+                        '&:hover': { transform: 'translateX(4px)', bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.12)' : 'rgba(66, 132, 117, 0.08)' }
+                      }}
+                    >
+                      <ListItemIcon sx={{ minWidth: 38 }}>
+                        <Box sx={{ p: 0.8, borderRadius: '10px', bgcolor: 'rgba(13, 148, 136, 0.15)', color: '#0D9488', display: 'flex' }}>
+                          <PersonIcon sx={{ fontSize: 20 }} />
+                        </Box>
+                      </ListItemIcon>
+                      <ListItemText primary="Pharmacy Profile" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.9rem' }} />
+                    </ListItemButton>
+                  </>
+                ) : (
+                  <>
+                    <ListItemButton 
+                      onClick={() => handleNavigation('/dashboard')} 
+                      sx={{ 
+                        borderRadius: '16px', 
+                        mb: 0.8, 
+                        py: 1.2,
+                        transition: 'all 0.2s ease',
+                        '&:hover': { transform: 'translateX(4px)', bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.12)' : 'rgba(66, 132, 117, 0.08)' }
+                      }}
+                    >
+                      <ListItemIcon sx={{ minWidth: 38 }}>
+                        <Box sx={{ p: 0.8, borderRadius: '10px', bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.15)' : 'rgba(66, 132, 117, 0.1)', color: mode === 'dark' ? '#89D7B7' : '#2A6B5D', display: 'flex' }}>
+                          <LocalHospitalIcon sx={{ fontSize: 20 }} />
+                        </Box>
+                      </ListItemIcon>
+                      <ListItemText primary="Dashboard Feed" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.9rem' }} />
+                    </ListItemButton>
+                    
+                    <ListItemButton 
+                      onClick={() => handleNavigation('/prescriptions/all')} 
+                      sx={{ 
+                        borderRadius: '16px', 
+                        mb: 0.8, 
+                        py: 1.2,
+                        transition: 'all 0.2s ease',
+                        '&:hover': { transform: 'translateX(4px)', bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.12)' : 'rgba(66, 132, 117, 0.08)' }
+                      }}
+                    >
+                      <ListItemIcon sx={{ minWidth: 38 }}>
+                        <Box sx={{ p: 0.8, borderRadius: '10px', bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.15)' : 'rgba(66, 132, 117, 0.1)', color: mode === 'dark' ? '#89D7B7' : '#2A6B5D', display: 'flex' }}>
+                          <MedicationIcon sx={{ fontSize: 20 }} />
+                        </Box>
+                      </ListItemIcon>
+                      <ListItemText primary={user?.role === 'doctor' ? 'All Prescriptions' : 'My Prescriptions'} primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.9rem' }} />
+                    </ListItemButton>
+                    
+                    {user?.role === 'doctor' && (
+                      <ListItemButton 
+                        onClick={() => handleNavigation('/patients')} 
+                        sx={{ 
+                          borderRadius: '16px', 
+                          mb: 0.8, 
+                          py: 1.2,
+                          transition: 'all 0.2s ease',
+                          '&:hover': { transform: 'translateX(4px)', bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.12)' : 'rgba(66, 132, 117, 0.08)' }
+                        }}
+                      >
+                        <ListItemIcon sx={{ minWidth: 38 }}>
+                          <Box sx={{ p: 0.8, borderRadius: '10px', bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.15)' : 'rgba(66, 132, 117, 0.1)', color: mode === 'dark' ? '#89D7B7' : '#2A6B5D', display: 'flex' }}>
+                            <VerifiedUserIcon sx={{ fontSize: 20 }} />
+                          </Box>
+                        </ListItemIcon>
+                        <ListItemText primary="Patient Management" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.9rem' }} />
+                      </ListItemButton>
+                    )}
+                    
+                    <ListItemButton 
+                      onClick={() => handleNavigation('/profile')} 
+                      sx={{ 
+                        borderRadius: '16px', 
+                        mb: 0.8, 
+                        py: 1.2,
+                        transition: 'all 0.2s ease',
+                        '&:hover': { transform: 'translateX(4px)', bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.12)' : 'rgba(66, 132, 117, 0.08)' }
+                      }}
+                    >
+                      <ListItemIcon sx={{ minWidth: 38 }}>
+                        <Box sx={{ p: 0.8, borderRadius: '10px', bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.15)' : 'rgba(66, 132, 117, 0.1)', color: mode === 'dark' ? '#89D7B7' : '#2A6B5D', display: 'flex' }}>
+                          <PersonIcon sx={{ fontSize: 20 }} />
+                        </Box>
+                      </ListItemIcon>
+                      <ListItemText primary="My Profile" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.9rem' }} />
+                    </ListItemButton>
+                  </>
+                )}
               </Box>
 
-              <ListItemButton onClick={toggleMode} sx={{ borderRadius: '14px', mb: 0.8, py: 1.2 }}>
-                <ListItemIcon>{renderDrawerModeIcon()}</ListItemIcon>
-                <ListItemText primary={`Mode: ${mode === 'dark' ? 'Dark' : 'Light'}`} primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }} />
-              </ListItemButton>
-              
-              <Divider sx={{ my: 2, borderColor: 'var(--glass-border)' }} />
-              
-              <ListItemButton onClick={handleLogout} sx={{ borderRadius: '14px', bgcolor: 'rgba(239, 68, 68, 0.08)' }}>
-                <ListItemIcon><ExitToAppIcon sx={{ color: '#ef4444' }} /></ListItemIcon>
-                <ListItemText primary="Logout" primaryTypographyProps={{ fontWeight: 800, color: '#ef4444' }} />
-              </ListItemButton>
+              {/* Theme & Appearance Card */}
+              <Box 
+                sx={{ 
+                  p: 2, 
+                  borderRadius: '20px', 
+                  bgcolor: mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(66, 132, 117, 0.05)',
+                  border: mode === 'dark' ? '1px solid rgba(137, 215, 183, 0.12)' : '1px solid rgba(66, 132, 117, 0.12)'
+                }}
+              >
+                <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#2A6B5D', textTransform: 'uppercase', letterSpacing: 1.2, display: 'block', mb: 1.5, fontSize: '0.68rem' }}>
+                  Theme Accent & Mode
+                </Typography>
+                
+                {/* Palette Swatches */}
+                <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', mb: 2 }}>
+                  {[
+                    { id: 'seafoam', bg: '#2A6B5D', border: 'var(--color-mint)', shadow: 'rgba(42, 107, 93, 0.7)', label: 'Seafoam' },
+                    { id: 'beige', bg: '#735740', border: '#D4B89B', shadow: 'rgba(115, 87, 64, 0.7)', label: 'Beige' },
+                    { id: 'pink', bg: '#8A3859', border: '#F4C2D7', shadow: 'rgba(138, 56, 89, 0.7)', label: 'Pink' }
+                  ].map((p) => {
+                    const isSelected = palette === p.id;
+                    return (
+                      <Box
+                        key={p.id}
+                        onClick={() => setPalette(p.id as any)}
+                        title={p.label}
+                        sx={{
+                          width: 38,
+                          height: 38,
+                          borderRadius: '50%',
+                          bgcolor: p.bg,
+                          cursor: 'pointer',
+                          border: isSelected ? `3px solid ${p.border}` : '2px solid transparent',
+                          boxShadow: isSelected ? `0 0 12px ${p.shadow}` : 'none',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          transition: 'all 0.25s ease',
+                          '&:hover': { transform: 'scale(1.1)' }
+                        }}
+                      >
+                        {isSelected && <CheckCircleIcon sx={{ fontSize: 20, color: '#ffffff' }} />}
+                      </Box>
+                    );
+                  })}
+                </Box>
+
+                {/* Dark/Light Mode Switch Row */}
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pt: 1, borderTop: mode === 'dark' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,0,0,0.06)' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box sx={{ color: mode === 'dark' ? '#89D7B7' : '#2A6B5D', display: 'flex' }}>
+                      {renderDrawerModeIcon()}
+                    </Box>
+                    <Typography variant="body2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.82rem' }}>
+                      {mode === 'dark' ? 'Dark Theme' : 'Light Theme'}
+                    </Typography>
+                  </Box>
+                  <Switch
+                    checked={mode === 'dark'}
+                    onChange={toggleMode}
+                    size="small"
+                    sx={{
+                      '& .MuiSwitch-switchBase.Mui-checked': { color: '#89D7B7' },
+                      '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: '#2A6B5D' }
+                    }}
+                  />
+                </Box>
+              </Box>
             </Box>
           ) : (
-            <Box>
-              <ListItemButton onClick={() => handleNavigation('/login')} sx={{ borderRadius: '14px', mb: 0.8, py: 1.2 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <ListItemButton onClick={() => handleNavigation('/login')} sx={{ borderRadius: '16px', py: 1.2 }}>
                 <ListItemIcon><PersonIcon sx={{ color: 'var(--color-teal)' }} /></ListItemIcon>
-                <ListItemText primary="Login" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }} />
+                <ListItemText primary="Login" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C' }} />
               </ListItemButton>
-              <ListItemButton onClick={() => handleNavigation('/register')} sx={{ borderRadius: '14px', mb: 0.8, py: 1.2 }}>
+              <ListItemButton onClick={() => handleNavigation('/register')} sx={{ borderRadius: '16px', py: 1.2 }}>
                 <ListItemIcon><LocalHospitalIcon sx={{ color: 'var(--color-teal)' }} /></ListItemIcon>
-                <ListItemText primary="Register" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }} />
+                <ListItemText primary="Register" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C' }} />
               </ListItemButton>
             </Box>
           )}
-        </List>
+        </Box>
+
+        {/* Drawer Footer with Logout Action Card */}
+        {isAuthenticated && (
+          <Box sx={{ p: 2, pb: 4, pt: 1, borderTop: mode === 'dark' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,0,0,0.06)' }}>
+            <Button
+              fullWidth
+              variant="outlined"
+              onClick={handleLogout}
+              startIcon={<ExitToAppIcon sx={{ color: '#ef4444' }} />}
+              sx={{
+                borderRadius: '16px',
+                py: 1.2,
+                px: 2,
+                fontWeight: 800,
+                fontSize: '0.88rem',
+                color: '#ef4444',
+                borderColor: 'rgba(239, 68, 68, 0.3)',
+                bgcolor: mode === 'dark' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.05)',
+                textTransform: 'none',
+                boxShadow: '0 4px 14px rgba(239, 68, 68, 0.12)',
+                '&:hover': {
+                  bgcolor: 'rgba(239, 68, 68, 0.2)',
+                  borderColor: '#ef4444',
+                  boxShadow: '0 6px 18px rgba(239, 68, 68, 0.25)',
+                  transform: 'translateY(-1px)'
+                }
+              }}
+            >
+              Log Out of Account
+            </Button>
+          </Box>
+        )}
       </Drawer>
 
       {/* DigiLocker Verification Profile Modal */}

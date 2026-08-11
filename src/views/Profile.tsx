@@ -215,9 +215,31 @@ const Profile = () => {
     }
   };
 
+  // Guardian profile state (if current patient has a guardianId)
+  const [guardianProfile, setGuardianProfile] = useState<any>(null);
+  const [loadingGuardian, setLoadingGuardian] = useState(false);
+
+  const fetchGuardianProfile = async () => {
+    const patientUser = user as Patient;
+    if (patientUser?.role === 'patient' && patientUser?.guardianId) {
+      try {
+        setLoadingGuardian(true);
+        const res = await usersAPI.lookupPatientById(patientUser.guardianId);
+        if (res && res.id) {
+          setGuardianProfile(res);
+        }
+      } catch (err) {
+        console.error('Error fetching guardian profile:', err);
+      } finally {
+        setLoadingGuardian(false);
+      }
+    }
+  };
+
   useEffect(() => {
     if (user?.role === 'patient') {
       fetchFamilyProfiles();
+      fetchGuardianProfile();
     }
   }, [user]);
 
@@ -1814,6 +1836,62 @@ const Profile = () => {
           </Box>
         </Box>
       </Paper>
+
+      {/* ═══ Legal Guardian Card (For Minors with Guardian) ═══ */}
+      {user?.role === 'patient' && ((user as Patient)?.guardianId || guardianProfile) && (
+        <Paper
+          elevation={0}
+          sx={{
+            mt: 3,
+            p: { xs: 2.5, sm: 3 },
+            borderRadius: '20px',
+            bgcolor: 'rgba(245, 158, 11, 0.05)',
+            border: '1.5px solid rgba(245, 158, 11, 0.3)',
+            backdropFilter: 'blur(12px)',
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Box sx={{ p: 1, borderRadius: '14px', bgcolor: 'rgba(245, 158, 11, 0.15)', display: 'flex' }}>
+                <BadgeIcon sx={{ color: '#d97706', fontSize: 26 }} />
+              </Box>
+              <Box>
+                <Typography variant="h6" sx={{ fontWeight: 800, fontSize: '1.1rem', color: '#1A312C' }}>
+                  Legal Guardian
+                </Typography>
+                <Typography variant="caption" sx={{ color: '#d97706', fontWeight: 700 }}>
+                  Primary account supervisor for minor patient
+                </Typography>
+              </Box>
+            </Box>
+            <Chip label="Verified Guardian" size="small" sx={{ bgcolor: '#d97706', color: '#ffffff', fontWeight: 800, borderRadius: '8px' }} />
+          </Box>
+
+          {loadingGuardian ? (
+            <CircularProgress size={24} sx={{ color: '#d97706' }} />
+          ) : guardianProfile ? (
+            <Card variant="outlined" sx={{ borderRadius: '16px', border: '1px solid rgba(245, 158, 11, 0.25)', p: 2, bgcolor: '#ffffff' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Avatar sx={{ bgcolor: '#d97706', width: 44, height: 44, fontWeight: 900, fontSize: '1.1rem' }}>
+                  {(guardianProfile.firstName || 'G')[0]}
+                </Avatar>
+                <Box sx={{ flex: 1 }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#1A312C' }}>
+                    {guardianProfile.firstName} {guardianProfile.lastName}
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: '#64748b', fontSize: '0.82rem', fontWeight: 600 }}>
+                    📧 {guardianProfile.email || 'No email'} {guardianProfile.phone ? `• 📱 ${guardianProfile.phone}` : ''}
+                  </Typography>
+                </Box>
+              </Box>
+            </Card>
+          ) : (
+            <Alert severity="info" sx={{ borderRadius: '12px' }}>
+              Guardian ID: {(user as Patient)?.guardianId}
+            </Alert>
+          )}
+        </Paper>
+      )}
 
       {/* ═══ Family Members Section (Patient Only) ═══ */}
       {user?.role === 'patient' && (

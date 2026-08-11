@@ -22,7 +22,7 @@ const MobileBottomNav = () => {
   const { isAuthenticated, user } = authState;
   const { mode } = useThemeContext();
 
-  if (needsDobVerification) {
+  if (needsDobVerification || location.pathname.startsWith('/prescriptions/new')) {
     return null;
   }
 
