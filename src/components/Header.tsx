@@ -94,12 +94,15 @@ export default function Header() {
   // Fetch DigiLocker verification status for doctors
   useEffect(() => {
     if (isAuthenticated && user?.role === 'doctor') {
+      if (user?.digilockerVerified) {
+        setDigilockerVerified(true);
+      }
       digilockerAPI.getStatus()
         .then(data => {
-          setDigilockerVerified(data.verified || false);
+          setDigilockerVerified(Boolean(data.verified || user?.digilockerVerified));
           setDigilockerProfile(data.profile || null);
         })
-        .catch(() => setDigilockerVerified(false));
+        .catch(() => setDigilockerVerified(Boolean(user?.digilockerVerified)));
     }
   }, [isAuthenticated, user]);
 
@@ -290,8 +293,9 @@ export default function Header() {
             {isAuthenticated && user ? (
               <>
                 {/* Verified Badge before profile chip */}
-                {user.role === 'doctor' && (
-                  digilockerVerified ? (
+                {user.role === 'doctor' && (() => {
+                  const isDoctorVerified = Boolean(user?.digilockerVerified || digilockerVerified);
+                  return isDoctorVerified ? (
                     <Chip
                       icon={<VerifiedUserIcon sx={{ fontSize: 15, color: '#ffffff !important' }} />}
                       label="Verified"
@@ -329,13 +333,15 @@ export default function Header() {
                         fontWeight: 800,
                         fontSize: '0.7rem',
                         border: '1.5px solid #ff9800',
-                        textDecoration: 'none',
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 8px rgba(230, 81, 0, 0.25)',
+                        '&:hover': { bgcolor: '#b23c00' },
                         '& .MuiChip-icon': { ml: 0.5 },
                         '& .MuiChip-label': { px: 0.8 },
                       }}
                     />
-                  )
-                )}
+                  );
+                })()}
 
                 {/* Unverified Email Badge for patients and doctors */}
                 {isPatientUnverifiedEmail && (

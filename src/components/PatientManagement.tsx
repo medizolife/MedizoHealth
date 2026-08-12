@@ -34,6 +34,8 @@ import {
 } from '@mui/icons-material';
 import { Patient } from '../types/auth';
 import { getPatients, createPatient, updatePatient, deletePatient } from '../services/patients';
+import { useAuth } from '../contexts/AuthContext';
+import { digilockerAPI } from '../services/api';
 
 interface PatientFormData {
   firstName: string;
@@ -49,6 +51,8 @@ interface PatientFormData {
 }
 
 const PatientManagement: React.FC = () => {
+  const { authState } = useAuth();
+  const { user } = authState;
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -88,6 +92,13 @@ const PatientManagement: React.FC = () => {
   };
 
   const handleOpenDialog = (patient?: Patient) => {
+    if (!patient && user?.role === 'doctor' && !user?.digilockerVerified) {
+      if (window.confirm('Identity Verification Required: Doctors must verify their identity via DigiLocker before creating new patients. Would you like to verify now?')) {
+        window.location.href = digilockerAPI.getAuthorizeUrl();
+      }
+      return;
+    }
+
     if (patient) {
       setEditingPatient(patient);
       setFormData({

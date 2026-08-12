@@ -5,12 +5,15 @@ import { useAuth } from '../contexts/AuthContext';
 import CircularProgress from '@mui/material/CircularProgress';
 import Box from '@mui/material/Box';
 
+import DigiLockerGuard from './DigiLockerGuard';
+
 interface ProtectedRouteProps {
   children: ReactNode;
-  requiredRole?: 'doctor' | 'patient' | 'pharmacist';
+  requiredRole?: 'doctor' | 'patient' | 'pharmacist' | 'nurse' | 'admin';
+  requireDigiLocker?: boolean;
 }
 
-const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
+const ProtectedRoute = ({ children, requiredRole, requireDigiLocker }: ProtectedRouteProps) => {
   const { authState } = useAuth();
   const { isAuthenticated, user, loading } = authState;
 
@@ -31,6 +34,11 @@ const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
   // Check role if required
   if (requiredRole && user.role !== requiredRole) {
     return <Navigate to="/unauthorized" replace />;
+  }
+
+  // Check DigiLocker verification for doctors if required
+  if (requireDigiLocker && user.role === 'doctor' && !user.digilockerVerified) {
+    return <DigiLockerGuard message="You must verify your identity via DigiLocker before accessing prescription features." />;
   }
 
   return <>{children}</>;

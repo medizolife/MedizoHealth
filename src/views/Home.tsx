@@ -97,14 +97,15 @@ const Home = () => {
           top: 0,
           left: 0,
           right: 0,
-          bottom: 0,
-          minHeight: '100%',
+          height: { xs: '650px', sm: '750px', md: '820px' },
           backgroundImage: `radial-gradient(circle at 15% 15%, rgba(16, 185, 129, 0.12) 0%, transparent 60%), radial-gradient(circle at 85% 25%, rgba(56, 189, 248, 0.12) 0%, transparent 60%), url('/images/hero_light_bg.png')`,
           backgroundSize: 'cover',
           backgroundPosition: 'top center',
           opacity: 0.85,
           pointerEvents: 'none',
-          zIndex: 0
+          zIndex: 0,
+          maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 65%, rgba(0,0,0,0) 100%)',
+          WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 65%, rgba(0,0,0,0) 100%)'
         }}
       />
 
@@ -665,118 +666,120 @@ const Home = () => {
       </Box>
 
       {/* Section 3: Simple 3-Step Workflow ("How Medizo Works") */}
-      <Container maxWidth="lg" sx={{ py: { xs: 8, md: 12 } }}>
-        <Box sx={{ textAlign: 'center', mb: { xs: 5, md: 8 } }}>
-          <Chip
-            label="Simple 3-Step Workflow"
-            size="small"
-            sx={{
-              backgroundColor: '#ECFDF5',
-              color: '#047857',
-              fontWeight: 700,
-              mb: 2,
-              border: '1px solid #A7F3D0'
-            }}
-          />
-          <Typography variant="h2" component="h2" fontWeight={900} color="#0F172A" gutterBottom sx={{ fontSize: { xs: '1.8rem', sm: '2.5rem', md: '2.8rem' } }}>
-            How Medizo Simplifies Care
-          </Typography>
-          <Typography variant="body1" color="#475569" maxWidth="650px" mx="auto" sx={{ fontSize: { xs: '1rem', md: '1.1rem' } }}>
-            From clinical consultation to medicine fulfillment in three clear, hassle-free steps.
-          </Typography>
-        </Box>
-
-        <Grid container spacing={4}>
-          
-          {/* Step 1 */}
-          <Grid item xs={12} md={4}>
-            <Paper
-              elevation={0}
+      <Box sx={{ py: { xs: 8, md: 12 }, backgroundColor: '#F8FAFC', borderTop: '1px solid #E2E8F0', position: 'relative', zIndex: 1 }}>
+        <Container maxWidth="lg">
+          <Box sx={{ textAlign: 'center', mb: { xs: 5, md: 8 } }}>
+            <Chip
+              label="Simple 3-Step Workflow"
+              size="small"
               sx={{
-                p: 4,
-                height: '100%',
-                borderRadius: '20px',
-                backgroundColor: '#FFFFFF',
-                border: '1px solid #E2E8F0',
-                position: 'relative',
-                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.05)'
+                backgroundColor: '#ECFDF5',
+                color: '#047857',
+                fontWeight: 700,
+                mb: 2,
+                border: '1px solid #A7F3D0'
               }}
-            >
-              <Typography variant="h1" sx={{ position: 'absolute', top: -10, right: 20, fontSize: '4.5rem', fontWeight: 900, color: '#F1F5F9', userSelect: 'none' }}>
-                01
-              </Typography>
-              <Box sx={{ width: 48, height: 48, borderRadius: '12px', backgroundColor: '#0284C7', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2.5 }}>
-                <MedicalServices sx={{ color: '#FFFFFF', fontSize: 26 }} />
-              </Box>
-              <Typography variant="h6" fontWeight={800} color="#0F172A" gutterBottom>
-                1. Doctor Consultation
-              </Typography>
-              <Typography variant="body2" color="#475569" sx={{ lineHeight: 1.6 }}>
-                The doctor completes the examination, selects prescribed items from the built-in database, adds advice, and creates a clean digital record.
-              </Typography>
-            </Paper>
-          </Grid>
+            />
+            <Typography variant="h2" component="h2" fontWeight={900} color="#0F172A" gutterBottom sx={{ fontSize: { xs: '1.8rem', sm: '2.5rem', md: '2.8rem' } }}>
+              How Medizo Simplifies Care
+            </Typography>
+            <Typography variant="body1" color="#334155" maxWidth="650px" mx="auto" sx={{ fontSize: { xs: '1rem', md: '1.1rem' }, fontWeight: 500 }}>
+              From clinical consultation to medicine fulfillment in three clear, hassle-free steps.
+            </Typography>
+          </Box>
 
-          {/* Step 2 */}
-          <Grid item xs={12} md={4}>
-            <Paper
-              elevation={0}
-              sx={{
-                p: 4,
-                height: '100%',
-                borderRadius: '20px',
-                backgroundColor: '#FFFFFF',
-                border: '1px solid #E2E8F0',
-                position: 'relative',
-                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.05)'
-              }}
-            >
-              <Typography variant="h1" sx={{ position: 'absolute', top: -10, right: 20, fontSize: '4.5rem', fontWeight: 900, color: '#F1F5F9', userSelect: 'none' }}>
-                02
-              </Typography>
-              <Box sx={{ width: 48, height: 48, borderRadius: '12px', backgroundColor: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2.5 }}>
-                <Lock sx={{ color: '#FFFFFF', fontSize: 26 }} />
-              </Box>
-              <Typography variant="h6" fontWeight={800} color="#0F172A" gutterBottom>
-                2. Encrypted Vault Sync
-              </Typography>
-              <Typography variant="body2" color="#475569" sx={{ lineHeight: 1.6 }}>
-                Records are instantly protected with 256-bit encryption and synced safely to the patient’s personal healthcare vault.
-              </Typography>
-            </Paper>
-          </Grid>
+          <Grid container spacing={4}>
+            
+            {/* Step 1 */}
+            <Grid item xs={12} md={4}>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 4,
+                  height: '100%',
+                  borderRadius: '20px',
+                  backgroundColor: '#FFFFFF',
+                  border: '1px solid #E2E8F0',
+                  position: 'relative',
+                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.05)'
+                }}
+              >
+                <Typography variant="h1" sx={{ position: 'absolute', top: -10, right: 20, fontSize: '4.5rem', fontWeight: 900, color: '#F1F5F9', userSelect: 'none' }}>
+                  01
+                </Typography>
+                <Box sx={{ width: 48, height: 48, borderRadius: '12px', backgroundColor: '#0284C7', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2.5 }}>
+                  <MedicalServices sx={{ color: '#FFFFFF', fontSize: 26 }} />
+                </Box>
+                <Typography variant="h6" fontWeight={800} color="#0F172A" gutterBottom>
+                  1. Doctor Consultation
+                </Typography>
+                <Typography variant="body2" color="#475569" sx={{ lineHeight: 1.6 }}>
+                  The doctor completes the examination, selects prescribed items from the built-in database, adds advice, and creates a clean digital record.
+                </Typography>
+              </Paper>
+            </Grid>
 
-          {/* Step 3 */}
-          <Grid item xs={12} md={4}>
-            <Paper
-              elevation={0}
-              sx={{
-                p: 4,
-                height: '100%',
-                borderRadius: '20px',
-                backgroundColor: '#FFFFFF',
-                border: '1px solid #E2E8F0',
-                position: 'relative',
-                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.05)'
-              }}
-            >
-              <Typography variant="h1" sx={{ position: 'absolute', top: -10, right: 20, fontSize: '4.5rem', fontWeight: 900, color: '#F1F5F9', userSelect: 'none' }}>
-                03
-              </Typography>
-              <Box sx={{ width: 48, height: 48, borderRadius: '12px', backgroundColor: '#7C3AED', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2.5 }}>
-                <AssignmentTurnedIn sx={{ color: '#FFFFFF', fontSize: 26 }} />
-              </Box>
-              <Typography variant="h6" fontWeight={800} color="#0F172A" gutterBottom>
-                3. Seamless Care Delivery
-              </Typography>
-              <Typography variant="body2" color="#475569" sx={{ lineHeight: 1.6 }}>
-                Patients can review details or share records with their chosen pharmacist for easy, accurate medicine dispensing.
-              </Typography>
-            </Paper>
-          </Grid>
+            {/* Step 2 */}
+            <Grid item xs={12} md={4}>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 4,
+                  height: '100%',
+                  borderRadius: '20px',
+                  backgroundColor: '#FFFFFF',
+                  border: '1px solid #E2E8F0',
+                  position: 'relative',
+                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.05)'
+                }}
+              >
+                <Typography variant="h1" sx={{ position: 'absolute', top: -10, right: 20, fontSize: '4.5rem', fontWeight: 900, color: '#F1F5F9', userSelect: 'none' }}>
+                  02
+                </Typography>
+                <Box sx={{ width: 48, height: 48, borderRadius: '12px', backgroundColor: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2.5 }}>
+                  <Lock sx={{ color: '#FFFFFF', fontSize: 26 }} />
+                </Box>
+                <Typography variant="h6" fontWeight={800} color="#0F172A" gutterBottom>
+                  2. Encrypted Vault Sync
+                </Typography>
+                <Typography variant="body2" color="#475569" sx={{ lineHeight: 1.6 }}>
+                  Records are instantly protected with 256-bit encryption and synced safely to the patient’s personal healthcare vault.
+                </Typography>
+              </Paper>
+            </Grid>
 
-        </Grid>
-      </Container>
+            {/* Step 3 */}
+            <Grid item xs={12} md={4}>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 4,
+                  height: '100%',
+                  borderRadius: '20px',
+                  backgroundColor: '#FFFFFF',
+                  border: '1px solid #E2E8F0',
+                  position: 'relative',
+                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.05)'
+                }}
+              >
+                <Typography variant="h1" sx={{ position: 'absolute', top: -10, right: 20, fontSize: '4.5rem', fontWeight: 900, color: '#F1F5F9', userSelect: 'none' }}>
+                  03
+                </Typography>
+                <Box sx={{ width: 48, height: 48, borderRadius: '12px', backgroundColor: '#7C3AED', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2.5 }}>
+                  <AssignmentTurnedIn sx={{ color: '#FFFFFF', fontSize: 26 }} />
+                </Box>
+                <Typography variant="h6" fontWeight={800} color="#0F172A" gutterBottom>
+                  3. Seamless Care Delivery
+                </Typography>
+                <Typography variant="body2" color="#475569" sx={{ lineHeight: 1.6 }}>
+                  Patients can review details or share records with their chosen pharmacist for easy, accurate medicine dispensing.
+                </Typography>
+              </Paper>
+            </Grid>
+
+          </Grid>
+        </Container>
+      </Box>
 
       {/* Section 4: Key Platform Capabilities Grid */}
       <Box
@@ -925,9 +928,9 @@ const Home = () => {
 
 
       {/* Footer Section */}
-      <Box sx={{ backgroundColor: '#0F172A', color: '#94A3B8', pt: 6, pb: { xs: '100px', md: 6 } }}>
+      <Box sx={{ backgroundColor: '#0A1428', color: '#E2E8F0', pt: 7, pb: { xs: '100px', md: 7 }, position: 'relative', zIndex: 1 }}>
         <Container maxWidth="lg">
-          <Grid container spacing={4} justifyContent="space-between">
+          <Grid container spacing={4} justifyContent="space-between" alignItems="flex-start">
             
             <Grid item xs={12} md={5}>
               <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2 }}>
@@ -935,25 +938,25 @@ const Home = () => {
                   component="img"
                   src="/LOGO.png"
                   alt="Medizo Logo"
-                  sx={{ width: 36, height: 36, borderRadius: '8px' }}
+                  sx={{ width: 36, height: 36, borderRadius: '8px', border: '1px solid #38BDF8' }}
                   onError={(e: any) => { e.target.style.display = 'none'; }}
                 />
-                <Typography variant="h6" color="#FFFFFF" fontWeight={800}>
-                  Medizo Life
+                <Typography variant="h5" color="#FFFFFF" fontWeight={900} letterSpacing={0.5}>
+                  Medizo <Box component="span" sx={{ color: '#38BDF8', fontWeight: 800 }}>Life</Box>
                 </Typography>
               </Stack>
-              <Typography variant="body2" sx={{ mb: 2, color: '#94A3B8', lineHeight: 1.6 }}>
+              <Typography variant="body1" sx={{ mb: 2.5, color: '#E2E8F0', lineHeight: 1.7, fontSize: '0.95rem', fontWeight: 500 }}>
                 Published by Develope Future. Standardized digital healthcare platform for verified digital care records and secure patient management.
               </Typography>
-              <Typography variant="body2" color="#64748B">
-                Support: info@medizo.life
+              <Typography variant="body2" sx={{ color: '#38BDF8', fontWeight: 700, fontSize: '0.925rem' }}>
+                Support: <Box component="a" href="mailto:info@medizo.life" sx={{ color: '#38BDF8', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>info@medizo.life</Box>
               </Typography>
             </Grid>
 
             <Grid item xs={12} md={6}>
               <Stack
                 direction="row"
-                spacing={3}
+                spacing={3.5}
                 flexWrap="wrap"
                 useFlexGap
                 justifyContent={{ xs: 'flex-start', md: 'flex-end' }}
@@ -962,32 +965,32 @@ const Home = () => {
                 <Typography
                   component={RouterLink}
                   to="/privacy-policy"
-                  variant="body2"
-                  sx={{ color: '#CBD5E1', textDecoration: 'none', '&:hover': { color: '#38BDF8' } }}
+                  variant="body1"
+                  sx={{ color: '#F8FAFC', fontWeight: 700, fontSize: '0.95rem', textDecoration: 'none', '&:hover': { color: '#38BDF8', textDecoration: 'underline' } }}
                 >
                   Privacy Policy
                 </Typography>
                 <Typography
                   component={RouterLink}
                   to="/terms"
-                  variant="body2"
-                  sx={{ color: '#CBD5E1', textDecoration: 'none', '&:hover': { color: '#38BDF8' } }}
+                  variant="body1"
+                  sx={{ color: '#F8FAFC', fontWeight: 700, fontSize: '0.95rem', textDecoration: 'none', '&:hover': { color: '#38BDF8', textDecoration: 'underline' } }}
                 >
                   Terms of Service
                 </Typography>
                 <Typography
                   component={RouterLink}
                   to="/login"
-                  variant="body2"
-                  sx={{ color: '#CBD5E1', textDecoration: 'none', '&:hover': { color: '#38BDF8' } }}
+                  variant="body1"
+                  sx={{ color: '#F8FAFC', fontWeight: 700, fontSize: '0.95rem', textDecoration: 'none', '&:hover': { color: '#38BDF8', textDecoration: 'underline' } }}
                 >
                   Sign In
                 </Typography>
                 <Typography
                   component={RouterLink}
                   to="/dashboard"
-                  variant="body2"
-                  sx={{ color: '#CBD5E1', textDecoration: 'none', '&:hover': { color: '#38BDF8' } }}
+                  variant="body1"
+                  sx={{ color: '#F8FAFC', fontWeight: 700, fontSize: '0.95rem', textDecoration: 'none', '&:hover': { color: '#38BDF8', textDecoration: 'underline' } }}
                 >
                   Workspace
                 </Typography>
@@ -996,8 +999,8 @@ const Home = () => {
 
           </Grid>
 
-          <Divider sx={{ my: 4, borderColor: '#334155' }} />
-          <Typography variant="body2" textAlign="center" color="#64748B">
+          <Divider sx={{ my: 4, borderColor: '#1E293B' }} />
+          <Typography variant="body2" textAlign="center" sx={{ color: '#94A3B8', fontWeight: 600, fontSize: '0.875rem' }}>
             © {new Date().getFullYear()} Medizo Life (Develope Future). All rights reserved.
           </Typography>
         </Container>

@@ -36,8 +36,8 @@ import api from '../services/api';
 import { getPrescriptions } from '../services/prescriptions';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
-
 import { Prescription } from '../types/prescription';
+import DigiLockerGuard from '../components/DigiLockerGuard';
 
 interface Stats {
   total: number;
@@ -184,6 +184,10 @@ export default function DoctorPrescriptions() {
       day: 'numeric'
     });
   };
+
+  if (user?.role === 'doctor' && !user?.digilockerVerified) {
+    return <DigiLockerGuard title="Prescription Portal Locked" message="You must verify your identity via DigiLocker before opening the doctor prescription portal." />;
+  }
 
   return (
     <Container maxWidth="xl" sx={{ pt: { xs: 2, sm: 3 }, pb: 6, px: { xs: 2, sm: 3, md: 4 } }} className="animate-slide-up">

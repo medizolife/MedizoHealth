@@ -4,17 +4,29 @@ export interface User {
   lastName: string;
   name?: string;
   email: string;
-  role: 'doctor' | 'patient' | 'pharmacist';
+  role: 'doctor' | 'patient' | 'pharmacist' | 'nurse' | 'admin';
   profileImage?: string;
   picture?: string;
   specialization?: string;
   pharmacyName?: string;
   licenseNumber?: string;
   pharmacyAddress?: string;
+  nurseLicenseNumber?: string;
+  nurseSpecialization?: string;
+  nurseQualifications?: string;
   phone?: string;
+  address?: string;
+  contactNumber?: string;
   createdAt: string;
   updatedAt?: string;
   digilockerVerified?: boolean;
+}
+
+export interface NurseUser extends User {
+  role: 'nurse';
+  nurseLicenseNumber?: string;
+  nurseSpecialization?: string;
+  nurseQualifications?: string;
 }
 
 export interface Doctor extends User {

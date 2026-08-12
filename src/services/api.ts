@@ -10,7 +10,7 @@ export const getApiBaseUrl = () => {
     cleanUrl = cleanUrl.replace(/\/api$/, '');
     return `${cleanUrl}/api`;
   }
-  return 'https://medizoserver.vercel.app/api';
+  return 'https://medizoserver.medizolife.workers.dev/api';
 };
 const API_URL = getApiBaseUrl();
 
@@ -196,6 +196,10 @@ export const usersAPI = {
 };
 
 // DigiLocker API
+// Status checks go through the main Cloudflare API; OAuth authorize/callback goes through Vercel
+// because the DigiLocker callback URL is registered as medizoserver.vercel.app
+const DIGILOCKER_SERVER = 'https://medizoserver.vercel.app/api';
+
 export const digilockerAPI = {
   getStatus: async () => {
     const response = await api.get('/digilocker/status');
@@ -204,7 +208,7 @@ export const digilockerAPI = {
   getAuthorizeUrl: () => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') || '' : '';
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://m.medizo.life';
-    return `${API_URL}/digilocker/authorize?token=${encodeURIComponent(token)}&client_url=${encodeURIComponent(origin)}`;
+    return `${DIGILOCKER_SERVER}/digilocker/authorize?token=${encodeURIComponent(token)}&client_url=${encodeURIComponent(origin)}`;
   },
 };
 

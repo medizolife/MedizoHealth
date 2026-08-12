@@ -12,6 +12,7 @@ import QrScannerModal from '../components/QrScannerModal';
 import InvestigationDetailDialog from '../components/InvestigationDetailDialog';
 import { FamilyProfile, RELATIONSHIP_LABELS, RELATIONSHIP_ICONS } from '../types/familyProfile';
 import { getProfilesByAccountId } from '../services/familyProfiles';
+import DigiLockerGuard from '../components/DigiLockerGuard';
 import { 
   Container,
   Typography,
@@ -567,10 +568,13 @@ const NewPrescription = () => {
 
   // Check DigiLocker verification status
   useEffect(() => {
+    if (user?.digilockerVerified) {
+      setDigilockerVerified(true);
+    }
     digilockerAPI.getStatus()
-      .then(data => setDigilockerVerified(data.verified || false))
-      .catch(() => setDigilockerVerified(false));
-  }, []);
+      .then(data => setDigilockerVerified(Boolean(data.verified || user?.digilockerVerified)))
+      .catch(() => setDigilockerVerified(Boolean(user?.digilockerVerified)));
+  }, [user]);
 
   // Update selected patient when patientId changes + fetch past prescriptions
   useEffect(() => {
@@ -953,6 +957,12 @@ const NewPrescription = () => {
       setLoading(false);
     }
   };
+
+  const isDoctorVerified = Boolean(user?.digilockerVerified || digilockerVerified === true);
+
+  if (user?.role === 'doctor' && !isDoctorVerified) {
+    return <DigiLockerGuard title="Prescription Page Locked" message="You must verify your identity via DigiLocker before opening the prescription creation page." />;
+  }
   
   return (
     <Container maxWidth="lg" sx={{ pt: { xs: 2, sm: 3.5 }, pb: { xs: 24, sm: 10 }, px: { xs: 1.5, sm: 3, md: 4 }, maxWidth: '1260px', mx: 'auto' }} className="animate-slide-up">
@@ -1104,7 +1114,7 @@ const NewPrescription = () => {
           </Box>
 
           {/* View Mode Switcher */}
-          <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 1, bgcolor: mode === 'dark' ? 'rgba(0,0,0,0.3)' : 'rgba(66, 132, 117, 0.08)', p: 0.5, borderRadius: '16px' }}>
+          <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 0.5, bgcolor: mode === 'dark' ? 'rgba(30, 41, 59, 0.6)' : 'rgba(15, 23, 42, 0.05)', p: 0.5, borderRadius: '16px', border: '1px solid rgba(16, 185, 129, 0.15)' }}>
             <Button
               size="small"
               onClick={() => setViewMode('cards')}
@@ -1112,11 +1122,12 @@ const NewPrescription = () => {
                 borderRadius: '12px',
                 fontWeight: 800,
                 fontSize: '0.72rem',
-                px: 1.5,
+                px: 1.8,
                 py: 0.6,
-                bgcolor: viewMode === 'cards' ? '#428475' : 'transparent',
-                color: viewMode === 'cards' ? '#ffffff' : mode === 'dark' ? '#89D7B7' : '#1A312C',
-                '&:hover': { bgcolor: viewMode === 'cards' ? '#356d61' : 'rgba(66,132,117,0.1)' }
+                background: viewMode === 'cards' ? 'linear-gradient(135deg, #059669 0%, #10B981 100%)' : 'transparent',
+                color: viewMode === 'cards' ? '#ffffff' : mode === 'dark' ? '#34D399' : '#64748B',
+                boxShadow: viewMode === 'cards' ? '0 4px 12px rgba(16, 185, 129, 0.3)' : 'none',
+                textTransform: 'none'
               }}
             >
               🎴 Card View (2 Sections/Step)
@@ -1128,11 +1139,12 @@ const NewPrescription = () => {
                 borderRadius: '12px',
                 fontWeight: 800,
                 fontSize: '0.72rem',
-                px: 1.5,
+                px: 1.8,
                 py: 0.6,
-                bgcolor: viewMode === 'all' ? '#428475' : 'transparent',
-                color: viewMode === 'all' ? '#ffffff' : mode === 'dark' ? '#89D7B7' : '#1A312C',
-                '&:hover': { bgcolor: viewMode === 'all' ? '#356d61' : 'rgba(66,132,117,0.1)' }
+                background: viewMode === 'all' ? 'linear-gradient(135deg, #059669 0%, #10B981 100%)' : 'transparent',
+                color: viewMode === 'all' ? '#ffffff' : mode === 'dark' ? '#34D399' : '#64748B',
+                boxShadow: viewMode === 'all' ? '0 4px 12px rgba(16, 185, 129, 0.3)' : 'none',
+                textTransform: 'none'
               }}
             >
               📄 Show All Sections
@@ -1142,11 +1154,11 @@ const NewPrescription = () => {
 
         {/* Progress Bar */}
         <Box sx={{ width: '100%', mb: 2 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-            <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', fontSize: '0.72rem' }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.8 }}>
+            <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#34D399' : '#059669', fontSize: '0.75rem', letterSpacing: 0.2 }}>
               Prescription Progress
             </Typography>
-            <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', fontSize: '0.72rem' }}>
+            <Typography variant="caption" sx={{ fontWeight: 900, color: mode === 'dark' ? '#34D399' : '#059669', fontSize: '0.75rem' }}>
               {Math.round(((activeStep + 1) / 4) * 100)}% Completed
             </Typography>
           </Box>
@@ -1154,12 +1166,13 @@ const NewPrescription = () => {
             variant="determinate"
             value={((activeStep + 1) / 4) * 100}
             sx={{
-              height: 8,
-              borderRadius: 4,
-              bgcolor: mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+              height: 10,
+              borderRadius: 5,
+              bgcolor: mode === 'dark' ? 'rgba(30, 41, 59, 0.8)' : 'rgba(226, 232, 240, 0.8)',
               '& .MuiLinearProgress-bar': {
-                borderRadius: 4,
-                background: 'linear-gradient(90deg, #428475 0%, #89D7B7 100%)'
+                borderRadius: 5,
+                background: 'linear-gradient(90deg, #059669 0%, #10B981 50%, #34D399 100%)',
+                boxShadow: '0 2px 8px rgba(16, 185, 129, 0.4)'
               }
             }}
           />
@@ -1177,56 +1190,57 @@ const NewPrescription = () => {
                     setActiveStep(idx);
                     window.scrollTo({ top: 120, behavior: 'smooth' });
                   }}
-                  elevation={isActive ? 6 : 0}
+                  elevation={0}
                   sx={{
                     p: 1.5,
-                    borderRadius: '18px',
+                    borderRadius: '20px',
                     cursor: 'pointer',
                     border: isActive
-                      ? '2px solid #89D7B7'
+                      ? '2px solid #10B981'
                       : isCompleted
-                      ? '1px solid rgba(137, 215, 183, 0.4)'
-                      : '1px solid rgba(0,0,0,0.08)',
+                      ? '1px solid rgba(16, 185, 129, 0.35)'
+                      : '1px solid rgba(0,0,0,0.06)',
                     bgcolor: isActive
-                      ? mode === 'dark' ? 'rgba(66, 132, 117, 0.38)' : 'rgba(66, 132, 117, 0.12)'
+                      ? mode === 'dark' ? 'rgba(16, 185, 129, 0.22)' : 'rgba(16, 185, 129, 0.08)'
                       : isCompleted
-                      ? mode === 'dark' ? 'rgba(137, 215, 183, 0.1)' : 'rgba(137, 215, 183, 0.15)'
-                      : mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.75)',
+                      ? mode === 'dark' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(16, 185, 129, 0.05)'
+                      : mode === 'dark' ? 'rgba(30, 41, 59, 0.4)' : 'rgba(255, 255, 255, 0.9)',
                     boxShadow: isActive
-                      ? (mode === 'dark' ? '0 0 24px rgba(137, 215, 183, 0.25)' : '0 6px 20px rgba(66, 132, 117, 0.18)')
-                      : 'none',
-                    transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                      ? '0 8px 24px -4px rgba(16, 185, 129, 0.25)'
+                      : '0 2px 8px rgba(0, 0, 0, 0.02)',
+                    transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
                     display: 'flex',
                     alignItems: 'center',
                     gap: 1.2,
                     '&:hover': {
-                      transform: 'translateY(-3px)',
-                      borderColor: '#89D7B7'
+                      transform: 'translateY(-2px)',
+                      borderColor: '#10B981',
+                      boxShadow: '0 6px 18px rgba(16, 185, 129, 0.18)'
                     }
                   }}
                 >
                   <Avatar
                     sx={{
-                      width: 36,
-                      height: 36,
-                      fontSize: '0.95rem',
+                      width: 38,
+                      height: 38,
+                      fontSize: '1rem',
                       fontWeight: 900,
-                      bgcolor: isActive
-                        ? '#89D7B7'
+                      background: isActive
+                        ? 'linear-gradient(135deg, #059669 0%, #10B981 100%)'
                         : isCompleted
-                        ? '#428475'
-                        : mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
-                      color: isActive ? '#1A312C' : isCompleted ? '#ffffff' : mode === 'dark' ? '#FAF2F5' : '#64748b',
-                      boxShadow: isActive ? '0 0 12px rgba(137, 215, 183, 0.4)' : 'none'
+                        ? 'linear-gradient(135deg, #047857 0%, #059669 100%)'
+                        : mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)',
+                      color: isActive || isCompleted ? '#ffffff' : mode === 'dark' ? '#FAF2F5' : '#64748B',
+                      boxShadow: isActive ? '0 4px 14px rgba(16, 185, 129, 0.4)' : 'none'
                     }}
                   >
-                    {isCompleted ? <CheckIcon sx={{ fontSize: 20 }} /> : step.icon}
+                    {isCompleted ? <CheckIcon sx={{ fontSize: 20, color: '#ffffff' }} /> : step.icon}
                   </Avatar>
                   <Box sx={{ minWidth: 0, flex: 1 }}>
-                    <Typography variant="caption" sx={{ fontWeight: 800, color: isActive ? (mode === 'dark' ? '#FAF2F5' : '#1A312C') : '#64748b', display: 'block', lineHeight: 1.25, fontSize: '0.78rem' }} noWrap>
+                    <Typography variant="caption" sx={{ fontWeight: 800, color: isActive ? (mode === 'dark' ? '#FAF2F5' : '#0F172A') : '#64748B', display: 'block', lineHeight: 1.25, fontSize: '0.78rem' }} noWrap>
                       {idx + 1}. {step.label}
                     </Typography>
-                    <Typography variant="caption" sx={{ color: isActive ? '#89D7B7' : '#94a3b8', fontSize: '0.65rem', fontWeight: 700, display: 'block' }} noWrap>
+                    <Typography variant="caption" sx={{ color: isCompleted ? '#10B981' : isActive ? '#059669' : '#94A3B8', fontSize: '0.65rem', fontWeight: 800, display: 'block' }} noWrap>
                       {isCompleted ? '✓ Completed' : isActive ? '● Active Step' : 'Pending'}
                     </Typography>
                   </Box>
@@ -1260,32 +1274,63 @@ const NewPrescription = () => {
               sx={{ 
                 p: { xs: 2.2, sm: 3 }, 
                 mb: 3, 
-                borderRadius: '24px !important'
+                borderRadius: '24px !important',
+                background: mode === 'dark' ? 'rgba(15, 23, 42, 0.85) !important' : 'rgba(255, 255, 255, 0.95) !important',
+                boxShadow: '0 10px 30px -5px rgba(16, 185, 129, 0.08) !important'
               }}
             >
-              <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'flex-start', sm: 'center' }, justifyContent: 'space-between', mb: 2, gap: 1 }}>
-                <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)', display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <PersonIcon sx={{ color: 'var(--color-mint)' }} /> 1. Select Target Patient *
-                </Typography>
+              <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'stretch', sm: 'center' }, justifyContent: 'space-between', mb: 2.5, gap: 1.5 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box sx={{ p: 1, borderRadius: '12px', bgcolor: 'rgba(16, 185, 129, 0.12)', color: '#10B981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <PersonIcon sx={{ fontSize: 20 }} />
+                  </Box>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 900, color: mode === 'dark' ? '#FAF2F5' : '#0F172A', letterSpacing: -0.2 }}>
+                    1. Select Target Patient <Box component="span" sx={{ color: '#EF4444' }}>*</Box>
+                  </Typography>
+                </Box>
 
-                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                <Box sx={{ display: 'flex', gap: 1 }}>
                   <Button
-                    variant="outlined"
+                    variant="contained"
                     size="small"
-                    startIcon={<PersonAddIcon />}
+                    startIcon={<PersonAddIcon sx={{ fontSize: 16 }} />}
                     onClick={() => setNewPatientDialogOpen(true)}
-                    sx={{ borderRadius: '14px', fontWeight: 800, fontSize: '0.75rem', borderColor: 'var(--color-forest)', color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }}
+                    sx={{ 
+                      flex: { xs: 1, sm: 'none' },
+                      borderRadius: '14px', 
+                      fontWeight: 800, 
+                      fontSize: '0.78rem', 
+                      py: 0.9,
+                      px: 2,
+                      background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)',
+                      color: '#ffffff',
+                      boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)',
+                      textTransform: 'none',
+                      '&:hover': { transform: 'translateY(-1px)', boxShadow: '0 6px 18px rgba(16, 185, 129, 0.4)' }
+                    }}
                   >
-                    + NEW PATIENT
+                    + New Patient
                   </Button>
                   <Button
                     variant="outlined"
                     size="small"
-                    startIcon={<PersonSearchIcon />}
+                    startIcon={<PersonSearchIcon sx={{ fontSize: 16 }} />}
                     onClick={() => setAddExistingPatientDialogOpen(true)}
-                    sx={{ borderRadius: '14px', fontWeight: 800, fontSize: '0.75rem', borderColor: 'var(--color-forest)', color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)' }}
+                    sx={{ 
+                      flex: { xs: 1, sm: 'none' },
+                      borderRadius: '14px', 
+                      fontWeight: 800, 
+                      fontSize: '0.78rem', 
+                      py: 0.9,
+                      px: 2,
+                      borderColor: mode === 'dark' ? 'rgba(52, 211, 153, 0.4)' : 'rgba(16, 185, 129, 0.4)', 
+                      color: mode === 'dark' ? '#34D399' : '#059669',
+                      bgcolor: mode === 'dark' ? 'rgba(52, 211, 153, 0.06)' : 'rgba(16, 185, 129, 0.05)',
+                      textTransform: 'none',
+                      '&:hover': { bgcolor: mode === 'dark' ? 'rgba(52, 211, 153, 0.15)' : 'rgba(16, 185, 129, 0.12)' }
+                    }}
                   >
-                    + ADD EXISTING
+                    + Add Existing
                   </Button>
                 </Box>
               </Box>
@@ -1293,17 +1338,35 @@ const NewPrescription = () => {
               <Grid container spacing={2}>
                 <Grid item xs={12}>
                   <FormControl fullWidth required size="small">
-                    <InputLabel id="patient-select-label" sx={{ color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)', fontWeight: 700 }}>Select Patient *</InputLabel>
+                    <InputLabel id="patient-select-label" sx={{ color: mode === 'dark' ? '#94A3B8' : '#64748B', fontWeight: 700, fontSize: '0.85rem' }}>Search / Select Patient *</InputLabel>
                     <Select
                       labelId="patient-select-label"
                       value={formData.patientId}
-                      label="Select Patient *"
+                      label="Search / Select Patient *"
                       onChange={handlePatientChange}
-                      sx={{ borderRadius: '14px' }}
+                      sx={{ 
+                        borderRadius: '16px',
+                        fontWeight: 700,
+                        bgcolor: mode === 'dark' ? 'rgba(30, 41, 59, 0.6)' : 'rgba(248, 250, 252, 0.9)',
+                        border: '1px solid rgba(16, 185, 129, 0.2)',
+                        '& .MuiSelect-select': { py: 1.2, display: 'flex', alignItems: 'center', gap: 1 }
+                      }}
                     >
                       {patients.map((patient) => (
-                        <MenuItem key={patient.id || (patient as any)._id} value={patient.id || (patient as any)._id}>
-                          {patient.firstName} {patient.lastName} ({patient.email})
+                        <MenuItem key={patient.id || (patient as any)._id} value={patient.id || (patient as any)._id} sx={{ py: 1, borderRadius: '10px', mx: 0.5, my: 0.3 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: '100%' }}>
+                            <Box sx={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.75rem' }}>
+                              {(patient.firstName?.[0] || 'P').toUpperCase()}
+                            </Box>
+                            <Box sx={{ overflow: 'hidden' }}>
+                              <Typography variant="body2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#0F172A' }}>
+                                {patient.firstName} {patient.lastName}
+                              </Typography>
+                              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, display: 'block' }}>
+                                {patient.email}
+                              </Typography>
+                            </Box>
+                          </Box>
                         </MenuItem>
                       ))}
                     </Select>
@@ -1841,148 +1904,326 @@ const NewPrescription = () => {
               sx={{ 
                 p: { xs: 2.2, sm: 3 }, 
                 mb: 3, 
-                borderRadius: '24px !important'
+                borderRadius: '24px !important',
+                background: mode === 'dark' ? 'rgba(15, 23, 42, 0.85) !important' : 'rgba(255, 255, 255, 0.95) !important',
+                boxShadow: '0 10px 30px -5px rgba(16, 185, 129, 0.08) !important'
               }}
             >
-              <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)', display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                <VitalIcon sx={{ color: 'var(--color-mint)' }} /> 2. Vital Signs (Consultation)
-              </Typography>
-              <Grid container spacing={1.5}>
-                <Grid item xs={12} sm={4}>
-                  <Box sx={{ p: 1, px: 1.5, borderRadius: '14px', bgcolor: 'rgba(66, 132, 117, 0.06)', border: '1px solid rgba(66, 132, 117, 0.2)' }}>
-                    <Typography variant="caption" sx={{ fontWeight: 800, color: '#428475', display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
-                      <BpIcon sx={{ fontSize: 16 }} /> Blood Pressure (Systolic / Diastolic)
-                    </Typography>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
-                      <TextField
-                        size="small"
-                        type="number"
-                        label="SYS"
-                        placeholder="120"
-                        value={(() => {
-                          const parts = (formData.vitalSigns?.bloodPressure || '').split('/');
-                          return parts[0]?.trim() || '';
-                        })()}
-                        onChange={(e) => {
-                          const sys = e.target.value;
-                          const currentParts = (formData.vitalSigns?.bloodPressure || '').split('/');
-                          const dia = currentParts[1] ? currentParts[1].replace('mmHg', '').trim() : '';
-                          const bpStr = (sys || dia) ? `${sys}/${dia}` : '';
-                          setFormData({
-                            ...formData,
-                            vitalSigns: { ...formData.vitalSigns, bloodPressure: bpStr }
-                          });
-                        }}
-                        sx={{ flex: 1, '& input': { textAlign: 'center', fontWeight: 800, p: '6px' }, '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
-                      />
-                      <Typography variant="h6" sx={{ color: '#428475', fontWeight: 900, mx: 0.2 }}>/</Typography>
-                      <TextField
-                        size="small"
-                        type="number"
-                        label="DIA"
-                        placeholder="80"
-                        value={(() => {
-                          const parts = (formData.vitalSigns?.bloodPressure || '').split('/');
-                          return parts[1] ? parts[1].replace('mmHg', '').trim() : '';
-                        })()}
-                        onChange={(e) => {
-                          const dia = e.target.value;
-                          const currentParts = (formData.vitalSigns?.bloodPressure || '').split('/');
-                          const sys = currentParts[0]?.trim() || '';
-                          const bpStr = (sys || dia) ? `${sys}/${dia}` : '';
-                          setFormData({
-                            ...formData,
-                            vitalSigns: { ...formData.vitalSigns, bloodPressure: bpStr }
-                          });
-                        }}
-                        sx={{ flex: 1, '& input': { textAlign: 'center', fontWeight: 800, p: '6px' }, '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
-                      />
-                      <Typography variant="caption" sx={{ fontWeight: 800, color: '#428475', ml: 0.2 }}>
-                        mmHg
-                      </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2.5 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box sx={{ p: 1, borderRadius: '12px', bgcolor: 'rgba(16, 185, 129, 0.12)', color: '#10B981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <VitalIcon sx={{ fontSize: 20 }} />
+                  </Box>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 900, color: mode === 'dark' ? '#FAF2F5' : '#0F172A', letterSpacing: -0.2 }}>
+                    2. Vital Signs (Consultation)
+                  </Typography>
+                </Box>
+                <Chip 
+                  label="Vital Metrics" 
+                  size="small" 
+                  sx={{ 
+                    fontWeight: 800, 
+                    fontSize: '0.68rem', 
+                    bgcolor: 'rgba(16, 185, 129, 0.12)', 
+                    color: mode === 'dark' ? '#34D399' : '#059669',
+                    borderRadius: '8px'
+                  }} 
+                />
+              </Box>
+
+              <Grid container spacing={2}>
+                {/* ─── Blood Pressure Dual Card ─── */}
+                <Grid item xs={12}>
+                  <Box className="modern-vital-card vital-accent-bp">
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Box sx={{ width: 28, height: 28, borderRadius: '8px', bgcolor: 'rgba(239, 68, 68, 0.12)', color: '#EF4444', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <BpIcon sx={{ fontSize: 18 }} />
+                        </Box>
+                        <Typography variant="body2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#0F172A' }}>
+                          Blood Pressure
+                        </Typography>
+                      </Box>
+                      {(() => {
+                        const parts = (formData.vitalSigns?.bloodPressure || '').split('/');
+                        const sysNum = parseInt(parts[0]?.trim() || '0', 10);
+                        const diaNum = parseInt(parts[1]?.replace('mmHg', '').trim() || '0', 10);
+                        if (!sysNum && !diaNum) return null;
+                        const isElevated = sysNum >= 120 || diaNum >= 80;
+                        const isHigh = sysNum >= 140 || diaNum >= 90;
+                        const statusText = isHigh ? 'High' : isElevated ? 'Elevated' : 'Normal';
+                        const statusColor = isHigh ? '#EF4444' : isElevated ? '#F59E0B' : '#10B981';
+                        const statusBg = isHigh ? 'rgba(239, 68, 68, 0.12)' : isElevated ? 'rgba(245, 158, 11, 0.12)' : 'rgba(16, 185, 129, 0.12)';
+                        return (
+                          <Chip label={statusText} size="small" sx={{ fontWeight: 800, fontSize: '0.65rem', height: 20, bgcolor: statusBg, color: statusColor, borderRadius: '6px' }} />
+                        );
+                      })()}
                     </Box>
+
+                    <Grid container spacing={1.5} alignItems="center">
+                      <Grid item xs={5.5}>
+                        <Box className="modern-vital-input">
+                          <TextField
+                            variant="standard"
+                            size="small"
+                            type="number"
+                            placeholder="120"
+                            value={(() => {
+                              const parts = (formData.vitalSigns?.bloodPressure || '').split('/');
+                              return parts[0]?.trim() || '';
+                            })()}
+                            onChange={(e) => {
+                              const sys = e.target.value;
+                              const currentParts = (formData.vitalSigns?.bloodPressure || '').split('/');
+                              const dia = currentParts[1] ? currentParts[1].replace('mmHg', '').trim() : '';
+                              const bpStr = (sys || dia) ? `${sys}/${dia}` : '';
+                              setFormData({
+                                ...formData,
+                                vitalSigns: { ...formData.vitalSigns, bloodPressure: bpStr }
+                              });
+                            }}
+                            InputProps={{ disableUnderline: true }}
+                            sx={{ flex: 1, '& input': { textAlign: 'center', fontWeight: 900, fontSize: '1.05rem', color: mode === 'dark' ? '#FAF2F5' : '#0F172A', p: '4px' } }}
+                          />
+                          <Typography variant="caption" sx={{ fontWeight: 800, color: '#94A3B8', fontSize: '0.7rem', ml: 0.5 }}>SYS</Typography>
+                        </Box>
+                      </Grid>
+
+                      <Grid item xs={1} sx={{ textAlign: 'center' }}>
+                        <Typography variant="h6" sx={{ fontWeight: 900, color: '#94A3B8', fontSize: '1.2rem', lineHeight: 1 }}>/</Typography>
+                      </Grid>
+
+                      <Grid item xs={5.5}>
+                        <Box className="modern-vital-input">
+                          <TextField
+                            variant="standard"
+                            size="small"
+                            type="number"
+                            placeholder="80"
+                            value={(() => {
+                              const parts = (formData.vitalSigns?.bloodPressure || '').split('/');
+                              return parts[1] ? parts[1].replace('mmHg', '').trim() : '';
+                            })()}
+                            onChange={(e) => {
+                              const dia = e.target.value;
+                              const currentParts = (formData.vitalSigns?.bloodPressure || '').split('/');
+                              const sys = currentParts[0]?.trim() || '';
+                              const bpStr = (sys || dia) ? `${sys}/${dia}` : '';
+                              setFormData({
+                                ...formData,
+                                vitalSigns: { ...formData.vitalSigns, bloodPressure: bpStr }
+                              });
+                            }}
+                            InputProps={{ disableUnderline: true }}
+                            sx={{ flex: 1, '& input': { textAlign: 'center', fontWeight: 900, fontSize: '1.05rem', color: mode === 'dark' ? '#FAF2F5' : '#0F172A', p: '4px' } }}
+                          />
+                          <Typography variant="caption" sx={{ fontWeight: 800, color: '#94A3B8', fontSize: '0.7rem', ml: 0.5 }}>DIA</Typography>
+                        </Box>
+                      </Grid>
+                    </Grid>
+                    <Typography variant="caption" sx={{ color: '#94A3B8', fontWeight: 600, fontSize: '0.68rem', display: 'block', mt: 1, textAlign: 'center' }}>
+                      Target Normal: &lt;120 / &lt;80 mmHg
+                    </Typography>
                   </Box>
                 </Grid>
-                <Grid item xs={6} sm={3}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="Pulse Rate"
-                    placeholder="72 bpm"
-                    value={formData.vitalSigns?.pulse || ''}
-                    onChange={handleVitalChange('pulse')}
-                    InputProps={{
-                      startAdornment: <InputAdornment position="start"><PulseIcon sx={{ color: '#ef4444', fontSize: 18 }} /></InputAdornment>,
-                      sx: { borderRadius: '12px' }
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={6} sm={3}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="Temperature"
-                    placeholder="98.6 °F"
-                    value={formData.vitalSigns?.temperature || ''}
-                    onChange={handleVitalChange('temperature')}
-                    InputProps={{
-                      startAdornment: <InputAdornment position="start"><TempIcon sx={{ color: '#f59e0b', fontSize: 18 }} /></InputAdornment>,
-                      sx: { borderRadius: '12px' }
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={6} sm={3}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="SpO2 Level"
-                    placeholder="98 %"
-                    value={formData.vitalSigns?.spo2 || ''}
-                    onChange={handleVitalChange('spo2')}
-                    InputProps={{
-                      startAdornment: <InputAdornment position="start"><Spo2Icon sx={{ color: '#06b6d4', fontSize: 18 }} /></InputAdornment>,
-                      sx: { borderRadius: '12px' }
-                    }}
-                  />
-                </Grid>
+
+                {/* ─── Pulse Rate ─── */}
                 <Grid item xs={6} sm={4}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="Resp. Rate"
-                    placeholder="16 /min"
-                    value={formData.vitalSigns?.respiratoryRate || ''}
-                    onChange={handleVitalChange('respiratoryRate')}
-                    InputProps={{ sx: { borderRadius: '12px' } }}
-                  />
+                  <Box className="modern-vital-card vital-accent-pulse">
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, mb: 1.2 }}>
+                      <Box sx={{ width: 24, height: 24, borderRadius: '6px', bgcolor: 'rgba(244, 63, 94, 0.12)', color: '#F43F5E', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <PulseIcon sx={{ fontSize: 15 }} />
+                      </Box>
+                      <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#0F172A', fontSize: '0.78rem' }}>
+                        Pulse Rate
+                      </Typography>
+                    </Box>
+                    <Box className="modern-vital-input">
+                      <TextField
+                        variant="standard"
+                        size="small"
+                        type="number"
+                        placeholder="72"
+                        value={formData.vitalSigns?.pulse ? formData.vitalSigns.pulse.replace(/[^0-9]/g, '') : ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setFormData({
+                            ...formData,
+                            vitalSigns: { ...formData.vitalSigns, pulse: val ? `${val} bpm` : '' }
+                          });
+                        }}
+                        InputProps={{ disableUnderline: true }}
+                        sx={{ flex: 1, '& input': { textAlign: 'center', fontWeight: 900, fontSize: '1rem', color: mode === 'dark' ? '#FAF2F5' : '#0F172A', p: '4px' } }}
+                      />
+                      <Typography variant="caption" sx={{ fontWeight: 800, color: '#94A3B8', fontSize: '0.68rem' }}>bpm</Typography>
+                    </Box>
+                    <Typography variant="caption" sx={{ color: '#94A3B8', fontWeight: 600, fontSize: '0.65rem', display: 'block', mt: 0.8, textAlign: 'center' }}>
+                      Normal: 60 - 100
+                    </Typography>
+                  </Box>
                 </Grid>
+
+                {/* ─── Temperature ─── */}
                 <Grid item xs={6} sm={4}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="BMI"
-                    placeholder="24.5"
-                    value={formData.vitalSigns?.bmi || ''}
-                    onChange={handleVitalChange('bmi')}
-                    InputProps={{
-                      startAdornment: <InputAdornment position="start"><BmiIcon sx={{ color: '#428475', fontSize: 18 }} /></InputAdornment>,
-                      sx: { borderRadius: '12px' }
-                    }}
-                  />
+                  <Box className="modern-vital-card vital-accent-temp">
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, mb: 1.2 }}>
+                      <Box sx={{ width: 24, height: 24, borderRadius: '6px', bgcolor: 'rgba(245, 158, 11, 0.12)', color: '#F59E0B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <TempIcon sx={{ fontSize: 15 }} />
+                      </Box>
+                      <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#0F172A', fontSize: '0.78rem' }}>
+                        Temperature
+                      </Typography>
+                    </Box>
+                    <Box className="modern-vital-input">
+                      <TextField
+                        variant="standard"
+                        size="small"
+                        placeholder="98.6"
+                        value={formData.vitalSigns?.temperature ? formData.vitalSigns.temperature.replace(/[^0-9.]/g, '') : ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setFormData({
+                            ...formData,
+                            vitalSigns: { ...formData.vitalSigns, temperature: val ? `${val} °F` : '' }
+                          });
+                        }}
+                        InputProps={{ disableUnderline: true }}
+                        sx={{ flex: 1, '& input': { textAlign: 'center', fontWeight: 900, fontSize: '1rem', color: mode === 'dark' ? '#FAF2F5' : '#0F172A', p: '4px' } }}
+                      />
+                      <Typography variant="caption" sx={{ fontWeight: 800, color: '#94A3B8', fontSize: '0.68rem' }}>°F</Typography>
+                    </Box>
+                    <Typography variant="caption" sx={{ color: '#94A3B8', fontWeight: 600, fontSize: '0.65rem', display: 'block', mt: 0.8, textAlign: 'center' }}>
+                      Normal: 97 - 99 °F
+                    </Typography>
+                  </Box>
                 </Grid>
+
+                {/* ─── SpO2 Level ─── */}
+                <Grid item xs={6} sm={4}>
+                  <Box className="modern-vital-card vital-accent-spo2">
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, mb: 1.2 }}>
+                      <Box sx={{ width: 24, height: 24, borderRadius: '6px', bgcolor: 'rgba(6, 182, 212, 0.12)', color: '#06B6D4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Spo2Icon sx={{ fontSize: 15 }} />
+                      </Box>
+                      <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#0F172A', fontSize: '0.78rem' }}>
+                        SpO2 Level
+                      </Typography>
+                    </Box>
+                    <Box className="modern-vital-input">
+                      <TextField
+                        variant="standard"
+                        size="small"
+                        type="number"
+                        placeholder="98"
+                        value={formData.vitalSigns?.spo2 ? formData.vitalSigns.spo2.replace(/[^0-9]/g, '') : ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setFormData({
+                            ...formData,
+                            vitalSigns: { ...formData.vitalSigns, spo2: val ? `${val} %` : '' }
+                          });
+                        }}
+                        InputProps={{ disableUnderline: true }}
+                        sx={{ flex: 1, '& input': { textAlign: 'center', fontWeight: 900, fontSize: '1rem', color: mode === 'dark' ? '#FAF2F5' : '#0F172A', p: '4px' } }}
+                      />
+                      <Typography variant="caption" sx={{ fontWeight: 800, color: '#94A3B8', fontSize: '0.68rem' }}>%</Typography>
+                    </Box>
+                    <Typography variant="caption" sx={{ color: '#94A3B8', fontWeight: 600, fontSize: '0.65rem', display: 'block', mt: 0.8, textAlign: 'center' }}>
+                      Normal: 95 - 100%
+                    </Typography>
+                  </Box>
+                </Grid>
+
+                {/* ─── Resp. Rate ─── */}
+                <Grid item xs={6} sm={4}>
+                  <Box className="modern-vital-card vital-accent-resp">
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, mb: 1.2 }}>
+                      <Box sx={{ width: 24, height: 24, borderRadius: '6px', bgcolor: 'rgba(20, 184, 166, 0.12)', color: '#14B8A6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Typography sx={{ fontSize: '0.78rem' }}>🫁</Typography>
+                      </Box>
+                      <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#0F172A', fontSize: '0.78rem' }}>
+                        Resp. Rate
+                      </Typography>
+                    </Box>
+                    <Box className="modern-vital-input">
+                      <TextField
+                        variant="standard"
+                        size="small"
+                        placeholder="16"
+                        value={formData.vitalSigns?.respiratoryRate ? formData.vitalSigns.respiratoryRate.replace(/[^0-9]/g, '') : ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setFormData({
+                            ...formData,
+                            vitalSigns: { ...formData.vitalSigns, respiratoryRate: val ? `${val} /min` : '' }
+                          });
+                        }}
+                        InputProps={{ disableUnderline: true }}
+                        sx={{ flex: 1, '& input': { textAlign: 'center', fontWeight: 900, fontSize: '1rem', color: mode === 'dark' ? '#FAF2F5' : '#0F172A', p: '4px' } }}
+                      />
+                      <Typography variant="caption" sx={{ fontWeight: 800, color: '#94A3B8', fontSize: '0.65rem' }}>/min</Typography>
+                    </Box>
+                    <Typography variant="caption" sx={{ color: '#94A3B8', fontWeight: 600, fontSize: '0.65rem', display: 'block', mt: 0.8, textAlign: 'center' }}>
+                      Normal: 12 - 20
+                    </Typography>
+                  </Box>
+                </Grid>
+
+                {/* ─── BMI ─── */}
+                <Grid item xs={6} sm={4}>
+                  <Box className="modern-vital-card vital-accent-bmi">
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, mb: 1.2 }}>
+                      <Box sx={{ width: 24, height: 24, borderRadius: '6px', bgcolor: 'rgba(139, 92, 246, 0.12)', color: '#8B5CF6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <BmiIcon sx={{ fontSize: 15 }} />
+                      </Box>
+                      <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#0F172A', fontSize: '0.78rem' }}>
+                        BMI Index
+                      </Typography>
+                    </Box>
+                    <Box className="modern-vital-input">
+                      <TextField
+                        variant="standard"
+                        size="small"
+                        placeholder="24.5"
+                        value={formData.vitalSigns?.bmi || ''}
+                        onChange={handleVitalChange('bmi')}
+                        InputProps={{ disableUnderline: true }}
+                        sx={{ flex: 1, '& input': { textAlign: 'center', fontWeight: 900, fontSize: '1rem', color: mode === 'dark' ? '#FAF2F5' : '#0F172A', p: '4px' } }}
+                      />
+                      <Typography variant="caption" sx={{ fontWeight: 800, color: '#94A3B8', fontSize: '0.65rem' }}>kg/m²</Typography>
+                    </Box>
+                    <Typography variant="caption" sx={{ color: '#94A3B8', fontWeight: 600, fontSize: '0.65rem', display: 'block', mt: 0.8, textAlign: 'center' }}>
+                      Normal: 18.5 - 24.9
+                    </Typography>
+                  </Box>
+                </Grid>
+
+                {/* ─── Pain Scale ─── */}
                 <Grid item xs={12} sm={4}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="Pain Scale"
-                    placeholder="e.g., 4 / 10"
-                    value={formData.vitalSigns?.painScale || ''}
-                    onChange={handleVitalChange('painScale')}
-                    InputProps={{
-                      startAdornment: <InputAdornment position="start"><PainIcon sx={{ color: '#ef4444', fontSize: 18 }} /></InputAdornment>,
-                      sx: { borderRadius: '12px' }
-                    }}
-                  />
+                  <Box className="modern-vital-card vital-accent-pain">
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, mb: 1.2 }}>
+                      <Box sx={{ width: 24, height: 24, borderRadius: '6px', bgcolor: 'rgba(244, 63, 94, 0.12)', color: '#F43F5E', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <PainIcon sx={{ fontSize: 15 }} />
+                      </Box>
+                      <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#0F172A', fontSize: '0.78rem' }}>
+                        Pain Scale Level
+                      </Typography>
+                    </Box>
+                    <Box className="modern-vital-input">
+                      <TextField
+                        variant="standard"
+                        size="small"
+                        placeholder="e.g., 4 / 10"
+                        value={formData.vitalSigns?.painScale || ''}
+                        onChange={handleVitalChange('painScale')}
+                        InputProps={{ disableUnderline: true }}
+                        sx={{ flex: 1, '& input': { textAlign: 'center', fontWeight: 900, fontSize: '0.95rem', color: mode === 'dark' ? '#FAF2F5' : '#0F172A', p: '4px' } }}
+                      />
+                    </Box>
+                    <Typography variant="caption" sx={{ color: '#94A3B8', fontWeight: 600, fontSize: '0.65rem', display: 'block', mt: 0.8, textAlign: 'center' }}>
+                      0 (No Pain) to 10 (Severe)
+                    </Typography>
+                  </Box>
                 </Grid>
               </Grid>
             </Paper>
@@ -2010,19 +2251,40 @@ const NewPrescription = () => {
               sx={{ 
                 p: { xs: 2.2, sm: 3 }, 
                 mb: 3, 
-                borderRadius: '24px !important'
+                borderRadius: '24px !important',
+                background: mode === 'dark' ? 'rgba(15, 23, 42, 0.85) !important' : 'rgba(255, 255, 255, 0.95) !important',
+                boxShadow: '0 10px 30px -5px rgba(16, 185, 129, 0.08) !important'
               }}
             >
-              <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)', display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                <MedicalIcon sx={{ color: 'var(--color-mint)' }} /> 3. Complaints & Diagnosis
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2.5 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box sx={{ p: 1, borderRadius: '12px', bgcolor: 'rgba(16, 185, 129, 0.12)', color: '#10B981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <MedicalIcon sx={{ fontSize: 20 }} />
+                  </Box>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 900, color: mode === 'dark' ? '#FAF2F5' : '#0F172A', letterSpacing: -0.2 }}>
+                    3. Complaints & Diagnosis
+                  </Typography>
+                </Box>
+                <Chip 
+                  label="Clinical Findings" 
+                  size="small" 
+                  sx={{ 
+                    fontWeight: 800, 
+                    fontSize: '0.68rem', 
+                    bgcolor: 'rgba(16, 185, 129, 0.12)', 
+                    color: mode === 'dark' ? '#34D399' : '#059669',
+                    borderRadius: '8px'
+                  }} 
+                />
+              </Box>
+
               <Grid container spacing={2.5}>
                 {/* Presenting Complaints */}
                 <Grid item xs={12}>
-                  <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#34D399' : '#059669', textTransform: 'uppercase', letterSpacing: 0.6, fontSize: '0.72rem', display: 'block', mb: 0.8 }}>
                     Presenting Complaints
                   </Typography>
-                  <Box sx={{ display: 'flex', gap: 1, mt: 0.5, mb: 1 }}>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
                     <TextField
                       fullWidth
                       size="small"
@@ -2030,29 +2292,58 @@ const NewPrescription = () => {
                       value={newComplaint}
                       onChange={(e) => setNewComplaint(e.target.value)}
                       onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addToArray('presentingComplaints', newComplaint, setNewComplaint))}
-                      InputProps={{ sx: { borderRadius: '14px' } }}
+                      InputProps={{ 
+                        sx: { 
+                          borderRadius: '16px',
+                          fontWeight: 600,
+                          bgcolor: mode === 'dark' ? 'rgba(30, 41, 59, 0.6)' : 'rgba(248, 250, 252, 0.95)',
+                          border: '1px solid rgba(16, 185, 129, 0.2)',
+                          '& fieldset': { border: 'none' }
+                        } 
+                      }}
                     />
                     <Button 
                       variant="contained" 
                       onClick={() => addToArray('presentingComplaints', newComplaint, setNewComplaint)}
-                      sx={{ bgcolor: mode === 'dark' ? '#2A6B5D' : '#428475', minWidth: 44, borderRadius: '14px', px: 2 }}
+                      sx={{ 
+                        background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)', 
+                        minWidth: 48, 
+                        height: 40,
+                        borderRadius: '14px', 
+                        px: 2,
+                        boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)',
+                        '&:hover': { background: 'linear-gradient(135deg, #047857 0%, #059669 100%)' }
+                      }}
                     >
-                      <AddIcon />
+                      <AddIcon sx={{ color: '#fff' }} />
                     </Button>
                   </Box>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8, mt: 1.2 }}>
                     {formData.presentingComplaints?.map((item, idx) => (
-                      <Chip key={idx} label={item} onDelete={() => removeFromArray('presentingComplaints', idx)} sx={{ fontWeight: 600, bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.2)' : 'rgba(66, 132, 117, 0.12)', color: mode === 'dark' ? '#FAF2F5' : '#1A312C' }} />
+                      <Chip 
+                        key={idx} 
+                        label={item} 
+                        onDelete={() => removeFromArray('presentingComplaints', idx)} 
+                        sx={{ 
+                          fontWeight: 700, 
+                          fontSize: '0.78rem',
+                          borderRadius: '10px',
+                          bgcolor: mode === 'dark' ? 'rgba(52, 211, 153, 0.15)' : 'rgba(16, 185, 129, 0.12)', 
+                          color: mode === 'dark' ? '#34D399' : '#059669',
+                          border: '1px solid rgba(16, 185, 129, 0.25)',
+                          '& .MuiChip-deleteIcon': { color: mode === 'dark' ? '#34D399' : '#059669', '&:hover': { color: '#EF4444' } }
+                        }} 
+                      />
                     ))}
                   </Box>
                 </Grid>
 
                 {/* Clinical Examination Findings */}
                 <Grid item xs={12}>
-                  <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#34D399' : '#059669', textTransform: 'uppercase', letterSpacing: 0.6, fontSize: '0.72rem', display: 'block', mb: 0.8 }}>
                     Clinical Findings
                   </Typography>
-                  <Box sx={{ display: 'flex', gap: 1, mt: 0.5, mb: 1 }}>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
                     <TextField
                       fullWidth
                       size="small"
@@ -2060,29 +2351,58 @@ const NewPrescription = () => {
                       value={newFinding}
                       onChange={(e) => setNewFinding(e.target.value)}
                       onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addToArray('clinicalFindings', newFinding, setNewFinding))}
-                      InputProps={{ sx: { borderRadius: '14px' } }}
+                      InputProps={{ 
+                        sx: { 
+                          borderRadius: '16px',
+                          fontWeight: 600,
+                          bgcolor: mode === 'dark' ? 'rgba(30, 41, 59, 0.6)' : 'rgba(248, 250, 252, 0.95)',
+                          border: '1px solid rgba(16, 185, 129, 0.2)',
+                          '& fieldset': { border: 'none' }
+                        } 
+                      }}
                     />
                     <Button 
                       variant="contained" 
                       onClick={() => addToArray('clinicalFindings', newFinding, setNewFinding)}
-                      sx={{ bgcolor: mode === 'dark' ? '#2A6B5D' : '#428475', minWidth: 44, borderRadius: '14px', px: 2 }}
+                      sx={{ 
+                        background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)', 
+                        minWidth: 48, 
+                        height: 40,
+                        borderRadius: '14px', 
+                        px: 2,
+                        boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)',
+                        '&:hover': { background: 'linear-gradient(135deg, #047857 0%, #059669 100%)' }
+                      }}
                     >
-                      <AddIcon />
+                      <AddIcon sx={{ color: '#fff' }} />
                     </Button>
                   </Box>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8, mt: 1.2 }}>
                     {formData.clinicalFindings?.map((item, idx) => (
-                      <Chip key={idx} label={item} onDelete={() => removeFromArray('clinicalFindings', idx)} sx={{ fontWeight: 600, bgcolor: mode === 'dark' ? 'rgba(255, 215, 150, 0.2)' : 'rgba(255, 244, 225, 0.9)', color: mode === 'dark' ? '#FAF2F5' : '#1A312C' }} />
+                      <Chip 
+                        key={idx} 
+                        label={item} 
+                        onDelete={() => removeFromArray('clinicalFindings', idx)} 
+                        sx={{ 
+                          fontWeight: 700, 
+                          fontSize: '0.78rem',
+                          borderRadius: '10px',
+                          bgcolor: mode === 'dark' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.12)', 
+                          color: mode === 'dark' ? '#FBBF24' : '#D97706',
+                          border: '1px solid rgba(245, 158, 11, 0.25)',
+                          '& .MuiChip-deleteIcon': { color: mode === 'dark' ? '#FBBF24' : '#D97706', '&:hover': { color: '#EF4444' } }
+                        }} 
+                      />
                     ))}
                   </Box>
                 </Grid>
 
                 {/* Provisional Diagnosis */}
                 <Grid item xs={12}>
-                  <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#34D399' : '#059669', textTransform: 'uppercase', letterSpacing: 0.6, fontSize: '0.72rem', display: 'block', mb: 0.8 }}>
                     Provisional Diagnosis
                   </Typography>
-                  <Box sx={{ display: 'flex', gap: 1, mt: 0.5, mb: 1 }}>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
                     <TextField
                       fullWidth
                       size="small"
@@ -2090,23 +2410,47 @@ const NewPrescription = () => {
                       value={newDiagnosis}
                       onChange={(e) => setNewDiagnosis(e.target.value)}
                       onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addToArray('provisionalDiagnosis', newDiagnosis, setNewDiagnosis))}
-                      InputProps={{ sx: { borderRadius: '14px' } }}
+                      InputProps={{ 
+                        sx: { 
+                          borderRadius: '16px',
+                          fontWeight: 600,
+                          bgcolor: mode === 'dark' ? 'rgba(30, 41, 59, 0.6)' : 'rgba(248, 250, 252, 0.95)',
+                          border: '1px solid rgba(16, 185, 129, 0.2)',
+                          '& fieldset': { border: 'none' }
+                        } 
+                      }}
                     />
                     <Button 
                       variant="contained" 
                       onClick={() => addToArray('provisionalDiagnosis', newDiagnosis, setNewDiagnosis)}
-                      sx={{ bgcolor: mode === 'dark' ? '#89D7B7' : '#1A312C', color: mode === 'dark' ? '#1A312C' : '#89D7B7', minWidth: 44, borderRadius: '14px', px: 2 }}
+                      sx={{ 
+                        background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)', 
+                        minWidth: 48, 
+                        height: 40,
+                        borderRadius: '14px', 
+                        px: 2,
+                        boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)',
+                        '&:hover': { background: 'linear-gradient(135deg, #047857 0%, #059669 100%)' }
+                      }}
                     >
-                      <AddIcon />
+                      <AddIcon sx={{ color: '#fff' }} />
                     </Button>
                   </Box>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8, mt: 1.2 }}>
                     {formData.provisionalDiagnosis?.map((item, idx) => (
                       <Chip 
                         key={idx} 
                         label={item} 
                         onDelete={() => removeFromArray('provisionalDiagnosis', idx)} 
-                        sx={{ fontWeight: 800, bgcolor: mode === 'dark' ? '#89D7B7' : '#1A312C', color: mode === 'dark' ? '#1A312C' : '#89D7B7' }} 
+                        sx={{ 
+                          fontWeight: 800, 
+                          fontSize: '0.78rem',
+                          borderRadius: '10px',
+                          bgcolor: 'linear-gradient(135deg, #059669 0%, #10B981 100%)', 
+                          color: '#ffffff',
+                          boxShadow: '0 2px 8px rgba(16, 185, 129, 0.25)',
+                          '& .MuiChip-deleteIcon': { color: '#ffffff', opacity: 0.8, '&:hover': { opacity: 1 } }
+                        }} 
                       />
                     ))}
                   </Box>
@@ -2114,10 +2458,10 @@ const NewPrescription = () => {
 
                 {/* Current Medications (Ongoing) */}
                 <Grid item xs={12}>
-                  <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#34D399' : '#059669', textTransform: 'uppercase', letterSpacing: 0.6, fontSize: '0.72rem', display: 'block', mb: 0.8 }}>
                     Current Medications (Ongoing)
                   </Typography>
-                  <Box sx={{ display: 'flex', gap: 1, mt: 0.5, mb: 1 }}>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
                     <TextField
                       fullWidth
                       size="small"
@@ -2125,29 +2469,58 @@ const NewPrescription = () => {
                       value={newCurrentMed}
                       onChange={(e) => setNewCurrentMed(e.target.value)}
                       onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addToArray('currentMedications', newCurrentMed, setNewCurrentMed))}
-                      InputProps={{ sx: { borderRadius: '14px' } }}
+                      InputProps={{ 
+                        sx: { 
+                          borderRadius: '16px',
+                          fontWeight: 600,
+                          bgcolor: mode === 'dark' ? 'rgba(30, 41, 59, 0.6)' : 'rgba(248, 250, 252, 0.95)',
+                          border: '1px solid rgba(16, 185, 129, 0.2)',
+                          '& fieldset': { border: 'none' }
+                        } 
+                      }}
                     />
                     <Button 
                       variant="contained" 
                       onClick={() => addToArray('currentMedications', newCurrentMed, setNewCurrentMed)}
-                      sx={{ bgcolor: mode === 'dark' ? '#2A6B5D' : '#428475', minWidth: 44, borderRadius: '14px', px: 2 }}
+                      sx={{ 
+                        background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)', 
+                        minWidth: 48, 
+                        height: 40,
+                        borderRadius: '14px', 
+                        px: 2,
+                        boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)',
+                        '&:hover': { background: 'linear-gradient(135deg, #047857 0%, #059669 100%)' }
+                      }}
                     >
-                      <AddIcon />
+                      <AddIcon sx={{ color: '#fff' }} />
                     </Button>
                   </Box>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8, mt: 1.2 }}>
                     {formData.currentMedications?.map((item, idx) => (
-                      <Chip key={idx} label={item} onDelete={() => removeFromArray('currentMedications', idx)} sx={{ fontWeight: 600, bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.2)' : 'rgba(66, 132, 117, 0.15)', color: mode === 'dark' ? '#FAF2F5' : '#1A312C' }} />
+                      <Chip 
+                        key={idx} 
+                        label={item} 
+                        onDelete={() => removeFromArray('currentMedications', idx)} 
+                        sx={{ 
+                          fontWeight: 700, 
+                          fontSize: '0.78rem',
+                          borderRadius: '10px',
+                          bgcolor: mode === 'dark' ? 'rgba(6, 182, 212, 0.15)' : 'rgba(6, 182, 212, 0.12)', 
+                          color: mode === 'dark' ? '#22D3EE' : '#0891B2',
+                          border: '1px solid rgba(6, 182, 212, 0.25)',
+                          '& .MuiChip-deleteIcon': { color: mode === 'dark' ? '#22D3EE' : '#0891B2', '&:hover': { color: '#EF4444' } }
+                        }} 
+                      />
                     ))}
                   </Box>
                 </Grid>
 
                 {/* Past Surgical History */}
                 <Grid item xs={12}>
-                  <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#34D399' : '#059669', textTransform: 'uppercase', letterSpacing: 0.6, fontSize: '0.72rem', display: 'block', mb: 0.8 }}>
                     Past Surgical History
                   </Typography>
-                  <Box sx={{ display: 'flex', gap: 1, mt: 0.5, mb: 1 }}>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
                     <TextField
                       fullWidth
                       size="small"
@@ -2155,19 +2528,48 @@ const NewPrescription = () => {
                       value={newSurgery}
                       onChange={(e) => setNewSurgery(e.target.value)}
                       onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addToArray('pastSurgicalHistory', newSurgery, setNewSurgery))}
-                      InputProps={{ sx: { borderRadius: '14px' } }}
+                      InputProps={{ 
+                        sx: { 
+                          borderRadius: '16px',
+                          fontWeight: 600,
+                          bgcolor: mode === 'dark' ? 'rgba(30, 41, 59, 0.6)' : 'rgba(248, 250, 252, 0.95)',
+                          border: '1px solid rgba(16, 185, 129, 0.2)',
+                          '& fieldset': { border: 'none' }
+                        } 
+                      }}
                     />
                     <Button 
                       variant="contained" 
                       onClick={() => addToArray('pastSurgicalHistory', newSurgery, setNewSurgery)}
-                      sx={{ bgcolor: mode === 'dark' ? '#2A6B5D' : '#428475', minWidth: 44, borderRadius: '14px', px: 2 }}
+                      sx={{ 
+                        background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)', 
+                        minWidth: 48, 
+                        height: 40,
+                        borderRadius: '14px', 
+                        px: 2,
+                        boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)',
+                        '&:hover': { background: 'linear-gradient(135deg, #047857 0%, #059669 100%)' }
+                      }}
                     >
-                      <AddIcon />
+                      <AddIcon sx={{ color: '#fff' }} />
                     </Button>
                   </Box>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8, mt: 1.2 }}>
                     {formData.pastSurgicalHistory?.map((item, idx) => (
-                      <Chip key={idx} label={item} onDelete={() => removeFromArray('pastSurgicalHistory', idx)} sx={{ fontWeight: 600, bgcolor: mode === 'dark' ? 'rgba(255, 200, 150, 0.2)' : 'rgba(255, 200, 150, 0.3)', color: mode === 'dark' ? '#FAF2F5' : '#1A312C' }} />
+                      <Chip 
+                        key={idx} 
+                        label={item} 
+                        onDelete={() => removeFromArray('pastSurgicalHistory', idx)} 
+                        sx={{ 
+                          fontWeight: 700, 
+                          fontSize: '0.78rem',
+                          borderRadius: '10px',
+                          bgcolor: mode === 'dark' ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.12)', 
+                          color: mode === 'dark' ? '#A78BFA' : '#7C3AED',
+                          border: '1px solid rgba(139, 92, 246, 0.25)',
+                          '& .MuiChip-deleteIcon': { color: mode === 'dark' ? '#A78BFA' : '#7C3AED', '&:hover': { color: '#EF4444' } }
+                        }} 
+                      />
                     ))}
                   </Box>
                 </Grid>
@@ -2198,26 +2600,51 @@ const NewPrescription = () => {
                 p: { xs: 2.2, sm: 3 }, 
                 mb: 3, 
                 borderRadius: '24px !important',
-                border: '2px solid rgba(137, 215, 183, 0.6) !important'
+                background: mode === 'dark' ? 'rgba(15, 23, 42, 0.85) !important' : 'rgba(255, 255, 255, 0.95) !important',
+                boxShadow: '0 10px 30px -5px rgba(16, 185, 129, 0.08) !important'
               }}
             >
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)', display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <MedicationIcon sx={{ color: 'var(--color-mint)' }} /> 4. Rx – Prescribed Medications *
-                </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2.5 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box sx={{ p: 1, borderRadius: '12px', bgcolor: 'rgba(16, 185, 129, 0.12)', color: '#10B981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <MedicationIcon sx={{ fontSize: 20 }} />
+                  </Box>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 900, color: mode === 'dark' ? '#FAF2F5' : '#0F172A', letterSpacing: -0.2 }}>
+                    4. Rx – Prescribed Medications *
+                  </Typography>
+                </Box>
                 <Chip 
                   label={`${formData.medications?.length || 0} Added`} 
                   size="small" 
-                  sx={{ fontWeight: 800, bgcolor: '#89D7B7', color: '#1A312C' }} 
+                  sx={{ 
+                    fontWeight: 900, 
+                    fontSize: '0.7rem',
+                    background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)', 
+                    color: '#ffffff',
+                    borderRadius: '10px',
+                    boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)'
+                  }} 
                 />
               </Box>
 
-              {/* Add New Medication Card Container */}
-              <Paper variant="outlined" sx={{ p: 2, mb: 2, borderRadius: '20px', bgcolor: 'rgba(137, 215, 183, 0.08)', borderColor: 'rgba(137, 215, 183, 0.4)' }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', mb: 1.5 }}>
+              {/* Add New Medication Glass Container */}
+              <Paper 
+                variant="outlined" 
+                sx={{ 
+                  p: { xs: 2, sm: 2.5 }, 
+                  mb: 2.5, 
+                  borderRadius: '20px', 
+                  bgcolor: mode === 'dark' ? 'rgba(30, 41, 59, 0.5)' : 'rgba(248, 250, 252, 0.9)', 
+                  borderColor: 'rgba(16, 185, 129, 0.25)',
+                  boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)'
+                }}
+              >
+                <Typography variant="subtitle2" sx={{ fontWeight: 900, color: mode === 'dark' ? '#FAF2F5' : '#0F172A', mb: 1.8, display: 'flex', alignItems: 'center', gap: 0.8 }}>
+                  <Box component="span" sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#10B981', display: 'inline-block' }} />
                   + Add Medication Item (Real-time Indian Medicines Autocomplete)
                 </Typography>
-                <Grid container spacing={1.5}>
+                
+                <Grid container spacing={2}>
                   <Grid item xs={12} sm={6}>
                     <Autocomplete
                       freeSolo
@@ -2244,18 +2671,16 @@ const NewPrescription = () => {
                           sx: {
                             borderRadius: '20px',
                             mt: 1,
-                            bgcolor: mode === 'dark' ? 'rgba(18, 38, 34, 0.96)' : 'rgba(255, 255, 255, 0.98)',
+                            bgcolor: mode === 'dark' ? 'rgba(15, 23, 42, 0.96)' : 'rgba(255, 255, 255, 0.98)',
                             backdropFilter: 'blur(20px)',
-                            border: '1.5px solid var(--color-mint)',
-                            boxShadow: mode === 'dark' 
-                              ? '0 16px 40px rgba(0,0,0,0.6)' 
-                              : '0 16px 40px rgba(42, 107, 93, 0.18)',
+                            border: '1.5px solid #10B981',
+                            boxShadow: '0 16px 40px rgba(16, 185, 129, 0.2)',
                             overflow: 'hidden',
                             '& .MuiAutocomplete-listbox': {
                               p: 1,
                               maxHeight: '260px',
                               '&::-webkit-scrollbar': { width: '6px' },
-                              '&::-webkit-scrollbar-thumb': { bgcolor: 'var(--color-forest)', borderRadius: '10px' }
+                              '&::-webkit-scrollbar-thumb': { bgcolor: '#059669', borderRadius: '10px' }
                             }
                           }
                         }
@@ -2281,10 +2706,10 @@ const NewPrescription = () => {
                               display: 'flex',
                               alignItems: 'center',
                               gap: 1.2,
-                              color: mode === 'dark' ? '#FAF2F5' : '#123029',
+                              color: mode === 'dark' ? '#FAF2F5' : '#0F172A',
                               transition: 'all 0.15s ease',
                               '&:hover, &.Mui-focused': {
-                                bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.22) !important' : 'rgba(102, 205, 170, 0.15) !important',
+                                bgcolor: mode === 'dark' ? 'rgba(16, 185, 129, 0.2) !important' : 'rgba(16, 185, 129, 0.12) !important',
                                 transform: 'translateX(4px)'
                               }
                             }}
@@ -2310,20 +2735,27 @@ const NewPrescription = () => {
                             startAdornment: (
                               <>
                                 <InputAdornment position="start">
-                                  <SearchIcon sx={{ color: 'var(--color-forest)', fontSize: 20 }} />
+                                  <SearchIcon sx={{ color: '#10B981', fontSize: 20 }} />
                                 </InputAdornment>
                                 {params.InputProps.startAdornment}
                               </>
                             ),
-                            sx: { borderRadius: '12px', fontWeight: 700 }
+                            sx: { 
+                              borderRadius: '16px', 
+                              fontWeight: 700,
+                              bgcolor: mode === 'dark' ? 'rgba(15, 23, 42, 0.6)' : '#ffffff',
+                              border: '1px solid rgba(16, 185, 129, 0.2)',
+                              '& fieldset': { border: 'none' }
+                            }
                           }}
                         />
                       )}
                     />
                   </Grid>
+
                   <Grid item xs={5} sm={3}>
                     <FormControl fullWidth size="small">
-                      <InputLabel id="med-type-label">Form</InputLabel>
+                      <InputLabel id="med-type-label" sx={{ fontWeight: 700 }}>Form</InputLabel>
                       <Select
                         labelId="med-type-label"
                         value={newMedication.type || 'Tablet'}
@@ -2333,17 +2765,24 @@ const NewPrescription = () => {
                           const updated = recalcMedication({ ...newMedication, type: newType });
                           setNewMedication(updated);
                         }}
-                        sx={{ borderRadius: '12px' }}
+                        sx={{ 
+                          borderRadius: '16px', 
+                          fontWeight: 700,
+                          bgcolor: mode === 'dark' ? 'rgba(15, 23, 42, 0.6)' : '#ffffff',
+                          border: '1px solid rgba(16, 185, 129, 0.2)',
+                          '& fieldset': { border: 'none' }
+                        }}
                       >
-                        <MenuItem value="Tablet">Tablet</MenuItem>
-                        <MenuItem value="Capsule">Capsule</MenuItem>
-                        <MenuItem value="Syrup">Syrup</MenuItem>
-                        <MenuItem value="Injection">Injection</MenuItem>
-                        <MenuItem value="Ointment">Ointment</MenuItem>
-                        <MenuItem value="Drops">Drops</MenuItem>
+                        <MenuItem value="Tablet">💊 Tablet</MenuItem>
+                        <MenuItem value="Capsule">💊 Capsule</MenuItem>
+                        <MenuItem value="Syrup">🧪 Syrup</MenuItem>
+                        <MenuItem value="Injection">💉 Injection</MenuItem>
+                        <MenuItem value="Ointment">🧴 Ointment</MenuItem>
+                        <MenuItem value="Drops">💧 Drops</MenuItem>
                       </Select>
                     </FormControl>
                   </Grid>
+
                   <Grid item xs={7} sm={3}>
                     <TextField
                       fullWidth
@@ -2353,7 +2792,15 @@ const NewPrescription = () => {
                       value={buildDosageString(newMedication.timing || { morning: 0, afternoon: 0, evening: 0, night: 0 }, newMedication.type, newMedication.isSOS, newMedication.sosReason)}
                       InputProps={{
                         readOnly: true,
-                        sx: { borderRadius: '12px', bgcolor: newMedication.isSOS ? 'rgba(239,68,68,0.08)' : 'rgba(66,132,117,0.06)', fontWeight: 700, fontSize: '0.8rem', color: newMedication.isSOS ? '#dc2626' : 'inherit' }
+                        sx: { 
+                          borderRadius: '16px', 
+                          bgcolor: newMedication.isSOS ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)', 
+                          fontWeight: 900, 
+                          fontSize: '0.85rem', 
+                          color: newMedication.isSOS ? '#EF4444' : '#059669',
+                          border: newMedication.isSOS ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(16, 185, 129, 0.3)',
+                          '& fieldset': { border: 'none' }
+                        }
                       }}
                       helperText={(() => {
                         if (newMedication.isSOS) return '⚡ SOS — Take only when needed';
@@ -2369,13 +2816,13 @@ const NewPrescription = () => {
 
                   {/* Time of Day & SOS Toggle Row */}
                   <Grid item xs={12}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.8 }}>
-                      <Typography variant="caption" sx={{ fontWeight: 800, color: 'var(--color-forest)' }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.2 }}>
+                      <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#34D399' : '#059669', textTransform: 'uppercase', letterSpacing: 0.6, fontSize: '0.72rem' }}>
                         Time of Day:
                       </Typography>
 
                       <Chip
-                        icon={<SosIcon sx={{ fontSize: 16, color: newMedication.isSOS ? '#fff !important' : '#dc2626 !important' }} />}
+                        icon={<SosIcon sx={{ fontSize: 16, color: newMedication.isSOS ? '#fff !important' : '#EF4444 !important' }} />}
                         label={newMedication.isSOS ? '🆘 SOS Mode (ACTIVE)' : '🆘 SOS (When Needed)'}
                         size="small"
                         clickable
@@ -2396,12 +2843,13 @@ const NewPrescription = () => {
                         }}
                         sx={{
                           fontWeight: 800,
-                          fontSize: '0.7rem',
-                          height: 26,
-                          borderRadius: '10px',
-                          bgcolor: newMedication.isSOS ? '#dc2626' : 'rgba(220, 38, 38, 0.1)',
-                          color: newMedication.isSOS ? '#ffffff' : '#dc2626',
-                          border: '1.5px solid #dc2626',
+                          fontSize: '0.72rem',
+                          height: 28,
+                          borderRadius: '12px',
+                          bgcolor: newMedication.isSOS ? '#EF4444' : 'rgba(239, 68, 68, 0.12)',
+                          color: newMedication.isSOS ? '#ffffff' : '#EF4444',
+                          border: '1.5px solid #EF4444',
+                          boxShadow: newMedication.isSOS ? '0 4px 12px rgba(239, 68, 68, 0.3)' : 'none',
                           transition: 'all 0.2s ease',
                           '&:active': { transform: 'scale(0.95)' }
                         }}
@@ -2409,11 +2857,11 @@ const NewPrescription = () => {
                     </Box>
 
                     {newMedication.isSOS && (
-                      <Box sx={{ mb: 1.2, p: 1.2, borderRadius: '14px', bgcolor: 'rgba(220, 38, 38, 0.06)', border: '1.5px dashed rgba(220, 38, 38, 0.4)' }}>
-                        <Typography variant="caption" sx={{ fontWeight: 800, color: '#dc2626', display: 'block', mb: 0.6 }}>
+                      <Box sx={{ mb: 1.5, p: 1.5, borderRadius: '16px', bgcolor: 'rgba(239, 68, 68, 0.06)', border: '1.5px dashed rgba(239, 68, 68, 0.4)' }}>
+                        <Typography variant="caption" sx={{ fontWeight: 800, color: '#EF4444', display: 'block', mb: 0.8 }}>
                           🆘 Indicate Reason for SOS (Only When Needed):
                         </Typography>
-                        <Box sx={{ display: 'flex', gap: 0.6, flexWrap: 'wrap', mb: 1 }}>
+                        <Box sx={{ display: 'flex', gap: 0.8, flexWrap: 'wrap', mb: 1.2 }}>
                           {[
                             { label: 'Fever', icon: '🌡️' },
                             { label: 'Pain / Headache', icon: '⚡' },
@@ -2441,12 +2889,12 @@ const NewPrescription = () => {
                                 }}
                                 sx={{
                                   fontWeight: 700,
-                                  fontSize: '0.68rem',
-                                  height: 24,
-                                  borderRadius: '8px',
-                                  bgcolor: isSelected ? '#dc2626' : 'rgba(255,255,255,0.9)',
-                                  color: isSelected ? '#fff' : '#b91c1c',
-                                  border: isSelected ? '1.5px solid #dc2626' : '1px solid rgba(220,38,38,0.2)'
+                                  fontSize: '0.72rem',
+                                  height: 26,
+                                  borderRadius: '10px',
+                                  bgcolor: isSelected ? '#EF4444' : mode === 'dark' ? 'rgba(30, 41, 59, 0.8)' : '#ffffff',
+                                  color: isSelected ? '#fff' : '#EF4444',
+                                  border: isSelected ? '1.5px solid #EF4444' : '1px solid rgba(239, 68, 68, 0.25)'
                                 }}
                               />
                             );
@@ -2470,17 +2918,17 @@ const NewPrescription = () => {
                             });
                             setNewMedication(updated);
                           }}
-                          InputProps={{ sx: { borderRadius: '10px', bgcolor: '#fff', fontSize: '0.78rem' } }}
+                          InputProps={{ sx: { borderRadius: '12px', bgcolor: mode === 'dark' ? 'rgba(15, 23, 42, 0.8)' : '#ffffff', fontSize: '0.8rem' } }}
                         />
                       </Box>
                     )}
 
                     <Box sx={{ display: 'flex', gap: 1, width: '100%' }}>
                       {([
-                        { key: 'morning' as const, label: 'Morn', icon: <MorningIcon />, color: '#F57C00', bg: '#FFF3E0', activeBg: '#FFE0B2', border: '#F57C00' },
-                        { key: 'afternoon' as const, label: 'Day', icon: <AfternoonIcon />, color: '#FBC02D', bg: '#FFFDE7', activeBg: '#FFF9C4', border: '#F9A825' },
-                        { key: 'evening' as const, label: 'Eve', icon: <EveningIcon />, color: '#E64A19', bg: '#FBE9E7', activeBg: '#FFCCBC', border: '#E64A19' },
-                        { key: 'night' as const, label: 'Night', icon: <NightIcon />, color: '#3949AB', bg: '#E8EAF6', activeBg: '#C5CAE9', border: '#3949AB' }
+                        { key: 'morning' as const, label: 'Morn', icon: <MorningIcon />, color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.1)', activeBg: 'rgba(245, 158, 11, 0.2)', border: '#F59E0B' },
+                        { key: 'afternoon' as const, label: 'Day', icon: <AfternoonIcon />, color: '#EAB308', bg: 'rgba(234, 179, 8, 0.1)', activeBg: 'rgba(234, 179, 8, 0.2)', border: '#EAB308' },
+                        { key: 'evening' as const, label: 'Eve', icon: <EveningIcon />, color: '#F97316', bg: 'rgba(249, 115, 22, 0.1)', activeBg: 'rgba(249, 115, 22, 0.2)', border: '#F97316' },
+                        { key: 'night' as const, label: 'Night', icon: <NightIcon />, color: '#6366F1', bg: 'rgba(99, 102, 241, 0.1)', activeBg: 'rgba(99, 102, 241, 0.2)', border: '#6366F1' }
                       ]).map((time) => {
                         const doseCount = newMedication.timing?.[time.key] || 0;
                         const isActive = doseCount > 0;
@@ -2507,24 +2955,24 @@ const NewPrescription = () => {
                             }}
                             sx={{
                               flex: 1,
-                              p: 1,
-                              borderRadius: '16px',
-                              border: isActive ? `2.5px solid ${time.border}` : '1.5px solid rgba(0,0,0,0.08)',
-                              bgcolor: isActive ? time.activeBg : (mode === 'dark' ? 'rgba(255,255,255,0.03)' : '#ffffff'),
+                              p: 1.2,
+                              borderRadius: '18px',
+                              border: isActive ? `2.5px solid ${time.border}` : '1.5px solid rgba(16, 185, 129, 0.15)',
+                              bgcolor: isActive ? time.activeBg : (mode === 'dark' ? 'rgba(15, 23, 42, 0.5)' : '#ffffff'),
                               cursor: 'pointer',
                               textAlign: 'center',
-                              transition: 'all 0.2s ease',
-                              boxShadow: isActive ? `0 4px 12px ${time.color}33` : 'none',
+                              transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                              boxShadow: isActive ? `0 6px 16px ${time.color}33` : '0 2px 6px rgba(0,0,0,0.02)',
                               '&:hover': { transform: 'translateY(-2px)' }
                             }}
                           >
-                            <Typography variant="caption" sx={{ fontWeight: 800, color: time.color, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.4, fontSize: '0.72rem' }}>
+                            <Typography variant="caption" sx={{ fontWeight: 900, color: time.color, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.4, fontSize: '0.75rem' }}>
                               {time.icon} {time.label}
                             </Typography>
-                            <Typography variant="h6" sx={{ fontWeight: 900, color: isActive ? time.color : '#94a3b8', my: 0.2 }}>
+                            <Typography variant="h6" sx={{ fontWeight: 900, color: isActive ? time.color : '#94A3B8', my: 0.2 }}>
                               {isActive ? `×${doseCount}` : '-'}
                             </Typography>
-                            <Typography variant="caption" sx={{ fontSize: '0.62rem', color: time.color, fontWeight: 700, display: 'block', height: 16 }} noWrap>
+                            <Typography variant="caption" sx={{ fontSize: '0.65rem', color: time.color, fontWeight: 800, display: 'block', height: 16 }} noWrap>
                               {isActive ? (mealRel || 'Set meal') : 'Off'}
                             </Typography>
                           </Box>
@@ -2543,12 +2991,12 @@ const NewPrescription = () => {
                     slotProps={{
                       paper: {
                         sx: {
-                          p: 2,
-                          borderRadius: '20px',
-                          boxShadow: '0 16px 48px rgba(26, 49, 44, 0.25)',
-                          border: '1.5px solid rgba(137, 215, 183, 0.5)',
-                          bgcolor: mode === 'dark' ? 'rgba(18, 38, 34, 0.98)' : 'rgba(255, 255, 255, 0.99)',
-                          backdropFilter: 'blur(16px)',
+                          p: 2.2,
+                          borderRadius: '24px',
+                          boxShadow: '0 20px 50px rgba(0, 0, 0, 0.25)',
+                          border: '1.5px solid #10B981',
+                          bgcolor: mode === 'dark' ? 'rgba(15, 23, 42, 0.98)' : 'rgba(255, 255, 255, 0.99)',
+                          backdropFilter: 'blur(20px)',
                           width: 'calc(100vw - 32px)',
                           maxWidth: 360,
                           mt: 1
@@ -2557,13 +3005,13 @@ const NewPrescription = () => {
                     }}
                   >
                     <Box sx={{ mb: 1.5, textAlign: 'center' }}>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#1A312C', fontSize: '0.85rem' }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 900, color: mode === 'dark' ? '#34D399' : '#059669', fontSize: '0.9rem' }}>
                         {mealPopoverTimeKey.charAt(0).toUpperCase() + mealPopoverTimeKey.slice(1)} — Dose & Meal
                       </Typography>
                     </Box>
 
                     <Box sx={{ mb: 1.5 }}>
-                      <Typography variant="caption" sx={{ fontWeight: 700, color: '#428475', display: 'block', mb: 0.8, textAlign: 'center' }}>
+                      <Typography variant="caption" sx={{ fontWeight: 800, color: '#059669', display: 'block', mb: 0.8, textAlign: 'center' }}>
                         Select dose per intake ({newMedication.type || 'Tablet'}):
                       </Typography>
                       <Box sx={{ display: 'flex', gap: 0.8, justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -2589,11 +3037,11 @@ const NewPrescription = () => {
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 borderRadius: '14px',
-                                border: isSelected ? '2.5px solid var(--color-forest)' : '2px solid #e0e0e0',
-                                bgcolor: isSelected ? 'var(--color-forest)' : 'transparent',
-                                color: isSelected ? '#fff' : '#1A312C',
-                                fontWeight: 800,
-                                fontSize: '0.78rem',
+                                border: isSelected ? '2.5px solid #10B981' : '2px solid rgba(16, 185, 129, 0.2)',
+                                background: isSelected ? 'linear-gradient(135deg, #059669 0%, #10B981 100%)' : 'transparent',
+                                color: isSelected ? '#fff' : '#0F172A',
+                                fontWeight: 900,
+                                fontSize: '0.8rem',
                                 cursor: 'pointer',
                                 transition: 'all 0.15s',
                                 WebkitTapHighlightColor: 'transparent',
@@ -2619,22 +3067,22 @@ const NewPrescription = () => {
                               setNewMedication(updated);
                             }
                           }}
-                          sx={{ width: 70, '& input': { textAlign: 'center', fontWeight: 700, p: '8px', fontSize: '0.8rem' }, '& .MuiOutlinedInput-root': { borderRadius: '14px' } }}
+                          sx={{ width: 75, '& input': { textAlign: 'center', fontWeight: 800, p: '8px', fontSize: '0.8rem' }, '& .MuiOutlinedInput-root': { borderRadius: '14px' } }}
                         />
                       </Box>
                     </Box>
 
-                    <Divider sx={{ my: 1 }} />
+                    <Divider sx={{ my: 1.5 }} />
 
-                    <Typography variant="caption" sx={{ fontWeight: 700, color: '#428475', display: 'block', mb: 0.5, textAlign: 'center' }}>
+                    <Typography variant="caption" sx={{ fontWeight: 800, color: '#059669', display: 'block', mb: 0.8, textAlign: 'center' }}>
                       Meal relation (optional)
                     </Typography>
 
                     <Box sx={{ display: 'flex', gap: 0.6, mb: 0.6, justifyContent: 'center', flexWrap: 'wrap' }}>
                       {[
-                        { label: 'With Food', shortLabel: 'With', icon: <WithFoodIcon sx={{ fontSize: 14 }} />, color: '#1565c0', bg: '#e3f2fd' },
-                        { label: 'Before Food', shortLabel: 'Before', icon: <BeforeFoodIcon sx={{ fontSize: 14 }} />, color: '#e65100', bg: '#fff3e0' },
-                        { label: 'After Food', shortLabel: 'After', icon: <AfterFoodIcon sx={{ fontSize: 14 }} />, color: '#6a1b9a', bg: '#f3e5f5' }
+                        { label: 'With Food', shortLabel: 'With', icon: <WithFoodIcon sx={{ fontSize: 14 }} />, color: '#1565c0', bg: 'rgba(21, 101, 192, 0.1)' },
+                        { label: 'Before Food', shortLabel: 'Before', icon: <BeforeFoodIcon sx={{ fontSize: 14 }} />, color: '#e65100', bg: 'rgba(230, 81, 0, 0.1)' },
+                        { label: 'After Food', shortLabel: 'After', icon: <AfterFoodIcon sx={{ fontSize: 14 }} />, color: '#6a1b9a', bg: 'rgba(106, 27, 154, 0.1)' }
                       ].map((opt) => {
                         const isSelected = newMedication.mealRelations?.[mealPopoverTimeKey] === opt.label;
                         return (
@@ -2652,7 +3100,7 @@ const NewPrescription = () => {
                               setMealPopoverAnchor(null);
                             }}
                             sx={{
-                              fontWeight: 700,
+                              fontWeight: 800,
                               fontSize: '0.72rem',
                               py: 2,
                               borderRadius: '14px',
@@ -2670,8 +3118,8 @@ const NewPrescription = () => {
 
                     <Box sx={{ display: 'flex', gap: 0.6, justifyContent: 'center', flexWrap: 'wrap' }}>
                       {[
-                        { label: 'Empty Stomach', icon: <EmptyStomachIcon sx={{ fontSize: 14 }} />, color: '#00695c', bg: '#e0f2f1' },
-                        { label: 'Any Time', icon: <AnyTimeIcon sx={{ fontSize: 14 }} />, color: '#37474f', bg: '#eceff1' }
+                        { label: 'Empty Stomach', icon: <EmptyStomachIcon sx={{ fontSize: 14 }} />, color: '#00695c', bg: 'rgba(0, 105, 92, 0.1)' },
+                        { label: 'Any Time', icon: <AnyTimeIcon sx={{ fontSize: 14 }} />, color: '#37474f', bg: 'rgba(55, 71, 79, 0.1)' }
                       ].map((opt) => {
                         const isSelected = newMedication.mealRelations?.[mealPopoverTimeKey] === opt.label;
                         return (
@@ -2689,7 +3137,7 @@ const NewPrescription = () => {
                               setMealPopoverAnchor(null);
                             }}
                             sx={{
-                              fontWeight: 700,
+                              fontWeight: 800,
                               fontSize: '0.72rem',
                               py: 2,
                               borderRadius: '14px',
@@ -2725,12 +3173,20 @@ const NewPrescription = () => {
                         });
                         setNewMedication(updated);
                       }}
-                      InputProps={{ sx: { borderRadius: '12px' } }}
+                      InputProps={{ 
+                        sx: { 
+                          borderRadius: '16px', 
+                          fontWeight: 700,
+                          bgcolor: mode === 'dark' ? 'rgba(15, 23, 42, 0.6)' : '#ffffff',
+                          border: '1px solid rgba(16, 185, 129, 0.2)',
+                          '& fieldset': { border: 'none' }
+                        } 
+                      }}
                     />
                   </Grid>
                   <Grid item xs={5} sm={2}>
                     <FormControl fullWidth size="small">
-                      <InputLabel id="dur-unit-label">Unit</InputLabel>
+                      <InputLabel id="dur-unit-label" sx={{ fontWeight: 700 }}>Unit</InputLabel>
                       <Select
                         labelId="dur-unit-label"
                         value={newMedication.durationUnit || 'Days'}
@@ -2746,7 +3202,13 @@ const NewPrescription = () => {
                           });
                           setNewMedication(updated);
                         }}
-                        sx={{ borderRadius: '12px' }}
+                        sx={{ 
+                          borderRadius: '16px', 
+                          fontWeight: 700,
+                          bgcolor: mode === 'dark' ? 'rgba(15, 23, 42, 0.6)' : '#ffffff',
+                          border: '1px solid rgba(16, 185, 129, 0.2)',
+                          '& fieldset': { border: 'none' }
+                        }}
                       >
                         <MenuItem value="Days">Days</MenuItem>
                         <MenuItem value="Weeks">Weeks</MenuItem>
@@ -2757,7 +3219,7 @@ const NewPrescription = () => {
 
                   {/* Duration Presets */}
                   <Grid item xs={12}>
-                    <Typography variant="caption" sx={{ fontWeight: 800, color: 'var(--color-forest)', display: 'block', mb: 0.5 }}>
+                    <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#34D399' : '#059669', textTransform: 'uppercase', letterSpacing: 0.6, fontSize: '0.72rem', display: 'block', mb: 0.8 }}>
                       Quick Duration Presets:
                     </Typography>
                     <Box sx={{ display: 'flex', gap: 0.8, flexWrap: 'wrap' }}>
@@ -2769,30 +3231,36 @@ const NewPrescription = () => {
                         { num: 14, unit: 'Days', label: '14 Days' },
                         { num: 1, unit: 'Months', label: '1 Month' },
                         { num: 3, unit: 'Months', label: '3 Months' }
-                      ].map(p => (
-                        <Chip
-                          key={p.label}
-                          label={p.label}
-                          size="small"
-                          onClick={() => {
-                            const durStr = `${p.num} ${p.unit}`;
-                            const updated = recalcMedication({
-                              ...newMedication,
-                              durationValue: p.num,
-                              durationUnit: p.unit,
-                              duration: durStr
-                            });
-                            setNewMedication(updated);
-                          }}
-                          sx={{
-                            fontWeight: 700,
-                            fontSize: '0.7rem',
-                            cursor: 'pointer',
-                            bgcolor: (newMedication.durationValue === p.num && newMedication.durationUnit === p.unit) ? 'var(--color-forest)' : 'rgba(0,0,0,0.06)',
-                            color: (newMedication.durationValue === p.num && newMedication.durationUnit === p.unit) ? '#ffffff' : 'inherit'
-                          }}
-                        />
-                      ))}
+                      ].map(p => {
+                        const isSelected = newMedication.durationValue === p.num && newMedication.durationUnit === p.unit;
+                        return (
+                          <Chip
+                            key={p.label}
+                            label={p.label}
+                            size="small"
+                            onClick={() => {
+                              const durStr = `${p.num} ${p.unit}`;
+                              const updated = recalcMedication({
+                                ...newMedication,
+                                durationValue: p.num,
+                                durationUnit: p.unit,
+                                duration: durStr
+                              });
+                              setNewMedication(updated);
+                            }}
+                            sx={{
+                              fontWeight: 800,
+                              fontSize: '0.72rem',
+                              borderRadius: '10px',
+                              cursor: 'pointer',
+                              background: isSelected ? 'linear-gradient(135deg, #059669 0%, #10B981 100%)' : mode === 'dark' ? 'rgba(30, 41, 59, 0.6)' : 'rgba(16, 185, 129, 0.08)',
+                              color: isSelected ? '#ffffff' : mode === 'dark' ? '#34D399' : '#059669',
+                              border: isSelected ? 'none' : '1px solid rgba(16, 185, 129, 0.25)',
+                              boxShadow: isSelected ? '0 2px 8px rgba(16, 185, 129, 0.3)' : 'none'
+                            }}
+                          />
+                        );
+                      })}
                     </Box>
                   </Grid>
 
@@ -2810,7 +3278,15 @@ const NewPrescription = () => {
                         const calc = calculateQuantityFromTiming(t, newMedication.durationValue || 5, newMedication.durationUnit || 'Days', newMedication.type);
                         return calc.detailStr || 'Select time of day to auto-calculate';
                       })()}
-                      InputProps={{ sx: { borderRadius: '12px', fontWeight: 700 } }}
+                      InputProps={{ 
+                        sx: { 
+                          borderRadius: '16px', 
+                          fontWeight: 700,
+                          bgcolor: mode === 'dark' ? 'rgba(15, 23, 42, 0.6)' : '#ffffff',
+                          border: '1px solid rgba(16, 185, 129, 0.2)',
+                          '& fieldset': { border: 'none' }
+                        } 
+                      }}
                     />
                   </Grid>
                   <Grid item xs={12} sm={6}>
@@ -2821,34 +3297,47 @@ const NewPrescription = () => {
                       placeholder="e.g., Drink plenty of water"
                       value={newMedication.instructions}
                       onChange={(e) => setNewMedication({ ...newMedication, instructions: e.target.value })}
-                      InputProps={{ sx: { borderRadius: '12px' } }}
+                      InputProps={{ 
+                        sx: { 
+                          borderRadius: '16px', 
+                          fontWeight: 700,
+                          bgcolor: mode === 'dark' ? 'rgba(15, 23, 42, 0.6)' : '#ffffff',
+                          border: '1px solid rgba(16, 185, 129, 0.2)',
+                          '& fieldset': { border: 'none' }
+                        } 
+                      }}
                     />
                   </Grid>
 
                   {(!newMedication.timing || ((newMedication.timing.morning || 0) === 0 && (newMedication.timing.afternoon || 0) === 0 && (newMedication.timing.evening || 0) === 0 && (newMedication.timing.night || 0) === 0)) && !newMedication.isSOS && (
                     <Grid item xs={12}>
-                      <Typography variant="caption" sx={{ fontWeight: 800, color: 'var(--color-forest)', display: 'block', mb: 0.5 }}>
+                      <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#34D399' : '#059669', textTransform: 'uppercase', letterSpacing: 0.6, fontSize: '0.72rem', display: 'block', mb: 0.8 }}>
                         Quick Quantity Presets:
                       </Typography>
                       <Box sx={{ display: 'flex', gap: 0.8, flexWrap: 'wrap' }}>
                         {[
                           '10 Tablets', '14 Tablets', '20 Tablets', '30 Tablets',
                           '10 Capsules', '14 Capsules', '1 Bottle (100ml)', '1 Strip', '2 Vials', '1 Tube'
-                        ].map(q => (
-                          <Chip
-                            key={q}
-                            label={q}
-                            size="small"
-                            onClick={() => setNewMedication({ ...newMedication, quantity: q })}
-                            sx={{
-                              fontWeight: 700,
-                              fontSize: '0.7rem',
-                              cursor: 'pointer',
-                              bgcolor: newMedication.quantity === q ? 'var(--color-forest)' : 'rgba(0,100,0,0.06)',
-                              color: newMedication.quantity === q ? '#ffffff' : 'inherit'
-                            }}
-                          />
-                        ))}
+                        ].map(q => {
+                          const isSelected = newMedication.quantity === q;
+                          return (
+                            <Chip
+                              key={q}
+                              label={q}
+                              size="small"
+                              onClick={() => setNewMedication({ ...newMedication, quantity: q })}
+                              sx={{
+                                fontWeight: 800,
+                                fontSize: '0.72rem',
+                                borderRadius: '10px',
+                                cursor: 'pointer',
+                                background: isSelected ? 'linear-gradient(135deg, #059669 0%, #10B981 100%)' : mode === 'dark' ? 'rgba(30, 41, 59, 0.6)' : 'rgba(16, 185, 129, 0.08)',
+                                color: isSelected ? '#ffffff' : mode === 'dark' ? '#34D399' : '#059669',
+                                border: isSelected ? 'none' : '1px solid rgba(16, 185, 129, 0.25)'
+                              }}
+                            />
+                          );
+                        })}
                       </Box>
                     </Grid>
                   )}
@@ -2858,14 +3347,16 @@ const NewPrescription = () => {
                       variant="contained" 
                       fullWidth 
                       onClick={addMedication}
-                      startIcon={<AddIcon />}
+                      startIcon={<AddIcon sx={{ color: '#ffffff' }} />}
                       sx={{ 
-                        height: 44, 
-                        bgcolor: 'var(--color-forest)', 
+                        height: 48, 
+                        background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)', 
                         color: '#ffffff', 
-                        fontWeight: 800, 
-                        borderRadius: '14px',
-                        '&:hover': { bgcolor: '#1a433a' }
+                        fontWeight: 900, 
+                        fontSize: '0.9rem',
+                        borderRadius: '16px',
+                        boxShadow: '0 6px 20px rgba(16, 185, 129, 0.35)',
+                        '&:hover': { background: 'linear-gradient(135deg, #047857 0%, #059669 100%)' }
                       }}
                     >
                       + Add Medication to Prescription
@@ -2876,8 +3367,8 @@ const NewPrescription = () => {
 
               {/* Mobile-Friendly Added Medication Cards */}
               {formData.medications && formData.medications.length > 0 && (
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="caption" sx={{ fontWeight: 800, color: '#428475', textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', mb: 1 }}>
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#34D399' : '#059669', textTransform: 'uppercase', letterSpacing: 0.6, fontSize: '0.72rem', display: 'block', mb: 1.2 }}>
                     Prescribed Items List ({formData.medications.length})
                   </Typography>
                   {formData.medications.map((med, idx) => (
@@ -2888,38 +3379,38 @@ const NewPrescription = () => {
                       sx={{ 
                         mb: 1.5, 
                         p: 2, 
-                        borderRadius: '16px', 
-                        bgcolor: mode === 'dark' ? 'rgba(18, 38, 34, 0.85)' : 'rgba(255, 255, 255, 0.95)',
-                        borderColor: mode === 'dark' ? 'rgba(137, 215, 183, 0.3)' : 'rgba(137, 215, 183, 0.5)',
-                        boxShadow: mode === 'dark' ? '0 4px 14px rgba(0, 0, 0, 0.3)' : '0 4px 14px rgba(26, 49, 44, 0.04)'
+                        borderRadius: '20px', 
+                        bgcolor: mode === 'dark' ? 'rgba(15, 23, 42, 0.85)' : '#ffffff',
+                        borderColor: mode === 'dark' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(16, 185, 129, 0.2)',
+                        boxShadow: '0 4px 16px rgba(16, 185, 129, 0.06)'
                       }}
                     >
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <Box sx={{ width: '100%' }}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 1 }}>
-                            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C' }}>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 900, color: mode === 'dark' ? '#FAF2F5' : '#0F172A' }}>
                               {idx + 1}. {med.name}
                             </Typography>
                             {med.type && (
-                              <Chip label={med.type} size="small" sx={{ height: 20, fontSize: '0.65rem', fontWeight: 800, bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.2)' : 'rgba(66, 132, 117, 0.15)', color: mode === 'dark' ? '#89D7B7' : '#428475' }} />
+                              <Chip label={med.type} size="small" sx={{ height: 22, fontSize: '0.68rem', fontWeight: 800, bgcolor: 'rgba(16, 185, 129, 0.12)', color: mode === 'dark' ? '#34D399' : '#059669', borderRadius: '8px' }} />
                             )}
                           </Box>
                           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 0.8 }}>
                             <Chip 
                               label={`Dosage: ${med.dosage || 'As directed'}`} 
                               size="small" 
-                              sx={{ fontWeight: 700, bgcolor: 'rgba(19, 79, 77, 0.08)', color: '#134F4D', fontSize: '0.72rem' }} 
+                              sx={{ fontWeight: 800, bgcolor: 'rgba(16, 185, 129, 0.1)', color: '#059669', fontSize: '0.72rem', borderRadius: '8px' }} 
                             />
                             <Chip 
                               label={`⏱️ Duration: ${med.duration || 'N/A'}`} 
                               size="small" 
-                              sx={{ fontWeight: 700, bgcolor: 'rgba(59, 130, 246, 0.1)', color: '#1d4ed8', fontSize: '0.72rem' }} 
+                              sx={{ fontWeight: 800, bgcolor: 'rgba(59, 130, 246, 0.1)', color: '#2563EB', fontSize: '0.72rem', borderRadius: '8px' }} 
                             />
                             {med.quantity && (
                               <Chip 
                                 label={`📦 Quantity: ${med.quantity}`} 
                                 size="small" 
-                                sx={{ fontWeight: 800, bgcolor: 'rgba(16, 185, 129, 0.12)', color: '#047857', fontSize: '0.72rem' }} 
+                                sx={{ fontWeight: 800, bgcolor: 'rgba(168, 85, 247, 0.1)', color: '#9333EA', fontSize: '0.72rem', borderRadius: '8px' }} 
                               />
                             )}
                           </Box>
@@ -2930,7 +3421,7 @@ const NewPrescription = () => {
                                 icon={<SosIcon sx={{ fontSize: 14, color: '#fff !important' }} />}
                                 label={`🆘 SOS (Only When Needed)${med.sosReason ? `: ${med.sosReason}` : ''}`}
                                 size="small"
-                                sx={{ fontWeight: 800, bgcolor: '#dc2626', color: '#fff', fontSize: '0.68rem', height: 22 }}
+                                sx={{ fontWeight: 800, bgcolor: '#EF4444', color: '#fff', fontSize: '0.68rem', height: 22, borderRadius: '8px' }}
                               />
                             </Box>
                           )}
@@ -2941,40 +3432,40 @@ const NewPrescription = () => {
                                 <Chip
                                   label={`🌅 ×${med.timing.morning} Morning${med.mealRelations?.morning ? ` · ${med.mealRelations.morning}` : ''}`}
                                   size="small"
-                                  sx={{ fontWeight: 700, bgcolor: '#FFF3E0', color: '#F57C00', fontSize: '0.68rem', height: 22 }}
+                                  sx={{ fontWeight: 800, bgcolor: 'rgba(245, 158, 11, 0.15)', color: '#D97706', fontSize: '0.68rem', height: 24, borderRadius: '8px' }}
                                 />
                               )}
                               {(med.timing.afternoon || 0) > 0 && (
                                 <Chip
                                   label={`☀️ ×${med.timing.afternoon} Afternoon${med.mealRelations?.afternoon ? ` · ${med.mealRelations.afternoon}` : ''}`}
                                   size="small"
-                                  sx={{ fontWeight: 700, bgcolor: '#FFFDE7', color: '#F9A825', fontSize: '0.68rem', height: 22 }}
+                                  sx={{ fontWeight: 800, bgcolor: 'rgba(234, 179, 8, 0.15)', color: '#CA8A04', fontSize: '0.68rem', height: 24, borderRadius: '8px' }}
                                 />
                               )}
                               {(med.timing.evening || 0) > 0 && (
                                 <Chip
                                   label={`🌆 ×${med.timing.evening} Evening${med.mealRelations?.evening ? ` · ${med.mealRelations.evening}` : ''}`}
                                   size="small"
-                                  sx={{ fontWeight: 700, bgcolor: '#FBE9E7', color: '#E64A19', fontSize: '0.68rem', height: 22 }}
+                                  sx={{ fontWeight: 800, bgcolor: 'rgba(249, 115, 22, 0.15)', color: '#EA580C', fontSize: '0.68rem', height: 24, borderRadius: '8px' }}
                                 />
                               )}
                               {(med.timing.night || 0) > 0 && (
                                 <Chip
                                   label={`🌙 ×${med.timing.night} Night${med.mealRelations?.night ? ` · ${med.mealRelations.night}` : ''}`}
                                   size="small"
-                                  sx={{ fontWeight: 700, bgcolor: '#E8EAF6', color: '#3949AB', fontSize: '0.68rem', height: 22 }}
+                                  sx={{ fontWeight: 800, bgcolor: 'rgba(99, 102, 241, 0.15)', color: '#4F46E5', fontSize: '0.68rem', height: 24, borderRadius: '8px' }}
                                 />
                               )}
                             </Box>
                           )}
 
                           {med.instructions && (
-                            <Typography variant="caption" sx={{ display: 'block', color: '#64748b', fontStyle: 'italic', mt: 0.5 }}>
+                            <Typography variant="caption" sx={{ display: 'block', color: '#64748B', fontStyle: 'italic', mt: 0.5 }}>
                               "{med.instructions}"
                             </Typography>
                           )}
                         </Box>
-                        <IconButton size="small" onClick={() => removeMedication(idx)} sx={{ color: '#ef4444', bgcolor: 'rgba(239, 68, 68, 0.08)', ml: 1 }}>
+                        <IconButton size="small" onClick={() => removeMedication(idx)} sx={{ color: '#EF4444', bgcolor: 'rgba(239, 68, 68, 0.08)', ml: 1, '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.18)' } }}>
                           <DeleteIcon fontSize="small" />
                         </IconButton>
                       </Box>
@@ -2984,10 +3475,10 @@ const NewPrescription = () => {
               )}
 
               {/* Medication Notes */}
-              <Typography variant="caption" sx={{ fontWeight: 800, color: '#428475', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#34D399' : '#059669', textTransform: 'uppercase', letterSpacing: 0.6, fontSize: '0.72rem', display: 'block', mb: 0.8 }}>
                 Medication Warnings / Notes
               </Typography>
-              <Box sx={{ display: 'flex', gap: 1, mt: 0.5, mb: 1 }}>
+              <Box sx={{ display: 'flex', gap: 1 }}>
                 <TextField
                   fullWidth
                   size="small"
@@ -2995,19 +3486,47 @@ const NewPrescription = () => {
                   value={newMedNote}
                   onChange={(e) => setNewMedNote(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addToArray('medicationNotes', newMedNote, setNewMedNote))}
-                  InputProps={{ sx: { borderRadius: '14px' } }}
+                  InputProps={{ 
+                    sx: { 
+                      borderRadius: '16px', 
+                      fontWeight: 600,
+                      bgcolor: mode === 'dark' ? 'rgba(30, 41, 59, 0.6)' : 'rgba(248, 250, 252, 0.95)',
+                      border: '1px solid rgba(16, 185, 129, 0.2)',
+                      '& fieldset': { border: 'none' }
+                    } 
+                  }}
                 />
                 <Button 
                   variant="contained" 
                   onClick={() => addToArray('medicationNotes', newMedNote, setNewMedNote)}
-                  sx={{ bgcolor: '#428475', minWidth: 44, borderRadius: '14px', px: 2 }}
+                  sx={{ 
+                    background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)', 
+                    minWidth: 48, 
+                    height: 40,
+                    borderRadius: '14px', 
+                    px: 2,
+                    boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)'
+                  }}
                 >
-                  <AddIcon />
+                  <AddIcon sx={{ color: '#fff' }} />
                 </Button>
               </Box>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8, mt: 1.2 }}>
                 {formData.medicationNotes?.map((item, idx) => (
-                  <Chip key={idx} label={item} color="warning" onDelete={() => removeFromArray('medicationNotes', idx)} sx={{ fontWeight: 600 }} />
+                  <Chip 
+                    key={idx} 
+                    label={item} 
+                    onDelete={() => removeFromArray('medicationNotes', idx)} 
+                    sx={{ 
+                      fontWeight: 700, 
+                      fontSize: '0.78rem',
+                      borderRadius: '10px',
+                      bgcolor: 'rgba(245, 158, 11, 0.15)', 
+                      color: mode === 'dark' ? '#FBBF24' : '#D97706',
+                      border: '1px solid rgba(245, 158, 11, 0.3)',
+                      '& .MuiChip-deleteIcon': { color: '#D97706', '&:hover': { color: '#EF4444' } }
+                    }} 
+                  />
                 ))}
               </Box>
             </Paper>
@@ -3018,14 +3537,21 @@ const NewPrescription = () => {
               sx={{ 
                 p: { xs: 2.2, sm: 3 }, 
                 mb: 3, 
-                borderRadius: '24px !important'
+                borderRadius: '24px !important',
+                background: mode === 'dark' ? 'rgba(15, 23, 42, 0.85) !important' : 'rgba(255, 255, 255, 0.95) !important',
+                boxShadow: '0 10px 30px -5px rgba(16, 185, 129, 0.08) !important'
               }}
             >
-              <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : 'var(--color-forest)', display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                <ScienceIcon sx={{ color: 'var(--color-mint)' }} /> 5. Required Investigations & Lab Tests
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2.5 }}>
+                <Box sx={{ p: 1, borderRadius: '12px', bgcolor: 'rgba(16, 185, 129, 0.12)', color: '#10B981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <ScienceIcon sx={{ fontSize: 20 }} />
+                </Box>
+                <Typography variant="subtitle1" sx={{ fontWeight: 900, color: mode === 'dark' ? '#FAF2F5' : '#0F172A', letterSpacing: -0.2 }}>
+                  5. Required Investigations & Lab Tests
+                </Typography>
+              </Box>
 
-              <Typography variant="caption" sx={{ fontWeight: 800, color: 'var(--color-forest)', display: 'block', mb: 1.5, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#34D399' : '#059669', display: 'block', mb: 1.5, textTransform: 'uppercase', letterSpacing: 0.6, fontSize: '0.72rem' }}>
                 Systematic Diagnostic Test Presets:
               </Typography>
 
@@ -3069,8 +3595,8 @@ const NewPrescription = () => {
                   ]
                 }
               ].map(cat => (
-                <Box key={cat.category} sx={{ mb: 1.5 }}>
-                  <Typography variant="caption" sx={{ fontWeight: 700, color: mode === 'dark' ? 'var(--color-mint)' : 'var(--color-teal)', display: 'block', mb: 0.6 }}>
+                <Box key={cat.category} sx={{ mb: 2 }}>
+                  <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#94A3B8' : '#64748B', display: 'block', mb: 0.8, fontSize: '0.72rem' }}>
                     {cat.category}
                   </Typography>
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
@@ -3092,12 +3618,16 @@ const NewPrescription = () => {
                             }
                           }}
                           sx={{
-                            fontWeight: 700,
-                            fontSize: '0.72rem',
+                            fontWeight: 800,
+                            fontSize: '0.75rem',
+                            borderRadius: '12px',
                             cursor: 'pointer',
-                            bgcolor: isSelected ? 'var(--color-forest)' : mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0, 0, 0, 0.05)',
-                            color: isSelected ? '#ffffff' : mode === 'dark' ? '#FAF2F5' : '#123029',
-                            border: isSelected ? '1px solid var(--color-mint)' : '1px solid transparent'
+                            background: isSelected ? 'linear-gradient(135deg, #059669 0%, #10B981 100%)' : mode === 'dark' ? 'rgba(30, 41, 59, 0.6)' : 'rgba(248, 250, 252, 0.95)',
+                            color: isSelected ? '#ffffff' : mode === 'dark' ? '#FAF2F5' : '#0F172A',
+                            border: isSelected ? 'none' : '1px solid rgba(16, 185, 129, 0.2)',
+                            boxShadow: isSelected ? '0 4px 12px rgba(16, 185, 129, 0.3)' : 'none',
+                            transition: 'all 0.2s ease',
+                            '&:active': { transform: 'scale(0.95)' }
                           }}
                         />
                       );
@@ -3106,55 +3636,72 @@ const NewPrescription = () => {
                 </Box>
               ))}
 
-              <Box sx={{ mt: 1.5, mb: 2 }}>
+              <Box sx={{ mt: 2, mb: 2.5 }}>
                 <Chip
                   label="➕ + Other (Add Custom Test Not Listed)"
                   onClick={() => openInvDialogCustom()}
                   sx={{
-                    fontWeight: 800,
-                    fontSize: '0.75rem',
+                    fontWeight: 900,
+                    fontSize: '0.78rem',
+                    borderRadius: '14px',
                     cursor: 'pointer',
-                    bgcolor: 'rgba(102, 205, 170, 0.25)',
-                    color: 'var(--color-forest)',
-                    border: '1px solid var(--color-mint)',
-                    py: 0.5
+                    bgcolor: 'rgba(16, 185, 129, 0.12)',
+                    color: mode === 'dark' ? '#34D399' : '#059669',
+                    border: '1.5px dashed #10B981',
+                    py: 1,
+                    px: 1,
+                    boxShadow: '0 2px 8px rgba(16, 185, 129, 0.15)'
                   }}
                 />
               </Box>
 
               {formData.investigations && formData.investigations.length > 0 && (
                 <Box sx={{ mb: 2 }}>
-                  <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', display: 'block', mb: 1, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#34D399' : '#059669', display: 'block', mb: 1.2, textTransform: 'uppercase', letterSpacing: 0.6, fontSize: '0.72rem' }}>
                     Added Investigations ({formData.investigations.length})
                   </Typography>
                   {formData.investigations.map((inv, idx) => {
-                    const priorityColor = inv.priority === 'Urgent' ? '#ef4444' : inv.priority === 'Routine' ? '#22c55e' : '#f59e0b';
+                    const priorityColor = inv.priority === 'Urgent' ? '#EF4444' : inv.priority === 'Routine' ? '#10B981' : '#F59E0B';
                     return (
-                      <Card key={idx} variant="outlined" sx={{ mb: 1, p: 1.5, borderRadius: '14px', bgcolor: mode === 'dark' ? 'rgba(18, 38, 34, 0.85)' : '#ffffff', borderColor: mode === 'dark' ? 'rgba(137, 215, 183, 0.3)' : 'rgba(0,0,0,0.12)', transition: 'all 0.2s ease', '&:hover': { borderColor: mode === 'dark' ? 'rgba(137, 215, 183, 0.6)' : 'rgba(66, 132, 117, 0.4)' } }}>
+                      <Card 
+                        key={idx} 
+                        variant="outlined" 
+                        sx={{ 
+                          mb: 1.2, 
+                          p: 1.8, 
+                          borderRadius: '16px', 
+                          bgcolor: mode === 'dark' ? 'rgba(15, 23, 42, 0.85)' : '#ffffff', 
+                          borderColor: 'rgba(16, 185, 129, 0.2)',
+                          boxShadow: '0 4px 12px rgba(16, 185, 129, 0.05)',
+                          transition: 'all 0.2s ease', 
+                          '&:hover': { borderColor: '#10B981' } 
+                        }}
+                      >
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                           <Box sx={{ flex: 1 }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                              <Typography variant="body2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C' }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.6 }}>
+                              <Typography variant="body2" sx={{ fontWeight: 900, color: mode === 'dark' ? '#FAF2F5' : '#0F172A' }}>
                                 {idx + 1}. {inv.testName}
                               </Typography>
                               <Chip
                                 label={inv.priority || 'Normal'}
                                 size="small"
                                 sx={{
-                                  height: 20,
+                                  height: 22,
                                   fontWeight: 800,
-                                  fontSize: '0.65rem',
-                                  bgcolor: `${priorityColor}22`,
+                                  fontSize: '0.68rem',
+                                  bgcolor: `${priorityColor}18`,
                                   color: priorityColor,
-                                  border: `1px solid ${priorityColor}44`
+                                  border: `1px solid ${priorityColor}44`,
+                                  borderRadius: '8px'
                                 }}
                               />
                             </Box>
-                            <Typography variant="caption" sx={{ color: mode === 'dark' ? '#89D7B7' : '#428475', display: 'block', fontWeight: 600 }}>
+                            <Typography variant="caption" sx={{ color: mode === 'dark' ? '#34D399' : '#059669', display: 'block', fontWeight: 700 }}>
                               {inv.reason || 'Standard check'} • Fasting: {inv.fasting || 'Not specified'}
                             </Typography>
                             {inv.specialInstructions && (
-                              <Typography variant="caption" sx={{ color: mode === 'dark' ? 'rgba(250, 242, 245, 0.6)' : 'rgba(26, 49, 44, 0.6)', display: 'block', fontStyle: 'italic', mt: 0.3 }}>
+                              <Typography variant="caption" sx={{ color: mode === 'dark' ? 'rgba(250, 242, 245, 0.6)' : '#64748B', display: 'block', fontStyle: 'italic', mt: 0.3 }}>
                                 📋 {inv.specialInstructions}
                               </Typography>
                             )}
@@ -3507,14 +4054,14 @@ const NewPrescription = () => {
                   sx={{ 
                     height: 48, 
                     px: 3.5,
-                    bgcolor: 'var(--color-forest)', 
+                    background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)', 
                     color: '#ffffff',
                     borderRadius: '16px',
                     fontWeight: 800,
                     fontSize: '0.92rem',
                     textTransform: 'none',
-                    boxShadow: '0 6px 20px rgba(42, 107, 93, 0.4)',
-                    '&:hover': { bgcolor: mode === 'dark' ? '#2A6B5D' : '#123029', boxShadow: '0 8px 24px rgba(42, 107, 93, 0.5)' }
+                    boxShadow: '0 6px 20px rgba(16, 185, 129, 0.35)',
+                    '&:hover': { background: 'linear-gradient(135deg, #047857 0%, #059669 100%)', boxShadow: '0 8px 24px rgba(16, 185, 129, 0.45)' }
                   }}
                 >
                   Next Step Card
@@ -3528,14 +4075,14 @@ const NewPrescription = () => {
                   sx={{ 
                     height: 48, 
                     px: 4,
-                    bgcolor: 'var(--color-forest)', 
+                    background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)', 
                     color: '#ffffff',
                     borderRadius: '16px',
                     fontWeight: 800,
                     fontSize: '0.95rem',
                     textTransform: 'none',
-                    boxShadow: '0 8px 24px rgba(42, 107, 93, 0.4)',
-                    '&:hover': { bgcolor: mode === 'dark' ? '#2A6B5D' : '#123029' }
+                    boxShadow: '0 8px 24px rgba(16, 185, 129, 0.4)',
+                    '&:hover': { background: 'linear-gradient(135deg, #047857 0%, #059669 100%)' }
                   }}
                 >
                   {loading ? 'Issuing Prescription...' : 'Issue Prescription'}
@@ -3563,11 +4110,11 @@ const NewPrescription = () => {
             pt: 1.5,
             borderRadius: '28px !important',
             overflow: 'hidden',
-            bgcolor: mode === 'dark' ? 'rgba(15, 30, 26, 0.96)' : 'rgba(255, 255, 255, 0.96)',
+            bgcolor: mode === 'dark' ? 'rgba(15, 23, 42, 0.94)' : 'rgba(255, 255, 255, 0.94)',
             backdropFilter: 'blur(30px) saturate(220%)',
             WebkitBackdropFilter: 'blur(30px) saturate(220%)',
-            border: mode === 'dark' ? '1px solid rgba(137, 215, 183, 0.3)' : '1px solid rgba(66, 132, 117, 0.2)',
-            boxShadow: '0 12px 40px rgba(0, 0, 0, 0.2)'
+            border: mode === 'dark' ? '1px solid rgba(52, 211, 153, 0.3)' : '1px solid rgba(16, 185, 129, 0.25)',
+            boxShadow: '0 16px 40px -8px rgba(0, 0, 0, 0.25), 0 4px 14px rgba(16, 185, 129, 0.15)'
           }}
         >
           {/* Top Thin Progress Line */}
@@ -3582,7 +4129,7 @@ const NewPrescription = () => {
               height: 3,
               bgcolor: 'transparent',
               '& .MuiLinearProgress-bar': {
-                background: 'linear-gradient(90deg, #428475 0%, #89D7B7 100%)'
+                background: 'linear-gradient(90deg, #059669 0%, #34D399 100%)'
               }
             }}
           />
@@ -3609,21 +4156,21 @@ const NewPrescription = () => {
                       borderRadius: '12px',
                       cursor: 'pointer',
                       bgcolor: isActive
-                        ? (mode === 'dark' ? 'rgba(137, 215, 183, 0.2)' : 'rgba(66, 132, 117, 0.12)')
+                        ? (mode === 'dark' ? 'rgba(52, 211, 153, 0.2)' : 'rgba(16, 185, 129, 0.12)')
                         : (mode === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'),
                       border: isActive
-                        ? (mode === 'dark' ? '1.5px solid #89D7B7' : '1.5px solid #428475')
+                        ? (mode === 'dark' ? '1.5px solid #34D399' : '1.5px solid #059669')
                         : '1px solid transparent',
                       transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
                     }}
                   >
                     <Typography sx={{ fontSize: '0.85rem', lineHeight: 1 }}>{step.icon}</Typography>
                     {isActive && (
-                      <Typography variant="caption" sx={{ fontWeight: 800, fontSize: '0.7rem', color: mode === 'dark' ? '#FAF2F5' : '#1A312C', lineHeight: 1 }}>
+                      <Typography variant="caption" sx={{ fontWeight: 800, fontSize: '0.7rem', color: mode === 'dark' ? '#FAF2F5' : '#0F172A', lineHeight: 1 }}>
                         {step.label.split(' ')[0]}
                       </Typography>
                     )}
-                    {isCompleted && !isActive && <CheckIcon sx={{ fontSize: 11, color: '#89D7B7' }} />}
+                    {isCompleted && !isActive && <CheckIcon sx={{ fontSize: 11, color: '#34D399' }} />}
                   </Box>
                 );
               })}
@@ -3639,9 +4186,9 @@ const NewPrescription = () => {
                 fontSize: '0.65rem',
                 px: 1,
                 py: 0.3,
-                color: mode === 'dark' ? '#89D7B7' : '#2A6B5D',
-                bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.12)' : 'rgba(66, 132, 117, 0.08)',
-                border: '1px solid var(--color-mint)',
+                color: mode === 'dark' ? '#34D399' : '#059669',
+                bgcolor: mode === 'dark' ? 'rgba(52, 211, 153, 0.12)' : 'rgba(16, 185, 129, 0.08)',
+                border: '1px solid rgba(16, 185, 129, 0.3)',
                 textTransform: 'none',
                 minWidth: 0
               }}
@@ -3665,9 +4212,9 @@ const NewPrescription = () => {
                   fontWeight: 800,
                   fontSize: '0.78rem',
                   px: 2,
-                  borderColor: mode === 'dark' ? 'rgba(137, 215, 183, 0.3)' : 'rgba(66, 132, 117, 0.3)',
-                  color: mode === 'dark' ? '#89D7B7' : '#2A6B5D',
-                  bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.08)' : 'rgba(66, 132, 117, 0.04)',
+                  borderColor: mode === 'dark' ? 'rgba(52, 211, 153, 0.3)' : 'rgba(16, 185, 129, 0.3)',
+                  color: mode === 'dark' ? '#34D399' : '#059669',
+                  bgcolor: mode === 'dark' ? 'rgba(52, 211, 153, 0.08)' : 'rgba(16, 185, 129, 0.04)',
                   textTransform: 'none'
                 }}
               >
@@ -3688,9 +4235,9 @@ const NewPrescription = () => {
                   borderRadius: '14px',
                   fontWeight: 800,
                   fontSize: '0.88rem',
-                  bgcolor: 'var(--color-forest)',
+                  background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)',
                   color: '#ffffff',
-                  boxShadow: '0 4px 14px rgba(42, 107, 93, 0.3)',
+                  boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)',
                   textTransform: 'none'
                 }}
               >
@@ -3709,9 +4256,9 @@ const NewPrescription = () => {
                   borderRadius: '14px',
                   fontWeight: 800,
                   fontSize: '0.88rem',
-                  bgcolor: 'var(--color-forest)',
+                  background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)',
                   color: '#ffffff',
-                  boxShadow: '0 4px 14px rgba(42, 107, 93, 0.3)',
+                  boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)',
                   textTransform: 'none'
                 }}
               >

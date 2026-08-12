@@ -37,6 +37,7 @@ import {
   Medication as MedicationIcon, 
   CheckCircle as ActiveIcon, 
   History as HistoryIcon,
+  ExpandMore as ExpandMoreIcon,
   ChevronRight as ChevronRightIcon,
   People as PeopleIcon,
   Search as SearchIcon,
@@ -68,6 +69,7 @@ import { Prescription } from '../types/prescription';
 import EnhancedPatientManagement from '../components/EnhancedPatientManagement';
 import WallpaperCarouselHero from '../components/WallpaperCarouselHero';
 import PharmacistDashboard from './PharmacistDashboard';
+import NursePortal from './NursePortal';
 import QrScannerModal from '../components/QrScannerModal';
 import UploadPastPrescriptionModal from '../components/UploadPastPrescriptionModal';
 
@@ -85,6 +87,9 @@ const Dashboard = () => {
 
   if (user?.role === 'pharmacist') {
     return <PharmacistDashboard />;
+  }
+  if (user?.role === 'nurse') {
+    return <NursePortal />;
   }
   const { mode } = useThemeContext();
   
@@ -109,6 +114,9 @@ const Dashboard = () => {
     setShowDisclaimer(false);
     localStorage.setItem('medizo_disclaimer_dismissed', 'true');
   };
+  
+  // Pagination / Limit for active prescriptions (3 -> 5 -> Manage)
+  const [activeLimit, setActiveLimit] = useState<number>(3);
   
   // DigiLocker state
   const [digilockerVerified, setDigilockerVerified] = useState(null as boolean | null);
@@ -225,9 +233,12 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (user?.role === 'doctor') {
+      if (user?.digilockerVerified) {
+        setDigilockerVerified(true);
+      }
       digilockerAPI.getStatus()
-        .then(data => setDigilockerVerified(data.verified || false))
-        .catch(() => setDigilockerVerified(false));
+        .then(data => setDigilockerVerified(Boolean(data.verified || user?.digilockerVerified)))
+        .catch(() => setDigilockerVerified(Boolean(user?.digilockerVerified)));
     }
   }, [user]);
 
@@ -506,7 +517,9 @@ const Dashboard = () => {
         </Alert>
       )}
 
-      {user?.role === 'doctor' && digilockerVerified === false && (
+          {(() => {
+        const isDoctorVerified = Boolean(user?.digilockerVerified || digilockerVerified === true);
+        return user?.role === 'doctor' && !isDoctorVerified && (
         <Card 
           className="glass-card-cream"
           sx={{ 
@@ -520,15 +533,26 @@ const Dashboard = () => {
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
-            <Box sx={{ p: 1.2, borderRadius: '14px', bgcolor: 'rgba(230, 81, 0, 0.15)', color: '#e65100', display: 'flex', flexShrink: 0 }}>
-              <SecurityIcon sx={{ fontSize: 26 }} />
+            <Box 
+              sx={{ 
+                p: 1.2, 
+                borderRadius: '14px', 
+                bgcolor: 'rgba(255, 152, 0, 0.2)', 
+                color: '#e65100',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}
+            >
+              <SecurityIcon sx={{ fontSize: 24 }} />
             </Box>
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FFB74D' : '#e65100', mb: 0.5, fontSize: '0.85rem' }}>
-                Identity Verification Required
+            <Box sx={{ flexGrow: 1 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', mb: 0.5 }}>
+                DigiLocker Identity Verification Required 🔒
               </Typography>
-              <Typography variant="body2" sx={{ color: mode === 'dark' ? 'rgba(255, 183, 77, 0.85)' : '#bf360c', fontSize: '0.78rem', lineHeight: 1.4, mb: 1.5 }}>
-                Verify your identity with <strong>DigiLocker</strong> to create & update prescriptions. One-time process for patient safety.
+              <Typography variant="body2" sx={{ color: mode === 'dark' ? 'rgba(255,255,255,0.8)' : '#4A5568', mb: 2, fontSize: '0.85rem', lineHeight: 1.5 }}>
+                To create digital prescriptions and manage patients, please complete a 1-click identity verification via DigiLocker.
               </Typography>
               <Button
                 variant="contained"
@@ -557,7 +581,8 @@ const Dashboard = () => {
             </Box>
           </Box>
         </Card>
-      )}
+        );
+      })()}
 
       {/* ═══ Stats Cards & Action Bar — collapse when searching ═══ */}
       <Box sx={{ 
@@ -763,6 +788,60 @@ const Dashboard = () => {
                   '&:hover': { bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.25)' : 'rgba(42, 107, 93, 0.12)' }
                 }} 
               />
+              <Chip 
+                icon={<HospitalIcon sx={{ color: mode === 'dark' ? '#FAF2F5 !important' : '#123029 !important', fontSize: { xs: 16, sm: 18 } }} />}
+                label="Referrals & Network"
+                clickable
+                onClick={() => navigate('/network')}
+                sx={{ 
+                  bgcolor: mode === 'dark' ? 'rgba(0, 200, 150, 0.2)' : 'rgba(0, 200, 150, 0.1)', 
+                  color: mode === 'dark' ? '#FAF2F5' : '#123029', 
+                  fontWeight: 800, 
+                  fontSize: { xs: '0.76rem', sm: '0.84rem' },
+                  px: { xs: 0.5, sm: 1 },
+                  py: { xs: 1.8, sm: 2.2 },
+                  borderRadius: '14px',
+                  flex: '1 1 0',
+                  border: '1px solid rgba(0, 200, 150, 0.4)',
+                  '&:hover': { bgcolor: 'rgba(0, 200, 150, 0.3)' }
+                }} 
+              />
+              <Chip 
+                icon={<ActiveIcon sx={{ color: mode === 'dark' ? '#FAF2F5 !important' : '#123029 !important', fontSize: { xs: 16, sm: 18 } }} />}
+                label="Billing & Invoices"
+                clickable
+                onClick={() => navigate('/billing')}
+                sx={{ 
+                  bgcolor: mode === 'dark' ? 'rgba(33, 150, 243, 0.2)' : 'rgba(33, 150, 243, 0.1)', 
+                  color: mode === 'dark' ? '#FAF2F5' : '#123029', 
+                  fontWeight: 800, 
+                  fontSize: { xs: '0.76rem', sm: '0.84rem' },
+                  px: { xs: 0.5, sm: 1 },
+                  py: { xs: 1.8, sm: 2.2 },
+                  borderRadius: '14px',
+                  flex: '1 1 0',
+                  border: '1px solid rgba(33, 150, 243, 0.4)',
+                  '&:hover': { bgcolor: 'rgba(33, 150, 243, 0.3)' }
+                }} 
+              />
+              <Chip 
+                icon={<HospitalIcon sx={{ color: mode === 'dark' ? '#FAF2F5 !important' : '#123029 !important', fontSize: { xs: 16, sm: 18 } }} />}
+                label="Home Care"
+                clickable
+                onClick={() => navigate('/home-care')}
+                sx={{ 
+                  bgcolor: mode === 'dark' ? 'rgba(255, 152, 0, 0.2)' : 'rgba(255, 152, 0, 0.1)', 
+                  color: mode === 'dark' ? '#FAF2F5' : '#123029', 
+                  fontWeight: 800, 
+                  fontSize: { xs: '0.76rem', sm: '0.84rem' },
+                  px: { xs: 0.5, sm: 1 },
+                  py: { xs: 1.8, sm: 2.2 },
+                  borderRadius: '14px',
+                  flex: '1 1 0',
+                  border: '1px solid rgba(255, 152, 0, 0.4)',
+                  '&:hover': { bgcolor: 'rgba(255, 152, 0, 0.3)' }
+                }} 
+              />
             </>
           ) : (
             <>
@@ -785,12 +864,12 @@ const Dashboard = () => {
                 }} 
               />
               <Chip 
-                icon={<EditIcon sx={{ color: mode === 'dark' ? '#FAF2F5 !important' : '#123029 !important', fontSize: { xs: 16, sm: 18 } }} />}
-                label="Edit Your Profile"
+                icon={<ActiveIcon sx={{ color: mode === 'dark' ? '#FAF2F5 !important' : '#123029 !important', fontSize: { xs: 16, sm: 18 } }} />}
+                label="My Invoices"
                 clickable
-                onClick={() => navigate('/profile')}
+                onClick={() => navigate('/billing')}
                 sx={{ 
-                  bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.15)' : 'rgba(42, 107, 93, 0.08)', 
+                  bgcolor: mode === 'dark' ? 'rgba(33, 150, 243, 0.2)' : 'rgba(33, 150, 243, 0.1)', 
                   color: mode === 'dark' ? '#FAF2F5' : '#123029', 
                   fontWeight: 800, 
                   fontSize: { xs: '0.76rem', sm: '0.84rem' },
@@ -798,8 +877,26 @@ const Dashboard = () => {
                   py: { xs: 1.8, sm: 2.2 },
                   borderRadius: '14px',
                   flex: '1 1 0',
-                  border: `1px solid ${mode === 'dark' ? 'rgba(102, 205, 170, 0.2)' : 'rgba(42, 107, 93, 0.15)'}`,
-                  '&:hover': { bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.25)' : 'rgba(42, 107, 93, 0.12)' }
+                  border: '1px solid rgba(33, 150, 243, 0.4)',
+                  '&:hover': { bgcolor: 'rgba(33, 150, 243, 0.3)' }
+                }} 
+              />
+              <Chip 
+                icon={<HospitalIcon sx={{ color: mode === 'dark' ? '#FAF2F5 !important' : '#123029 !important', fontSize: { xs: 16, sm: 18 } }} />}
+                label="Home Care Visits"
+                clickable
+                onClick={() => navigate('/home-care')}
+                sx={{ 
+                  bgcolor: mode === 'dark' ? 'rgba(0, 200, 150, 0.2)' : 'rgba(0, 200, 150, 0.1)', 
+                  color: mode === 'dark' ? '#FAF2F5' : '#123029', 
+                  fontWeight: 800, 
+                  fontSize: { xs: '0.76rem', sm: '0.84rem' },
+                  px: { xs: 0.5, sm: 1 },
+                  py: { xs: 1.8, sm: 2.2 },
+                  borderRadius: '14px',
+                  flex: '1 1 0',
+                  border: '1px solid rgba(0, 200, 150, 0.4)',
+                  '&:hover': { bgcolor: 'rgba(0, 200, 150, 0.3)' }
                 }} 
               />
             </>
@@ -920,57 +1017,109 @@ const Dashboard = () => {
                     </Box>
                   </Box>
                 ) : (
-                  <List disablePadding>
-                    {activePrescriptions.slice(0, 8).map((prescription, idx) => (
-                      <ListItem 
-                        key={prescription.id || idx}
-                        button 
-                        onClick={() => navigate(`/prescriptions/${prescription.id}`)}
-                        className="touch-active"
-                        sx={{ 
-                          borderRadius: '16px', 
-                          my: 1, 
-                          p: { xs: 1.2, sm: 2 },
-                          bgcolor: mode === 'dark' ? 'rgba(20, 38, 34, 0.6)' : 'rgba(255, 255, 255, 0.75)',
-                          border: `1px solid ${mode === 'dark' ? 'rgba(102, 205, 170, 0.2)' : 'rgba(137, 215, 183, 0.4)'}`,
-                          '&:hover': { bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.08)' : 'rgba(255, 255, 255, 0.95)' }
-                        }}
-                      >
-                        <Box sx={{ p: { xs: 1, sm: 1.5 }, borderRadius: '14px', bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.12)' : 'rgba(66, 132, 117, 0.12)', mr: { xs: 1.2, sm: 2 }, display: 'flex', alignItems: 'center' }}>
-                          <MedicationIcon sx={{ color: mode === 'dark' ? '#66CDAA' : '#428475', fontSize: { xs: 22, sm: 26 } }} />
-                        </Box>
-                        <ListItemText
-                          primary={
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                              <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: { xs: '0.88rem', sm: '1rem' } }}>
-                                {prescription.medication || (prescription.provisionalDiagnosis && prescription.provisionalDiagnosis[0]) || 'Prescription Document'}
+                  <>
+                    <List disablePadding>
+                      {activePrescriptions.slice(0, activeLimit).map((prescription, idx) => (
+                        <ListItem 
+                          key={prescription.id || idx}
+                          button 
+                          onClick={() => navigate(`/prescriptions/${prescription.id}`)}
+                          className="touch-active"
+                          sx={{ 
+                            borderRadius: '16px', 
+                            my: 1, 
+                            p: { xs: 1.2, sm: 2 },
+                            bgcolor: mode === 'dark' ? 'rgba(20, 38, 34, 0.6)' : 'rgba(255, 255, 255, 0.75)',
+                            border: `1px solid ${mode === 'dark' ? 'rgba(102, 205, 170, 0.2)' : 'rgba(137, 215, 183, 0.4)'}`,
+                            '&:hover': { bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.08)' : 'rgba(255, 255, 255, 0.95)' }
+                          }}
+                        >
+                          <Box sx={{ p: { xs: 1, sm: 1.5 }, borderRadius: '14px', bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.12)' : 'rgba(66, 132, 117, 0.12)', mr: { xs: 1.2, sm: 2 }, display: 'flex', alignItems: 'center' }}>
+                            <MedicationIcon sx={{ color: mode === 'dark' ? '#66CDAA' : '#428475', fontSize: { xs: 22, sm: 26 } }} />
+                          </Box>
+                          <ListItemText
+                            primary={
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                                <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: { xs: '0.88rem', sm: '1rem' } }}>
+                                  {prescription.medication || (prescription.provisionalDiagnosis && prescription.provisionalDiagnosis[0]) || 'Prescription Document'}
+                                </Typography>
+                                <Chip 
+                                  label="Active" 
+                                  size="small" 
+                                  sx={{ 
+                                    height: 18, 
+                                    fontSize: '0.62rem', 
+                                    fontWeight: 800,
+                                    bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.2)' : 'rgba(42, 107, 93, 0.12)',
+                                    color: mode === 'dark' ? '#66CDAA' : '#1A312C'
+                                  }} 
+                                />
+                              </Box>
+                            }
+                            secondary={
+                              <Typography variant="caption" sx={{ color: mode === 'dark' ? 'rgba(255,255,255,0.6)' : '#64748b', fontSize: { xs: '0.72rem', sm: '0.78rem' }, display: 'block', mt: 0.3 }}>
+                                Patient: {(prescription as any).patientName || 'Linked Patient'}
+                                {(prescription as any).dosage ? ` • Dosage: ${(prescription as any).dosage}` : 
+                                 (prescription as any).medications && (prescription as any).medications[0] ? ` • Dosage: ${(prescription as any).medications[0].dosage || 'As directed'}` : ' • Dosage: As directed'}
+                                {'\n'}Issued: {prescription.createdAt ? new Date(prescription.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}
                               </Typography>
-                              <Chip 
-                                label="Active" 
-                                size="small" 
-                                sx={{ 
-                                  height: 18, 
-                                  fontSize: '0.62rem', 
-                                  fontWeight: 800,
-                                  bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.2)' : 'rgba(42, 107, 93, 0.12)',
-                                  color: mode === 'dark' ? '#66CDAA' : '#1A312C'
-                                }} 
-                              />
-                            </Box>
-                          }
-                          secondary={
-                            <Typography variant="caption" sx={{ color: mode === 'dark' ? 'rgba(255,255,255,0.6)' : '#64748b', fontSize: { xs: '0.72rem', sm: '0.78rem' }, display: 'block', mt: 0.3 }}>
-                              Patient: {(prescription as any).patientName || 'Linked Patient'}
-                              {(prescription as any).dosage ? ` • Dosage: ${(prescription as any).dosage}` : 
-                               (prescription as any).medications && (prescription as any).medications[0] ? ` • Dosage: ${(prescription as any).medications[0].dosage || 'As directed'}` : ' • Dosage: As directed'}
-                              {'\n'}Issued: {prescription.createdAt ? new Date(prescription.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}
-                            </Typography>
-                          }
-                        />
-                        <ChevronRightIcon sx={{ color: mode === 'dark' ? '#66CDAA' : '#428475', fontSize: { xs: 20, sm: 24 } }} />
-                      </ListItem>
-                    ))}
-                  </List>
+                            }
+                          />
+                          <ChevronRightIcon sx={{ color: mode === 'dark' ? '#66CDAA' : '#428475', fontSize: { xs: 20, sm: 24 } }} />
+                        </ListItem>
+                      ))}
+                    </List>
+
+                    {/* Pagination / Expand Control */}
+                    {activePrescriptions.length > 3 && (
+                      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2, mb: 1 }}>
+                        {activeLimit === 3 ? (
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            endIcon={<ExpandMoreIcon />}
+                            onClick={() => setActiveLimit(5)}
+                            sx={{
+                              borderRadius: '14px',
+                              fontWeight: 800,
+                              textTransform: 'none',
+                              color: mode === 'dark' ? '#66CDAA' : '#134F4D',
+                              borderColor: mode === 'dark' ? 'rgba(102, 205, 170, 0.4)' : 'rgba(19, 79, 77, 0.4)',
+                              px: 3,
+                              py: 0.9,
+                              fontSize: '0.85rem',
+                              '&:hover': {
+                                borderColor: mode === 'dark' ? '#66CDAA' : '#134F4D',
+                                bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.08)' : 'rgba(19, 79, 77, 0.08)'
+                              }
+                            }}
+                          >
+                            Expand (Show {Math.min(activePrescriptions.length, 5)})
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="contained"
+                            size="small"
+                            endIcon={<ChevronRightIcon />}
+                            onClick={() => navigate('/prescriptions')}
+                            sx={{
+                              borderRadius: '14px',
+                              fontWeight: 800,
+                              textTransform: 'none',
+                              bgcolor: '#134F4D',
+                              color: '#ffffff',
+                              px: 3,
+                              py: 0.9,
+                              fontSize: '0.85rem',
+                              '&:hover': { bgcolor: '#0e3b3a' }
+                            }}
+                          >
+                            Manage Prescriptions
+                          </Button>
+                        )}
+                      </Box>
+                    )}
+                  </>
                 )}
               </Box>
             )}
@@ -1463,7 +1612,7 @@ const Dashboard = () => {
                       <Typography variant="body2" sx={{ fontWeight: 700, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.88rem' }}>
                         DigiLocker Status
                       </Typography>
-                      {digilockerVerified ? (
+                      {Boolean(user?.digilockerVerified || digilockerVerified === true) ? (
                         <Chip 
                           label="VERIFIED ✓" 
                           size="small" 
@@ -1471,9 +1620,9 @@ const Dashboard = () => {
                             height: 26,
                             fontSize: '0.72rem', 
                             fontWeight: 900,
-                            bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.15)' : 'rgba(42, 107, 93, 0.08)',
-                            color: mode === 'dark' ? '#66CDAA' : '#1A312C',
-                            border: `1px solid ${mode === 'dark' ? 'rgba(102, 205, 170, 0.3)' : 'rgba(42, 107, 93, 0.2)'}`,
+                            bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.15)' : 'rgba(46, 125, 50, 0.12)',
+                            color: mode === 'dark' ? '#66CDAA' : '#2e7d32',
+                            border: `1px solid ${mode === 'dark' ? 'rgba(102, 205, 170, 0.3)' : 'rgba(46, 125, 50, 0.3)'}`,
                             borderRadius: '8px'
                           }} 
                         />

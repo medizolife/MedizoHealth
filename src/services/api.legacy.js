@@ -7,7 +7,7 @@ const resolveApiUrl = () => {
     const cleanUrl = envUrl.replace(/\/$/, '');
     return cleanUrl.endsWith('/api') ? cleanUrl : `${cleanUrl}/api`;
   }
-  return 'https://medizoserver.vercel.app/api';
+  return 'https://medizoserver.medizolife.workers.dev/api';
 };
 const PRIMARY_SERVER = resolveApiUrl();
 const LOCAL_SERVER = 'http://localhost:5000/api';  // Local development

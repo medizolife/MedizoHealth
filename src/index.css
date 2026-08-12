@@ -244,3 +244,141 @@ body {
   width: 100%;
   contain: layout style;
 }
+
+/* ─── Ultra-Modern Mobile Form & Vital Card Components ─── */
+
+/* Segmented Control Pills */
+.segmented-pill-container {
+  display: inline-flex;
+  padding: 4px;
+  background: rgba(15, 23, 42, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 18px;
+  gap: 4px;
+  width: 100%;
+}
+
+[data-theme='dark'] .segmented-pill-container {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.segmented-pill-btn {
+  flex: 1;
+  padding: 8px 14px;
+  border-radius: 14px;
+  border: none;
+  font-weight: 800;
+  font-size: 0.78rem;
+  color: #64748b;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.segmented-pill-btn.active {
+  background: linear-gradient(135deg, #059669 0%, #10B981 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
+}
+
+/* Modern Vital Glass Cards */
+.modern-vital-card {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(16, 185, 129, 0.18);
+  border-radius: 20px;
+  padding: 14px;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.04), 0 2px 6px -1px rgba(16, 185, 129, 0.06);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+[data-theme='dark'] .modern-vital-card {
+  background: rgba(15, 23, 42, 0.85);
+  border-color: rgba(52, 211, 153, 0.25);
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.4);
+}
+
+.modern-vital-card:focus-within, .modern-vital-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(16, 185, 129, 0.45);
+  box-shadow: 0 10px 28px -4px rgba(16, 185, 129, 0.18);
+}
+
+/* Vital Color Accents */
+.vital-accent-bp { border-top: 3px solid #EF4444 !important; }
+.vital-accent-pulse { border-top: 3px solid #F43F5E !important; }
+.vital-accent-temp { border-top: 3px solid #F59E0B !important; }
+.vital-accent-spo2 { border-top: 3px solid #06B6D4 !important; }
+.vital-accent-resp { border-top: 3px solid #14B8A6 !important; }
+.vital-accent-bmi { border-top: 3px solid #8B5CF6 !important; }
+.vital-accent-pain { border-top: 3px solid #F43F5E !important; }
+
+/* Custom Inset Glass Input Fields */
+.modern-vital-input {
+  display: flex;
+  align-items: center;
+  background: rgba(248, 250, 252, 0.95);
+  border: 1.5px solid rgba(226, 232, 240, 0.9);
+  border-radius: 14px;
+  padding: 4px 10px;
+  transition: all 0.2s ease;
+}
+
+[data-theme='dark'] .modern-vital-input {
+  background: rgba(30, 41, 59, 0.7);
+  border-color: rgba(51, 65, 85, 0.8);
+}
+
+.modern-vital-input:focus-within {
+  background: #ffffff;
+  border-color: #10B981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+
+[data-theme='dark'] .modern-vital-input:focus-within {
+  background: rgba(30, 41, 59, 0.95);
+  border-color: #34D399;
+  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.2);
+}
+
+/* Floating Capsule Dock Bar */
+.floating-capsule-dock {
+  position: fixed;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 24px);
+  max-width: 600px;
+  z-index: 1200;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(16, 185, 129, 0.1);
+  border-radius: 28px;
+  padding: 8px 12px;
+}
+
+[data-theme='dark'] .floating-capsule-dock {
+  background: rgba(15, 23, 42, 0.92);
+  border-color: rgba(52, 211, 153, 0.25);
+  box-shadow: 0 20px 48px -10px rgba(0, 0, 0, 0.6);
+}
+
+/* Pulse Badge Animation */
+@keyframes softPulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.08); opacity: 0.85; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.pulse-badge {
+  animation: softPulse 2.5s ease-in-out infinite;
+}
+

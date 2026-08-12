@@ -24,6 +24,10 @@ import NotFound from './views/NotFound';
 import Unauthorized from './views/Unauthorized';
 import PrivacyPolicy from './views/PrivacyPolicy';
 import TermsOfService from './views/TermsOfService';
+import NursePortal from './views/NursePortal';
+import DoctorNetworkPortal from './views/DoctorNetworkPortal';
+import BillingPortal from './views/BillingPortal';
+import HomeCarePortal from './views/HomeCarePortal';
 
 // Google OAuth Client ID
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '972944325297-fh67828kvguogf9coekjn6q07a2krv8o.apps.googleusercontent.com';
@@ -55,9 +59,49 @@ const AnimatedRoutes = () => {
           } 
         />
         <Route 
-          path="/prescriptions/new" 
+          path="/nurse" 
+          element={
+            <ProtectedRoute requiredRole="nurse">
+              <NursePortal />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/network" 
           element={
             <ProtectedRoute requiredRole="doctor">
+              <DoctorNetworkPortal />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/referrals" 
+          element={
+            <ProtectedRoute requiredRole="doctor">
+              <DoctorNetworkPortal />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/billing" 
+          element={
+            <ProtectedRoute>
+              <BillingPortal />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/home-care" 
+          element={
+            <ProtectedRoute>
+              <HomeCarePortal />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/prescriptions/new" 
+          element={
+            <ProtectedRoute requiredRole="doctor" requireDigiLocker={true}>
               <NewPrescription />
             </ProtectedRoute>
           } 
@@ -65,7 +109,7 @@ const AnimatedRoutes = () => {
         <Route 
           path="/prescriptions" 
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requireDigiLocker={true}>
               <DoctorPrescriptions />
             </ProtectedRoute>
           } 
@@ -73,7 +117,7 @@ const AnimatedRoutes = () => {
         <Route 
           path="/prescriptions/all" 
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requireDigiLocker={true}>
               <DoctorPrescriptions />
             </ProtectedRoute>
           } 
@@ -86,7 +130,14 @@ const AnimatedRoutes = () => {
             </ProtectedRoute>
           } 
         />
-        <Route path="/prescriptions/:id" element={<PrescriptionDetail />} />
+        <Route 
+          path="/prescriptions/:id" 
+          element={
+            <ProtectedRoute requireDigiLocker={true}>
+              <PrescriptionDetail />
+            </ProtectedRoute>
+          } 
+        />
         <Route path="/prescriptions/share/:id" element={<PrescriptionDetail />} />
         <Route path="/prescriptions/public/:id" element={<PrescriptionDetail />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
