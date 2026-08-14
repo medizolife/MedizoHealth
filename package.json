@@ -1,6 +1,6 @@
 {
   "name": "medizolife-desktop",
-  "version": "1.0.1",
+  "version": "2.2.0",
   "description": "Medizo Life Desktop - Standalone Local Frontend Application",
   "author": "Develope Future <info@medizo.life>",
   "private": true,
@@ -40,7 +40,7 @@
     "nsis": {
       "oneClick": true,
       "perMachine": false,
-      "createDesktopShortcut": true,
+      "createDesktopShortcut": "always",
       "createStartMenuShortcut": true,
       "shortcutName": "Medizo Life",
       "artifactName": "MedizoLife-Setup.${ext}",

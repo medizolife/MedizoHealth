@@ -14,7 +14,12 @@ export function generateStaticParams() {
     { slug: ['prescriptions', 'view'] },
     { slug: ['unauthorized'] },
     { slug: ['privacy-policy'] },
-    { slug: ['terms'] }
+    { slug: ['terms'] },
+    { slug: ['nurse'] },
+    { slug: ['network'] },
+    { slug: ['referrals'] },
+    { slug: ['billing'] },
+    { slug: ['home-care'] }
   ];
 }
 
