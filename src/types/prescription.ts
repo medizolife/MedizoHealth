@@ -47,6 +47,23 @@ export interface Investigation {
   specialInstructions?: string;
 }
 
+// Uploaded Diagnostic/Lab Test Report
+export interface TestReport {
+  id: string;
+  testName?: string;
+  filename: string;
+  originalName: string;
+  fileUrl: string;
+  fileType: 'pdf' | 'image';
+  mimeType?: string;
+  fileSize?: number;
+  uploadedBy?: string;
+  uploadedByName?: string;
+  uploaderRole?: 'patient' | 'doctor';
+  uploadedAt: string;
+  notes?: string;
+}
+
 // Follow-up information
 export interface FollowUpInfo {
   appointmentDate?: string;
@@ -89,9 +106,11 @@ export interface Prescription {
   medications?: MedicationItem[];
   medicationNotes?: string[];
   
-  // Investigations
+  // Investigations & Reports
+  testsRequired?: string[];
   investigations?: Investigation[];
   investigationNotes?: string;
+  testReports?: TestReport[];
   
   // Dietary & Lifestyle
   dietModifications?: string[];

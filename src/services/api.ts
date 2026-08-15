@@ -39,6 +39,16 @@ api.interceptors.response.use(
   response => response,
   error => {
     console.error('API Error:', error.response?.data || error.message);
+    if (error.response?.status === 401) {
+      if (typeof window !== 'undefined') {
+        const path = window.location.pathname;
+        if (!path.includes('/login') && !path.includes('/register') && !path.includes('/auth')) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          window.location.href = '/login?expired=1';
+        }
+      }
+    }
     return Promise.reject(error);
   }
 );
@@ -145,6 +155,18 @@ export const prescriptionsAPI = {
     const response = await api.delete(`/prescriptions/external/${id}`);
     return response.data;
   },
+  uploadTestReport: async (prescriptionId: string, formData: FormData) => {
+    clearApiCache();
+    const response = await api.post(`/prescriptions/${prescriptionId}/test-reports`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
+  },
+  deleteTestReport: async (prescriptionId: string, reportId: string) => {
+    clearApiCache();
+    const response = await api.delete(`/prescriptions/${prescriptionId}/test-reports/${reportId}`);
+    return response.data;
+  },
 };
 
 // Users API
@@ -196,19 +218,29 @@ export const usersAPI = {
 };
 
 // DigiLocker API
-// Status checks go through the main Cloudflare API; OAuth authorize/callback goes through Vercel
-// because the DigiLocker callback URL is registered as medizoserver.vercel.app
-const DIGILOCKER_SERVER = 'https://medizoserver.vercel.app/api';
+// Authorize runs on primary API server (Cloudflare Workers, 0ms cold start)
+// Callback routes to Vercel (https://medizoserver.vercel.app/api/digilocker/callback) for DigiLocker domain whitelist
+const DIGILOCKER_VERCEL_SERVER = process.env.NEXT_PUBLIC_DIGILOCKER_SERVER_URL || process.env.REACT_APP_DIGILOCKER_SERVER_URL || 'https://medizoserver.vercel.app/api';
 
 export const digilockerAPI = {
   getStatus: async () => {
     const response = await api.get('/digilocker/status');
     return response.data;
   },
+  pingServer: async () => {
+    try {
+      const pingUrl = DIGILOCKER_VERCEL_SERVER.replace(/\/api$/, '') + '/api/health';
+      await fetch(pingUrl, { method: 'GET', mode: 'cors' });
+      return true;
+    } catch (e) {
+      return false;
+    }
+  },
   getAuthorizeUrl: () => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') || '' : '';
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://m.medizo.life';
-    return `${DIGILOCKER_SERVER}/digilocker/authorize?token=${encodeURIComponent(token)}&client_url=${encodeURIComponent(origin)}`;
+    const baseUrl = getApiBaseUrl();
+    return `${baseUrl}/digilocker/authorize?token=${encodeURIComponent(token)}&client_url=${encodeURIComponent(origin)}`;
   },
 };
 

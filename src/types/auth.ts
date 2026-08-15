@@ -118,6 +118,7 @@ export interface AuthContextType {
   googleLogin: (credential: string, role?: string) => Promise<{ isNewUser: boolean; requiresRoleSelection?: boolean; googleUserInfo?: any; user?: User; token?: string } | void>;
   googleCompleteRegistration: (token: string, user: User) => void;
   logout: () => void;
+  refreshUser: () => Promise<User | null>;
   loading: boolean;
   error: string | null;
   clearError: () => void;

@@ -36,6 +36,7 @@ import { Patient } from '../types/auth';
 import { getPatients, createPatient, updatePatient, deletePatient } from '../services/patients';
 import { useAuth } from '../contexts/AuthContext';
 import { digilockerAPI } from '../services/api';
+import DigiLockerWarmupModal from './DigiLockerWarmupModal';
 
 interface PatientFormData {
   firstName: string;
@@ -43,9 +44,10 @@ interface PatientFormData {
   email: string;
   password?: string;
   confirmPassword?: string;
-  dateOfBirth: string;
-  contactNumber: string;
-  address: string;
+  dateOfBirth?: string;
+  gender?: string;
+  contactNumber?: string;
+  address?: string;
   emergencyContact?: string;
   medicalHistory?: string;
 }
@@ -57,6 +59,7 @@ const PatientManagement: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  const [warmupOpen, setWarmupOpen] = useState(false);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   const [formData, setFormData] = useState<PatientFormData>({
     firstName: '',
@@ -94,7 +97,7 @@ const PatientManagement: React.FC = () => {
   const handleOpenDialog = (patient?: Patient) => {
     if (!patient && user?.role === 'doctor' && !user?.digilockerVerified) {
       if (window.confirm('Identity Verification Required: Doctors must verify their identity via DigiLocker before creating new patients. Would you like to verify now?')) {
-        window.location.href = digilockerAPI.getAuthorizeUrl();
+        setWarmupOpen(true);
       }
       return;
     }
@@ -474,6 +477,11 @@ const PatientManagement: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <DigiLockerWarmupModal
+        open={warmupOpen}
+        onClose={() => setWarmupOpen(false)}
+      />
     </Box>
   );
 };

@@ -55,3 +55,17 @@ export const lookupPrescriptionByCode = async (code: string): Promise<{ success:
   const response = await api.get(`/prescriptions/lookup/${encodeURIComponent(code)}`);
   return response.data;
 };
+
+export const uploadPrescriptionTestReport = async (prescriptionId: string, formData: FormData): Promise<{ success: boolean; message: string; report: any; testReports: any[]; prescription: Prescription }> => {
+  clearApiCache();
+  const response = await api.post(`/prescriptions/${prescriptionId}/test-reports`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+  return response.data;
+};
+
+export const deletePrescriptionTestReport = async (prescriptionId: string, reportId: string): Promise<{ success: boolean; message: string; testReports: any[]; prescription: Prescription }> => {
+  clearApiCache();
+  const response = await api.delete(`/prescriptions/${prescriptionId}/test-reports/${reportId}`);
+  return response.data;
+};

@@ -454,6 +454,27 @@ export default function DoctorPrescriptions() {
                         )}
                       </Box>
                     )}
+
+                    {Boolean((prescription.investigations && prescription.investigations.length > 0) || (prescription.testsRequired && prescription.testsRequired.length > 0)) && (
+                      <Box sx={{ mt: 1.2, display: 'flex', alignItems: 'center', gap: 0.8 }}>
+                        <Chip
+                          label={(prescription.testReports && prescription.testReports.length > 0) 
+                            ? `🧪 Reports Uploaded (${prescription.testReports.length})` 
+                            : '🧪 Tests Required (Pending)'}
+                          size="small"
+                          sx={{
+                            fontSize: '0.68rem',
+                            fontWeight: 800,
+                            bgcolor: (prescription.testReports && prescription.testReports.length > 0)
+                              ? 'rgba(16, 185, 129, 0.15)'
+                              : 'rgba(245, 158, 11, 0.15)',
+                            color: (prescription.testReports && prescription.testReports.length > 0)
+                              ? '#047857'
+                              : '#b45309'
+                          }}
+                        />
+                      </Box>
+                    )}
                   </Box>
                 </Box>
 

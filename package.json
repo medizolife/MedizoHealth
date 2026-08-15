@@ -83,5 +83,8 @@
     "react-router-dom": "^6.30.4",
     "typescript": "^5.3.3",
     "yup": "^1.7.0"
+  },
+  "dependencies": {
+    "jspdf": "^4.2.1"
   }
 }

@@ -63,6 +63,7 @@ import { usersAPI, digilockerAPI } from '../services/api';
 import WallpaperCarouselHero from '../components/WallpaperCarouselHero';
 import { FamilyProfile, CreateFamilyProfileData, RELATIONSHIP_LABELS, RELATIONSHIP_ICONS } from '../types/familyProfile';
 import { getFamilyProfiles, createFamilyProfile, updateFamilyProfile, deleteFamilyProfile } from '../services/familyProfiles';
+import DigiLockerWarmupModal from '../components/DigiLockerWarmupModal';
 
 const Profile = () => {
   const { authState, logout } = useAuth();
@@ -917,10 +918,9 @@ const Profile = () => {
                 size="small"
                 onClick={() => {
                   setDigilockerLoading(true);
-                  window.location.href = digilockerAPI.getAuthorizeUrl();
                 }}
                 disabled={digilockerLoading}
-                startIcon={digilockerLoading ? <CircularProgress size={16} color="inherit" /> : <VerifiedIcon sx={{ fontSize: 18 }} />}
+                startIcon={<VerifiedIcon sx={{ fontSize: 18 }} />}
                 sx={{
                   bgcolor: '#e65100',
                   color: '#ffffff',
@@ -2384,6 +2384,11 @@ const Profile = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <DigiLockerWarmupModal
+        open={digilockerLoading}
+        onClose={() => setDigilockerLoading(false)}
+      />
     </Container>
   );
 };

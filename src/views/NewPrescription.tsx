@@ -117,6 +117,7 @@ import {
 } from '@mui/icons-material';
 import api from '../services/api';
 import { useThemeContext } from '../contexts/ThemeContext';
+import DigiLockerWarmupModal from '../components/DigiLockerWarmupModal';
 import { CreatePrescriptionData, MedicationItem, Investigation, VitalSigns, FollowUpInfo } from '../types/prescription';
 
 const NewPrescription = () => {
@@ -224,6 +225,8 @@ const NewPrescription = () => {
   const [rxSnackbar, setRxSnackbar] = useState({ open: false, message: '', severity: 'info' as 'info' | 'success' | 'error' | 'warning' });
   const [loadingPastRx, setLoadingPastRx] = useState(false);
   const [expandedPastRxId, setExpandedPastRxId] = useState<string | null>(null);
+  const [activeTreatmentTrailRxId, setActiveTreatmentTrailRxId] = useState<string | null>(null);
+  const [preTrailFormDataSnapshot, setPreTrailFormDataSnapshot] = useState<CreatePrescriptionData | null>(null);
   const [downloadingPdfRxId, setDownloadingPdfRxId] = useState<string | null>(null);
 
   // Family profile state for prescription targeting
@@ -486,6 +489,32 @@ const NewPrescription = () => {
     };
   };
 
+  // Clean any existing SOS instructions or duplicate fragments from an instruction string
+  const cleanSosInstructions = (inst: string = ''): string => {
+    if (!inst) return '';
+    return inst
+      .replace(/(?:^|,\s*|\s+)(?:Take\s+only\s+when\s+needed(?:\s+for\s+[^,;\n]+)?|SOS(?:\s+—\s+[^,;\n]+)?)(?:,\s*|$)/gi, ' ')
+      .replace(/\s*,\s*,+/g, ',')
+      .replace(/^[\s,]+|[\s,]+$/g, '')
+      .trim();
+  };
+
+  // Build standard SOS instruction phrase
+  const buildSosInstruction = (reason?: string): string => {
+    const r = (reason || '').trim();
+    return r ? `Take only when needed for ${r}` : 'Take only when needed';
+  };
+
+  // Format full instructions with or without SOS clause cleanly
+  const formatInstructionsWithSos = (currentInst: string = '', isSOS: boolean, reason?: string): string => {
+    const base = cleanSosInstructions(currentInst);
+    if (!isSOS) {
+      return base;
+    }
+    const sosClause = buildSosInstruction(reason);
+    return base ? `${base}, ${sosClause}` : sosClause;
+  };
+
   // Legacy calculateQuantity kept for backwards compat
   const calculateQuantity = (dosageStr: string, durVal: number | string, durUnit: string, medForm: string = 'Tablet') => {
     const val = typeof durVal === 'number' ? durVal : parseInt(String(durVal), 10) || 0;
@@ -572,8 +601,17 @@ const NewPrescription = () => {
       setDigilockerVerified(true);
     }
     digilockerAPI.getStatus()
-      .then(data => setDigilockerVerified(Boolean(data.verified || user?.digilockerVerified)))
-      .catch(() => setDigilockerVerified(Boolean(user?.digilockerVerified)));
+      .then(data => {
+        const isVer = Boolean(data.verified || user?.digilockerVerified);
+        setDigilockerVerified(isVer);
+        if (!isVer) {
+          digilockerAPI.pingServer().catch(() => {});
+        }
+      })
+      .catch(() => {
+        setDigilockerVerified(Boolean(user?.digilockerVerified));
+        digilockerAPI.pingServer().catch(() => {});
+      });
   }, [user]);
 
   // Update selected patient when patientId changes + fetch past prescriptions
@@ -604,6 +642,8 @@ const NewPrescription = () => {
       setLoadingPastRx(true);
       setPastDoctorPrescriptions([]);
       setScannedExternalPrescriptions([]);
+      setActiveTreatmentTrailRxId(null);
+      setPreTrailFormDataSnapshot(null);
       prescriptionsAPI.getMyPrescriptions()
         .then((allRx: any) => {
           const rxList = Array.isArray(allRx) ? allRx : (allRx?.prescriptions || []);
@@ -627,6 +667,8 @@ const NewPrescription = () => {
       setSelectedProfile(null);
       setPastDoctorPrescriptions([]);
       setScannedExternalPrescriptions([]);
+      setActiveTreatmentTrailRxId(null);
+      setPreTrailFormDataSnapshot(null);
     }
   }, [formData.patientId, patients]);
 
@@ -682,48 +724,72 @@ const NewPrescription = () => {
     }
   };
 
-  // Copy past prescription data into current form (re-order)
-  const handleContinueTreatmentTrail = (rx: Prescription) => {
-    setFormData(prev => {
-      // Smart merge: deduplicate string arrays
-      const mergeUnique = (existing: string[] | undefined, incoming: string[] | undefined): string[] => {
-        if (!incoming || incoming.length === 0) return existing || [];
-        return Array.from(new Set([...(existing || []), ...incoming]));
-      };
-
-      // Smart merge medications: skip if same name already exists
-      const existingMedNames = new Set((prev.medications || []).map(m => (m.name || '').toLowerCase().trim()));
-      const newMeds = (rx.medications || []).filter(m => {
-        const name = (m.name || (m as any).medicationName || '').toLowerCase().trim();
-        return name && !existingMedNames.has(name);
+  // Toggle continue treatment trail for a past prescription (mutually exclusive & reversible)
+  const handleToggleTreatmentTrail = (rx: Prescription) => {
+    // If the clicked prescription is currently active -> TOGGLE OFF (Revert)
+    if (activeTreatmentTrailRxId === rx.id) {
+      if (preTrailFormDataSnapshot) {
+        setFormData(preTrailFormDataSnapshot);
+      }
+      setActiveTreatmentTrailRxId(null);
+      setPreTrailFormDataSnapshot(null);
+      setRxSnackbar({
+        open: true,
+        message: '↩️ Treatment trail removed — prescription form restored.',
+        severity: 'info'
       });
+      return;
+    }
 
-      // Extract medication names from past Rx as "current medications" (patient is continuing them)
-      const pastMedNames = (rx.medications || []).map(m => m.name || (m as any).medicationName || '').filter(Boolean);
+    // TOGGLE ON or SWITCH to this prescription
+    const baseline = preTrailFormDataSnapshot || formData;
+    if (!preTrailFormDataSnapshot) {
+      setPreTrailFormDataSnapshot(formData);
+    }
 
-      return {
-        ...prev,
-        // Diagnosis & complaints — merge without duplicates
-        provisionalDiagnosis: mergeUnique(prev.provisionalDiagnosis, rx.provisionalDiagnosis),
-        presentingComplaints: mergeUnique(prev.presentingComplaints, rx.presentingComplaints),
-        clinicalFindings: mergeUnique(prev.clinicalFindings, rx.clinicalFindings),
-        // Medications — smart merge (skip duplicates by name)
-        medications: [...(prev.medications || []), ...newMeds],
-        // Past prescribed meds become "current medications" (ongoing)
-        currentMedications: mergeUnique(prev.currentMedications, pastMedNames),
-        // Medication notes
-        medicationNotes: mergeUnique(prev.medicationNotes, rx.medicationNotes),
-        // Investigations — carry forward for follow-up monitoring
-        investigations: [...(prev.investigations || []), ...(rx.investigations || [])],
-        // Dietary & lifestyle
-        dietModifications: mergeUnique(prev.dietModifications, rx.dietModifications),
-        lifestyleChanges: mergeUnique(prev.lifestyleChanges, rx.lifestyleChanges),
-        warningSigns: mergeUnique(prev.warningSigns, rx.warningSigns),
-      };
+    // Smart merge: deduplicate string arrays
+    const mergeUnique = (existing: string[] | undefined, incoming: string[] | undefined): string[] => {
+      if (!incoming || incoming.length === 0) return existing || [];
+      return Array.from(new Set([...(existing || []), ...incoming]));
+    };
+
+    // Smart merge medications: skip if same name already exists in baseline
+    const existingMedNames = new Set((baseline.medications || []).map(m => (m.name || '').toLowerCase().trim()));
+    const newMeds = (rx.medications || []).filter(m => {
+      const name = (m.name || (m as any).medicationName || '').toLowerCase().trim();
+      return name && !existingMedNames.has(name);
     });
 
+    // Extract medication names from past Rx as "current medications" (patient is continuing them)
+    const pastMedNames = (rx.medications || []).map(m => m.name || (m as any).medicationName || '').filter(Boolean);
+
+    setFormData({
+      ...baseline,
+      // Diagnosis & complaints — merge without duplicates
+      provisionalDiagnosis: mergeUnique(baseline.provisionalDiagnosis, rx.provisionalDiagnosis),
+      presentingComplaints: mergeUnique(baseline.presentingComplaints, rx.presentingComplaints),
+      clinicalFindings: mergeUnique(baseline.clinicalFindings, rx.clinicalFindings),
+      // Medications — smart merge (skip duplicates by name)
+      medications: [...(baseline.medications || []), ...newMeds],
+      // Past prescribed meds become "current medications" (ongoing)
+      currentMedications: mergeUnique(baseline.currentMedications, pastMedNames),
+      // Medication notes
+      medicationNotes: mergeUnique(baseline.medicationNotes, rx.medicationNotes),
+      // Investigations — carry forward for follow-up monitoring
+      investigations: [...(baseline.investigations || []), ...(rx.investigations || [])],
+      // Dietary & lifestyle
+      dietModifications: mergeUnique(baseline.dietModifications, rx.dietModifications),
+      lifestyleChanges: mergeUnique(baseline.lifestyleChanges, rx.lifestyleChanges),
+      warningSigns: mergeUnique(baseline.warningSigns, rx.warningSigns),
+    });
+
+    setActiveTreatmentTrailRxId(rx.id);
     const addedCount = (rx.medications || []).length;
-    setRxSnackbar({ open: true, message: `🔄 Treatment trail continued — diagnosis, ${addedCount} medication(s) & care plan carried forward. Review and adjust as needed.`, severity: 'success' });
+    setRxSnackbar({
+      open: true,
+      message: `🔄 Treatment trail active — diagnosis, ${addedCount} medication(s) & care plan loaded.`,
+      severity: 'success'
+    });
   };
 
   // Handle select changes
@@ -1049,10 +1115,9 @@ const NewPrescription = () => {
                 size="small"
                 onClick={() => {
                   setDigilockerLoading(true);
-                  window.location.href = digilockerAPI.getAuthorizeUrl();
                 }}
                 disabled={digilockerLoading}
-                startIcon={digilockerLoading ? <CircularProgress size={16} color="inherit" /> : <SuccessIcon sx={{ fontSize: 18 }} />}
+                startIcon={<SuccessIcon sx={{ fontSize: 18 }} />}
                 sx={{
                   bgcolor: '#dc2626',
                   color: '#ffffff',
@@ -1066,7 +1131,7 @@ const NewPrescription = () => {
                   '&:hover': { bgcolor: '#b91c1c' },
                 }}
               >
-                {digilockerLoading ? 'Redirecting...' : 'Verify with DigiLocker'}
+                Verify with DigiLocker
               </Button>
             </Box>
           </Box>
@@ -1625,6 +1690,7 @@ const NewPrescription = () => {
                               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, maxHeight: expandedPastRxId ? 520 : 300, overflowY: 'auto', pr: 0.5, pb: 1, '&::-webkit-scrollbar': { width: 4 }, '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(66,132,117,0.3)', borderRadius: 2 } }}>
                                 {pastDoctorPrescriptions.slice(0, 5).map((rx) => {
                                   const isExpanded = expandedPastRxId === rx.id;
+                                  const isTrailActive = activeTreatmentTrailRxId === rx.id;
                                   const diagnosisText = typeof rx.provisionalDiagnosis?.[0] === 'object'
                                     ? ((rx.provisionalDiagnosis[0] as any).name || (rx.provisionalDiagnosis[0] as any).diagnosis || JSON.stringify(rx.provisionalDiagnosis[0]))
                                     : String(rx.provisionalDiagnosis?.[0] || rx.medication || 'Prescription');
@@ -1639,8 +1705,15 @@ const NewPrescription = () => {
                                       variant="outlined"
                                       sx={{
                                         borderRadius: '14px',
-                                        bgcolor: mode === 'dark' ? 'rgba(0,0,0,0.25)' : 'rgba(244, 248, 246, 0.9)',
-                                        borderColor: isExpanded ? '#428475' : (mode === 'dark' ? 'rgba(137, 215, 183, 0.15)' : 'rgba(18, 48, 41, 0.08)'),
+                                        bgcolor: isTrailActive
+                                          ? (mode === 'dark' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.05)')
+                                          : (mode === 'dark' ? 'rgba(0,0,0,0.25)' : 'rgba(244, 248, 246, 0.9)'),
+                                        borderColor: isTrailActive
+                                          ? '#10b981'
+                                          : isExpanded
+                                          ? '#428475'
+                                          : (mode === 'dark' ? 'rgba(137, 215, 183, 0.15)' : 'rgba(18, 48, 41, 0.08)'),
+                                        boxShadow: isTrailActive ? '0 0 12px rgba(16, 185, 129, 0.2)' : 'none',
                                         transition: 'all 0.2s',
                                         overflow: 'hidden'
                                       }}
@@ -1673,6 +1746,20 @@ const NewPrescription = () => {
                                                 color: rx.status === 'active' ? '#16a34a' : rx.status === 'completed' ? '#0284c7' : '#dc2626'
                                               }}
                                             />
+                                            {isTrailActive && (
+                                              <Chip
+                                                label="🔄 Trail Active"
+                                                size="small"
+                                                sx={{
+                                                  height: 18,
+                                                  fontSize: '0.6rem',
+                                                  fontWeight: 800,
+                                                  bgcolor: '#10b981',
+                                                  color: '#ffffff',
+                                                  boxShadow: '0 0 8px rgba(16, 185, 129, 0.4)'
+                                                }}
+                                              />
+                                            )}
                                           </Box>
                                           <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600, display: 'block', fontSize: '0.72rem' }}>
                                             📅 {new Date(rx.createdAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
@@ -1764,16 +1851,55 @@ const NewPrescription = () => {
                                             );
                                           })()}
 
-                                          <Box sx={{ display: 'flex', gap: 1, mt: 1.5, pt: 1, borderTop: '1px solid rgba(66,132,117,0.1)', flexWrap: 'wrap' }}>
-                                            <Button
-                                              size="small"
-                                              variant="contained"
-                                              startIcon={<ContinueTrailIcon sx={{ fontSize: 14 }} />}
-                                              onClick={() => handleContinueTreatmentTrail(rx)}
-                                              sx={{ bgcolor: '#428475', '&:hover': { bgcolor: '#2e5e53' }, fontSize: '0.7rem', textTransform: 'none', py: 0.4, px: 1.5, borderRadius: '8px' }}
+                                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, mt: 1.5, pt: 1, borderTop: '1px solid rgba(66,132,117,0.1)', flexWrap: 'wrap' }}>
+                                            <Box
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleToggleTreatmentTrail(rx);
+                                              }}
+                                              sx={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: 0.8,
+                                                cursor: 'pointer',
+                                                py: 0.4,
+                                                px: 1.2,
+                                                borderRadius: '10px',
+                                                bgcolor: isTrailActive ? 'rgba(16, 185, 129, 0.15)' : (mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)'),
+                                                border: `1.5px solid ${isTrailActive ? '#10b981' : 'rgba(66, 132, 117, 0.2)'}`,
+                                                transition: 'all 0.2s ease',
+                                                '&:hover': {
+                                                  bgcolor: isTrailActive ? 'rgba(16, 185, 129, 0.22)' : 'rgba(66, 132, 117, 0.1)'
+                                                }
+                                              }}
                                             >
-                                              Continue Treatment Trail
-                                            </Button>
+                                              <Switch
+                                                size="small"
+                                                checked={isTrailActive}
+                                                onChange={() => handleToggleTreatmentTrail(rx)}
+                                                onClick={(e) => e.stopPropagation()}
+                                                sx={{
+                                                  '& .MuiSwitch-switchBase.Mui-checked': {
+                                                    color: '#10b981',
+                                                    '& + .MuiSwitch-track': {
+                                                      backgroundColor: '#10b981',
+                                                      opacity: 0.8
+                                                    }
+                                                  }
+                                                }}
+                                              />
+                                              <Typography
+                                                variant="caption"
+                                                sx={{
+                                                  fontWeight: 800,
+                                                  color: isTrailActive ? '#10b981' : (mode === 'dark' ? '#FAF2F5' : '#1A312C'),
+                                                  fontSize: '0.74rem',
+                                                  userSelect: 'none'
+                                                }}
+                                              >
+                                                {isTrailActive ? 'Treatment Trail Active' : 'Continue Treatment Trail'}
+                                              </Typography>
+                                            </Box>
                                             <Button
                                               size="small"
                                               variant="outlined"
@@ -2828,15 +2954,12 @@ const NewPrescription = () => {
                         clickable
                         onClick={() => {
                           const newSOS = !newMedication.isSOS;
-                          const defaultReason = newSOS ? 'Fever / Pain' : '';
-                          let newInst = newMedication.instructions || '';
-                          if (newSOS && !newInst.toLowerCase().includes('when needed')) {
-                            newInst = newInst ? `${newInst}, Take only when needed for ${defaultReason}` : `Take only when needed for ${defaultReason}`;
-                          }
+                          const newReason = newSOS ? (newMedication.sosReason || 'Fever') : '';
+                          const newInst = formatInstructionsWithSos(newMedication.instructions, newSOS, newReason);
                           const updated = recalcMedication({
                             ...newMedication,
                             isSOS: newSOS,
-                            sosReason: defaultReason,
+                            sosReason: newReason,
                             instructions: newInst
                           });
                           setNewMedication(updated);
@@ -2878,12 +3001,11 @@ const NewPrescription = () => {
                                 clickable
                                 onClick={() => {
                                   const newReason = r.label;
-                                  let updatedInst = (newMedication.instructions || '').replace(/,? Take only when needed for .*/i, '');
-                                  updatedInst = updatedInst ? `${updatedInst}, Take only when needed for ${newReason}` : `Take only when needed for ${newReason}`;
+                                  const newInst = formatInstructionsWithSos(newMedication.instructions, true, newReason);
                                   const updated = recalcMedication({
                                     ...newMedication,
                                     sosReason: newReason,
-                                    instructions: updatedInst
+                                    instructions: newInst
                                   });
                                   setNewMedication(updated);
                                 }}
@@ -2907,14 +3029,11 @@ const NewPrescription = () => {
                           value={newMedication.sosReason || ''}
                           onChange={(e) => {
                             const customR = e.target.value;
-                            let updatedInst = (newMedication.instructions || '').replace(/,? Take only when needed for .*/i, '');
-                            if (customR) {
-                              updatedInst = updatedInst ? `${updatedInst}, Take only when needed for ${customR}` : `Take only when needed for ${customR}`;
-                            }
+                            const newInst = formatInstructionsWithSos(newMedication.instructions, true, customR);
                             const updated = recalcMedication({
                               ...newMedication,
                               sosReason: customR,
-                              instructions: updatedInst
+                              instructions: newInst
                             });
                             setNewMedication(updated);
                           }}
@@ -4986,6 +5105,11 @@ const NewPrescription = () => {
         isCustom={invDialogIsCustom}
         isEditing={invDialogEditIndex !== null}
         mode={mode}
+      />
+
+      <DigiLockerWarmupModal
+        open={digilockerLoading}
+        onClose={() => setDigilockerLoading(false)}
       />
     </Container>
   );

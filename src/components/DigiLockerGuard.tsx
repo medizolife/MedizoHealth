@@ -20,6 +20,8 @@ import { useNavigate } from 'react-router-dom';
 import { digilockerAPI } from '../services/api';
 import { useThemeContext } from '../contexts/ThemeContext';
 
+import DigiLockerWarmupModal from './DigiLockerWarmupModal';
+
 interface DigiLockerGuardProps {
   title?: string;
   message?: string;
@@ -34,11 +36,10 @@ export const DigiLockerGuard: React.FC<DigiLockerGuardProps> = ({
   const navigate = useNavigate();
   const { mode } = useThemeContext();
   const isDark = mode === 'dark';
-  const [loading, setLoading] = useState(false);
+  const [warmupOpen, setWarmupOpen] = useState(false);
 
   const handleVerifyClick = () => {
-    setLoading(true);
-    window.location.href = digilockerAPI.getAuthorizeUrl();
+    setWarmupOpen(true);
   };
 
   return (
@@ -170,8 +171,8 @@ export const DigiLockerGuard: React.FC<DigiLockerGuardProps> = ({
             variant="contained"
             size="large"
             onClick={handleVerifyClick}
-            disabled={loading}
-            startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <VerifiedIcon />}
+            disabled={warmupOpen}
+            startIcon={warmupOpen ? <CircularProgress size={20} color="inherit" /> : <VerifiedIcon />}
             sx={{
               flex: 1,
               bgcolor: '#dc2626',
@@ -188,7 +189,7 @@ export const DigiLockerGuard: React.FC<DigiLockerGuardProps> = ({
               }
             }}
           >
-            {loading ? 'Redirecting to DigiLocker...' : 'Verify with DigiLocker'}
+            {warmupOpen ? 'Redirecting to DigiLocker...' : 'Verify with DigiLocker'}
           </Button>
 
           {showBackButton && (
@@ -218,6 +219,7 @@ export const DigiLockerGuard: React.FC<DigiLockerGuardProps> = ({
           )}
         </Box>
       </Paper>
+      <DigiLockerWarmupModal open={warmupOpen} onClose={() => setWarmupOpen(false)} />
     </Container>
   );
 };

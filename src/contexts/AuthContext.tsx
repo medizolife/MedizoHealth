@@ -98,6 +98,7 @@ const AuthContext = createContext<AuthContextType>({
   googleLogin: async () => {},
   googleCompleteRegistration: () => {},
   logout: () => {},
+  refreshUser: async () => null,
   loading: false,
   error: null,
   clearError: () => {}
@@ -258,6 +259,21 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     dispatch({ type: 'LOGOUT' });
   };
 
+  // Refresh user data from backend (e.g. after DigiLocker verification)
+  const refreshUser = async (): Promise<User | null> => {
+    try {
+      const response = await api.authAPI.getMe();
+      if (response && response.user) {
+        localStorage.setItem('user', JSON.stringify(response.user));
+        dispatch({ type: 'USER_LOADED', payload: response.user });
+        return response.user;
+      }
+    } catch (error) {
+      console.error('Failed to refresh user profile:', error);
+    }
+    return null;
+  };
+
   // Clear error function
   const clearError = () => {
     dispatch({ type: 'CLEAR_ERROR' });
@@ -278,6 +294,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       googleLogin, 
       googleCompleteRegistration,
       logout,
+      refreshUser,
       loading: state.loading,
       error: state.error,
       clearError

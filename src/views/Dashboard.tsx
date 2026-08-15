@@ -72,11 +72,12 @@ import PharmacistDashboard from './PharmacistDashboard';
 import NursePortal from './NursePortal';
 import QrScannerModal from '../components/QrScannerModal';
 import UploadPastPrescriptionModal from '../components/UploadPastPrescriptionModal';
+import DigiLockerWarmupModal from '../components/DigiLockerWarmupModal';
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { authState, needsDobVerification, markDobVerified } = useAuth();
+  const { authState, needsDobVerification, markDobVerified, refreshUser } = useAuth();
   const { user } = authState;
 
   // DOB Gate Dialog State
@@ -220,6 +221,12 @@ const Dashboard = () => {
     if (digilockerResult === 'success') {
       setSnackbar({ open: true, message: 'DigiLocker verification successful! You can now create prescriptions.', severity: 'success' });
       setDigilockerVerified(true);
+      if (refreshUser) {
+        refreshUser().catch(() => {});
+      }
+      digilockerAPI.getStatus().then(data => {
+        if (data?.verified) setDigilockerVerified(true);
+      }).catch(() => {});
       searchParams.delete('digilocker');
       searchParams.delete('message');
       setSearchParams(searchParams, { replace: true });
@@ -229,7 +236,7 @@ const Dashboard = () => {
       searchParams.delete('message');
       setSearchParams(searchParams, { replace: true });
     }
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams, refreshUser]);
 
   useEffect(() => {
     if (user?.role === 'doctor') {
@@ -237,8 +244,18 @@ const Dashboard = () => {
         setDigilockerVerified(true);
       }
       digilockerAPI.getStatus()
-        .then(data => setDigilockerVerified(Boolean(data.verified || user?.digilockerVerified)))
-        .catch(() => setDigilockerVerified(Boolean(user?.digilockerVerified)));
+        .then(data => {
+          const isVer = Boolean(data.verified || user?.digilockerVerified);
+          setDigilockerVerified(isVer);
+          if (!isVer) {
+            // Pre-warm Vercel server in the background for snappy verification
+            digilockerAPI.pingServer().catch(() => {});
+          }
+        })
+        .catch(() => {
+          setDigilockerVerified(Boolean(user?.digilockerVerified));
+          digilockerAPI.pingServer().catch(() => {});
+        });
     }
   }, [user]);
 
@@ -559,10 +576,9 @@ const Dashboard = () => {
                 size="small"
                 onClick={() => {
                   setDigilockerLoading(true);
-                  window.location.href = digilockerAPI.getAuthorizeUrl();
                 }}
                 disabled={digilockerLoading}
-                startIcon={digilockerLoading ? <CircularProgress size={16} color="inherit" /> : <VerifiedIcon sx={{ fontSize: 18 }} />}
+                startIcon={<VerifiedIcon sx={{ fontSize: 18 }} />}
                 sx={{
                   bgcolor: '#e65100',
                   color: '#ffffff',
@@ -1039,7 +1055,7 @@ const Dashboard = () => {
                           </Box>
                           <ListItemText
                             primary={
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, flexWrap: 'wrap' }}>
                                 <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: { xs: '0.88rem', sm: '1rem' } }}>
                                   {prescription.medication || (prescription.provisionalDiagnosis && prescription.provisionalDiagnosis[0]) || 'Prescription Document'}
                                 </Typography>
@@ -1054,6 +1070,26 @@ const Dashboard = () => {
                                     color: mode === 'dark' ? '#66CDAA' : '#1A312C'
                                   }} 
                                 />
+                                {Boolean((prescription.investigations && prescription.investigations.length > 0) || (prescription.testsRequired && prescription.testsRequired.length > 0)) && (
+                                  <Chip 
+                                    label={(prescription.testReports && prescription.testReports.length > 0) ? `🧪 Reports (${prescription.testReports.length})` : '🧪 Tests Required'} 
+                                    size="small" 
+                                    sx={{ 
+                                      height: 18, 
+                                      fontSize: '0.62rem', 
+                                      fontWeight: 800,
+                                      bgcolor: (prescription.testReports && prescription.testReports.length > 0)
+                                        ? (mode === 'dark' ? 'rgba(52, 211, 153, 0.2)' : 'rgba(16, 185, 129, 0.15)')
+                                        : (mode === 'dark' ? 'rgba(251, 191, 36, 0.22)' : 'rgba(217, 119, 6, 0.15)'),
+                                      color: (prescription.testReports && prescription.testReports.length > 0)
+                                        ? (mode === 'dark' ? '#34d399' : '#047857')
+                                        : (mode === 'dark' ? '#fbbf24' : '#b45309'),
+                                      border: `1px solid ${(prescription.testReports && prescription.testReports.length > 0)
+                                        ? (mode === 'dark' ? 'rgba(52, 211, 153, 0.4)' : 'rgba(16, 185, 129, 0.3)')
+                                        : (mode === 'dark' ? 'rgba(251, 191, 36, 0.4)' : 'rgba(217, 119, 6, 0.3)')}`
+                                    }} 
+                                  />
+                                )}
                               </Box>
                             }
                             secondary={
@@ -1642,7 +1678,6 @@ const Dashboard = () => {
                           }}
                           onClick={() => {
                             setDigilockerLoading(true);
-                            window.location.href = digilockerAPI.getAuthorizeUrl();
                           }}
                         />
                       )}
@@ -1655,6 +1690,11 @@ const Dashboard = () => {
         )}
       </Grid>
     </Container>
+
+    <DigiLockerWarmupModal
+      open={digilockerLoading}
+      onClose={() => setDigilockerLoading(false)}
+    />
 
     <UploadPastPrescriptionModal
       open={uploadPastRxModalOpen}
