@@ -16,7 +16,9 @@ import {
   Alert,
   CircularProgress,
   Grid,
-  Tooltip
+  Tooltip,
+  FormControlLabel,
+  Checkbox
 } from '@mui/material';
 import {
   Close as CloseIcon,
@@ -33,11 +35,15 @@ import {
   Verified as VerifiedBadgeIcon,
   Medication as MedicationIcon,
   AssignmentTurnedIn as StampIcon,
-  ContentCopy as CopyIcon
+  ContentCopy as CopyIcon,
+  Inventory2 as InventoryIcon,
+  History as HistoryIcon
 } from '@mui/icons-material';
 import { Prescription } from '../types/prescription';
 import { dispensePrescription } from '../services/prescriptions';
+import { batchDeductDispensedStock } from '../services/inventory';
 import { useThemeContext } from '../contexts/ThemeContext';
+import DispenseHistoryModal from './DispenseHistoryModal';
 
 type MedStatus = 'pending' | 'given' | 'not_available' | 'not_needed';
 
@@ -64,6 +70,8 @@ export default function DispenseModal({ open, onClose, prescription, onDispensed
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [copied, setCopied] = useState(false);
+  const [autoDeductStock, setAutoDeductStock] = useState(true);
+  const [historyModalOpen, setHistoryModalOpen] = useState(false);
 
   const statusConfig: Record<MedStatus, { label: string; color: string; activeBg: string; activeBorder: string; icon: React.ReactNode }> = {
     pending: {
@@ -124,6 +132,17 @@ export default function DispenseModal({ open, onClose, prescription, onDispensed
 
   const isAlreadyDispensed = prescription.dispensedStatus === 'dispensed';
 
+  const historyList = Array.isArray(prescription.dispenseHistory) && prescription.dispenseHistory.length > 0
+    ? prescription.dispenseHistory
+    : (prescription.dispensedAt ? [{
+        dispenseIndex: 1,
+        dispensedAt: prescription.dispensedAt,
+        dispenseNotes: prescription.dispenseNotes || 'Dispensed',
+        itemsDispensed: prescription.medications ? prescription.medications.map(m => ({ name: m.name, status: 'given' })) : [],
+        dispensedStatus: prescription.dispensedStatus || 'dispensed'
+      }] : []);
+  const dispenseHistoryCount = historyList.length;
+
   const handleStatusChange = (medicineName: string, newStatus: MedStatus) => {
     setMedStatuses(prev =>
       prev.map(ms =>
@@ -157,8 +176,20 @@ export default function DispenseModal({ open, onClose, prescription, onDispensed
           .map(ms => `${ms.medicineName}: ${ms.status.replace('_', ' ')}`)
       ].filter(Boolean).join('; ');
 
-      const res = await dispensePrescription(prescription.id, notes || 'All prescribed items verified and dispensed.');
+      const res = await dispensePrescription(
+        prescription.id,
+        notes || 'All prescribed items verified and dispensed.',
+        medStatuses.map(ms => ({ medicineName: ms.medicineName, status: ms.status }))
+      );
       if (res.success || res.prescription) {
+        if (autoDeductStock) {
+          const givenMeds = medStatuses
+            .filter(ms => ms.status === 'given')
+            .map(ms => ({ name: ms.medicineName, quantity: 1 }));
+          if (givenMeds.length > 0) {
+            batchDeductDispensedStock(givenMeds).catch(err => console.error('Inventory auto-deduct notice:', err));
+          }
+        }
         setSuccess('✅ Prescription fulfilled & marked as dispensed!');
         setTimeout(() => {
           if (onDispensedSuccess) onDispensedSuccess();
@@ -183,10 +214,11 @@ export default function DispenseModal({ open, onClose, prescription, onDispensed
   const medications = prescription.medications && prescription.medications.length > 0
     ? prescription.medications
     : prescription.medication
-      ? [{ name: prescription.medication, dosage: prescription.dosage || '', duration: prescription.duration || '', instructions: prescription.instructions || '', type: '' }]
+      ? [{ name: prescription.medication, dosage: prescription.dosage || '', duration: prescription.duration || '', instructions: prescription.instructions || '', type: '', quantity: 0 }]
       : [];
 
   return (
+    <>
     <Dialog
       open={open}
       onClose={onClose}
@@ -194,37 +226,39 @@ export default function DispenseModal({ open, onClose, prescription, onDispensed
       fullWidth
       PaperProps={{
         sx: {
-          borderRadius: '32px',
+          borderRadius: { xs: '24px', sm: '32px' },
           bgcolor: isDark ? '#0D1716' : '#FFFFFF',
           color: isDark ? '#F8FAFC' : '#0F172A',
-          p: 0.5,
+          p: 0,
           border: isDark ? '1.5px solid rgba(245, 158, 11, 0.35)' : '1px solid rgba(18, 48, 41, 0.12)',
           boxShadow: isDark
             ? '0 24px 64px rgba(0, 0, 0, 0.85), 0 0 20px rgba(245, 158, 11, 0.15)'
             : '0 24px 48px rgba(18, 48, 41, 0.12)',
-          maxHeight: '92vh',
+          maxHeight: '94vh',
+          m: { xs: 1.5, sm: 2 },
+          overflow: 'hidden',
           fontFamily: "'Outfit', 'Plus Jakarta Sans', sans-serif"
         }
       }}
     >
       {/* Premium Header Banner */}
-      <DialogTitle sx={{ p: 2.5, pb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid #F1F5F9' }}>
+      <DialogTitle sx={{ p: { xs: 2, sm: 2.5 }, pb: 1.8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid #F1F5F9' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <Box sx={{
-            width: 48,
-            height: 48,
+            width: { xs: 42, sm: 48 },
+            height: { xs: 42, sm: 48 },
             borderRadius: '16px',
             background: 'linear-gradient(135deg, #0D9488 0%, #028090 100%)',
             display: 'flex',
             alignItems: 'center',
-            justify: 'center',
+            justifyContent: 'center',
             boxShadow: '0 6px 18px rgba(13, 148, 136, 0.4)',
             color: '#FFFFFF'
           }}>
-            <PharmacyIcon sx={{ fontSize: 28 }} />
+            <PharmacyIcon sx={{ fontSize: { xs: 24, sm: 28 } }} />
           </Box>
           <Box>
-            <Typography variant="h6" sx={{ fontWeight: 900, fontSize: '1.25rem', fontFamily: "'Outfit', sans-serif", color: isDark ? '#F8FAFC' : '#123029', lineHeight: 1.2, letterSpacing: '-0.02em' }}>
+            <Typography variant="h6" sx={{ fontWeight: 900, fontSize: { xs: '1.1rem', sm: '1.25rem' }, fontFamily: "'Outfit', sans-serif", color: isDark ? '#F8FAFC' : '#123029', lineHeight: 1.2, letterSpacing: '-0.02em' }}>
               Verify & Dispense Rx
             </Typography>
             <Typography variant="caption" sx={{ color: isDark ? '#2DD4BF' : '#0F766E', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem' }}>
@@ -247,7 +281,7 @@ export default function DispenseModal({ open, onClose, prescription, onDispensed
         </IconButton>
       </DialogTitle>
 
-      <DialogContent sx={{ p: 2.5, overflowY: 'auto' }}>
+      <DialogContent sx={{ p: { xs: 2, sm: 2.5 }, overflowY: 'auto' }}>
         {error && (
           <Alert severity="error" sx={{ mb: 2.5, borderRadius: '16px', bgcolor: isDark ? 'rgba(239, 68, 68, 0.18)' : '#FEF2F2', color: isDark ? '#FCA5A5' : '#991B1B', border: '1px solid #EF4444', fontWeight: 700 }} onClose={() => setError('')}>
             {error}
@@ -259,8 +293,8 @@ export default function DispenseModal({ open, onClose, prescription, onDispensed
           </Alert>
         )}
 
-        {/* Previous Dispensing Warning Banner */}
-        {isAlreadyDispensed && prescription.dispensedBy && (
+        {/* Previous Dispensing Warning Banner with History Link */}
+        {isAlreadyDispensed && (
           <Paper
             elevation={0}
             sx={{
@@ -270,32 +304,54 @@ export default function DispenseModal({ open, onClose, prescription, onDispensed
               bgcolor: isDark ? 'rgba(245, 158, 11, 0.12)' : '#FFFBEB',
               border: isDark ? '1px solid rgba(245, 158, 11, 0.4)' : '1px solid #FDE68A',
               display: 'flex',
-              alignItems: 'flex-start',
-              gap: 1.5
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 1.5,
+              flexWrap: 'wrap'
             }}
           >
-            <WarningIcon sx={{ color: '#F59E0B', fontSize: 24, mt: 0.2 }} />
-            <Box>
-              <Typography variant="subtitle2" sx={{ fontWeight: 900, color: isDark ? '#FEF08A' : '#78350F', fontSize: '0.88rem' }}>
-                Prescription Already Dispensed
-              </Typography>
-              <Typography variant="caption" sx={{ color: isDark ? '#E5E7EB' : '#451A03', fontWeight: 700, display: 'block', mt: 0.3, lineHeight: 1.5 }}>
-                Fulfilled by <strong>{prescription.dispensedBy.pharmacistName}</strong> at <strong>{prescription.dispensedBy.pharmacyName || 'Medizo Care Pharmacy'}</strong>
-                {prescription.dispensedAt && (
-                  <> on <strong>{new Date(prescription.dispensedAt).toLocaleString()}</strong></>
-                )}
-              </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
+              <WarningIcon sx={{ color: '#F59E0B', fontSize: 24 }} />
+              <Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: 900, color: isDark ? '#FEF08A' : '#78350F', fontSize: '0.88rem' }}>
+                  Prescription Already Dispensed ({dispenseHistoryCount}x)
+                </Typography>
+                <Typography variant="caption" sx={{ color: isDark ? '#E5E7EB' : '#451A03', fontWeight: 700, display: 'block', fontSize: '0.75rem' }}>
+                  {prescription.dispensedAt ? `Last dispensed: ${new Date(prescription.dispensedAt).toLocaleDateString()} at ${new Date(prescription.dispensedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Fulfillment recorded in system'}
+                </Typography>
+              </Box>
             </Box>
+
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => setHistoryModalOpen(true)}
+              startIcon={<HistoryIcon sx={{ fontSize: '15px !important' }} />}
+              sx={{
+                borderRadius: '12px',
+                fontWeight: 900,
+                fontSize: '0.72rem',
+                textTransform: 'none',
+                color: isDark ? '#FBBF24' : '#B45309',
+                borderColor: isDark ? 'rgba(245, 158, 11, 0.4)' : '#FDE68A',
+                bgcolor: isDark ? 'rgba(245, 158, 11, 0.15)' : '#FEF3C7',
+                '&:hover': { bgcolor: isDark ? 'rgba(245, 158, 11, 0.25)' : '#FDE68A' }
+              }}
+            >
+              View History
+            </Button>
           </Paper>
         )}
 
-        {/* Prescription Header Status Card */}
+        {/* Prescription Header Status Card with Dispense History Button */}
         <Paper
           elevation={0}
           sx={{
             display: 'flex',
-            justify: 'space-between',
-            alignItems: 'center',
+            flexDirection: { xs: 'column', sm: 'row' },
+            justifyContent: 'space-between',
+            alignItems: { xs: 'flex-start', sm: 'center' },
+            gap: 1.5,
             mb: 2.5,
             p: 2,
             borderRadius: '20px',
@@ -311,7 +367,7 @@ export default function DispenseModal({ open, onClose, prescription, onDispensed
               bgcolor: isDark ? 'rgba(16, 185, 129, 0.15)' : '#ECFDF5',
               display: 'flex',
               alignItems: 'center',
-              justify: 'center'
+              justifyContent: 'center'
             }}>
               <QrIcon sx={{ color: isDark ? '#34D399' : '#059669', fontSize: 22 }} />
             </Box>
@@ -331,23 +387,54 @@ export default function DispenseModal({ open, onClose, prescription, onDispensed
               </Box>
             </Box>
           </Box>
-          <Chip
-            label={isAlreadyDispensed ? 'ALREADY DISPENSED' : 'READY TO DISPENSE'}
-            size="small"
-            sx={{
-              bgcolor: isAlreadyDispensed
-                ? (isDark ? 'rgba(16, 185, 129, 0.2)' : '#ECFDF5')
-                : (isDark ? 'rgba(245, 158, 11, 0.2)' : '#FFFBEB'),
-              color: isAlreadyDispensed
-                ? (isDark ? '#34D399' : '#047857')
-                : (isDark ? '#FBBF24' : '#B45309'),
-              fontWeight: 900,
-              fontSize: '0.72rem',
-              px: 0.5,
-              height: 26,
-              border: `1px solid ${isAlreadyDispensed ? (isDark ? '#10B981' : '#A7F3D0') : (isDark ? '#F59E0B' : '#FDE68A')}`
-            }}
-          />
+
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', width: { xs: '100%', sm: 'auto' }, justifyContent: { xs: 'space-between', sm: 'flex-end' } }}>
+            {/* History of Dispense Button */}
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => setHistoryModalOpen(true)}
+              startIcon={<HistoryIcon sx={{ fontSize: '16px !important' }} />}
+              sx={{
+                borderRadius: '14px',
+                fontWeight: 900,
+                fontSize: '0.72rem',
+                textTransform: 'none',
+                py: 0.6,
+                px: 1.2,
+                fontFamily: "'Outfit', sans-serif",
+                color: isDark ? '#34D399' : '#0D9488',
+                borderColor: isDark ? 'rgba(16, 185, 129, 0.4)' : '#99F6E4',
+                bgcolor: isDark ? 'rgba(16, 185, 129, 0.08)' : '#F0FDFA',
+                '&:hover': {
+                  bgcolor: isDark ? 'rgba(16, 185, 129, 0.18)' : '#CCFBF1',
+                  borderColor: '#10B981'
+                }
+              }}
+            >
+              {dispenseHistoryCount > 0 ? `History (${dispenseHistoryCount}x)` : 'Dispense History'}
+            </Button>
+
+            <Chip
+              label={isAlreadyDispensed ? (dispenseHistoryCount > 1 ? `DISPENSED (${dispenseHistoryCount}x)` : 'ALREADY DISPENSED') : 'READY TO DISPENSE'}
+              size="small"
+              sx={{
+                bgcolor: isAlreadyDispensed
+                  ? (isDark ? 'rgba(16, 185, 129, 0.2)' : '#ECFDF5')
+                  : (isDark ? 'rgba(245, 158, 11, 0.2)' : '#FFFBEB'),
+                color: isAlreadyDispensed
+                  ? (isDark ? '#34D399' : '#047857')
+                  : (isDark ? '#FBBF24' : '#B45309'),
+                fontWeight: 900,
+                fontSize: '0.72rem',
+                px: 0.5,
+                height: 28,
+                border: isAlreadyDispensed
+                  ? (isDark ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid #A7F3D0')
+                  : (isDark ? '1px solid rgba(245, 158, 11, 0.4)' : '1px solid #FDE68A')
+              }}
+            />
+          </Box>
         </Paper>
 
         {/* Doctor & Patient Information Cards */}
@@ -638,9 +725,32 @@ export default function DispenseModal({ open, onClose, prescription, onDispensed
           )}
         </Box>
 
-        {/* Pharmacist Dispense Notes */}
+        {/* Pharmacist Dispense Notes & Stock Auto-Deduct */}
         {!isAlreadyDispensed && (
-          <Box sx={{ mb: 1 }}>
+          <Box sx={{ mb: 2 }}>
+            <Box sx={{
+              p: 1.5,
+              mb: 2,
+              borderRadius: '16px',
+              bgcolor: isDark ? 'rgba(16, 185, 129, 0.1)' : '#ECFDF5',
+              border: isDark ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid #A7F3D0'
+            }}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={autoDeductStock}
+                    onChange={(e) => setAutoDeductStock(e.target.checked)}
+                    sx={{ color: '#10B981', '&.Mui-checked': { color: '#10B981' }, py: 0 }}
+                  />
+                }
+                label={
+                  <Typography sx={{ fontSize: '0.82rem', fontWeight: 800, color: isDark ? '#A7F3D0' : '#047857' }}>
+                    📦 Automatically deduct given medicines from My Pharmacy Stock
+                  </Typography>
+                }
+              />
+            </Box>
+
             <Typography variant="caption" sx={{ color: isDark ? '#9CA3AF' : '#64748B', fontWeight: 800, display: 'block', mb: 0.8, fontSize: '0.72rem', textTransform: 'uppercase' }}>
               Pharmacist Notes / Substitutions (Optional)
             </Typography>
@@ -782,5 +892,13 @@ export default function DispenseModal({ open, onClose, prescription, onDispensed
         )}
       </DialogActions>
     </Dialog>
+
+    {/* Dispense History Modal */}
+    <DispenseHistoryModal
+      open={historyModalOpen}
+      onClose={() => setHistoryModalOpen(false)}
+      prescription={prescription}
+    />
+    </>
   );
 }

@@ -45,21 +45,44 @@ export const deletePrescription = async (id: string): Promise<void> => {
   await api.delete(`/prescriptions/${id}`);
 };
 
-export const dispensePrescription = async (id: string, dispenseNotes?: string): Promise<{ success: boolean; message: string; prescription: Prescription }> => {
+export const dispensePrescription = async (
+  id: string,
+  dispenseNotes?: string,
+  medStatuses?: Array<{ medicineName: string; status: string }>
+): Promise<{ success: boolean; message: string; prescription: Prescription }> => {
   clearApiCache();
-  const response = await api.put(`/prescriptions/${id}/dispense`, { dispenseNotes });
+  const response = await api.put(`/prescriptions/${id}/dispense`, { dispenseNotes, medStatuses });
   return response.data;
 };
 
+export const extractCleanPrescriptionId = (input: string): string => {
+  if (!input) return '';
+  let clean = (input || '').trim();
+
+  try {
+    const paramMatch = clean.match(/[?&](?:rxId|id|code|rx|scan|verify)=([^&#]+)/i);
+    if (paramMatch && paramMatch[1]) {
+      return decodeURIComponent(paramMatch[1]).trim();
+    }
+
+    if (clean.includes('/')) {
+      const urlWithoutQuery = clean.split('?')[0].split('#')[0];
+      const segments = urlWithoutQuery.split('/').filter(Boolean);
+      const last = segments.pop() || '';
+      if (last && !['dashboard', 'verify-prescription', 'verify', 'view', 'prescriptions', 'public'].includes(last.toLowerCase())) {
+        return decodeURIComponent(last).trim();
+      }
+    }
+  } catch (e) {}
+
+  return clean.split('?')[0].split('#')[0].trim();
+};
+
 export const lookupPrescriptionByCode = async (code: string): Promise<{ success: boolean; prescription: Prescription & { doctorName?: string; doctorSpecialization?: string; doctorVerified?: boolean; patientEmail?: string } }> => {
-  let cleanCode = (code || '').trim();
-  if (cleanCode.includes('id=')) {
-    const match = cleanCode.match(/[?&]id=([^&#]+)/);
-    if (match) cleanCode = match[1];
-  } else if (cleanCode.includes('/')) {
-    cleanCode = cleanCode.split('/').filter(Boolean).pop() || cleanCode;
+  const cleanCode = extractCleanPrescriptionId(code);
+  if (!cleanCode) {
+    throw new Error('Invalid prescription ID or QR code');
   }
-  cleanCode = cleanCode.split('?')[0].trim();
 
   try {
     const response = await api.get(`/prescriptions/lookup/${encodeURIComponent(cleanCode)}`);

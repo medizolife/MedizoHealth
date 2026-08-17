@@ -1,6 +1,6 @@
 'use client';
 import { ReactNode } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import CircularProgress from '@mui/material/CircularProgress';
 import Box from '@mui/material/Box';
@@ -16,6 +16,7 @@ interface ProtectedRouteProps {
 const ProtectedRoute = ({ children, requiredRole, requireDigiLocker }: ProtectedRouteProps) => {
   const { authState } = useAuth();
   const { isAuthenticated, user, loading } = authState;
+  const location = useLocation();
 
   // Show loading while checking authentication
   if (loading) {
@@ -28,7 +29,9 @@ const ProtectedRoute = ({ children, requiredRole, requireDigiLocker }: Protected
 
   // Redirect to login if not authenticated
   if (!isAuthenticated || !user) {
-    return <Navigate to="/login" replace />;
+    const fullPath = `${location.pathname}${location.search}`;
+    const redirectUrl = fullPath && fullPath !== '/' ? `/login?redirect=${encodeURIComponent(fullPath)}` : '/login';
+    return <Navigate to={redirectUrl} replace />;
   }
 
   // Check role if required

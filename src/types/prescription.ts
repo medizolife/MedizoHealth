@@ -72,6 +72,21 @@ export interface FollowUpInfo {
   bringItems?: string[];
 }
 
+// Single Dispensing Event History record
+export interface DispenseHistoryEvent {
+  dispenseIndex?: number;
+  dispensedAt: string;
+  dispenseNotes?: string;
+  itemsDispensed?: Array<{
+    name: string;
+    status: string;
+    quantity?: string | number;
+  }>;
+  dispensedStatus?: string;
+  totalItemsPrescribed?: number;
+  totalItemsGiven?: number;
+}
+
 export interface Prescription {
   id: string;
   doctorId: string;
@@ -134,6 +149,8 @@ export interface Prescription {
     licenseNumber?: string;
   };
   dispenseNotes?: string;
+  dispenseHistory?: DispenseHistoryEvent[];
+  dispenseCount?: number;
   createdAt: string;
   updatedAt?: string;
 }

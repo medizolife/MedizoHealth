@@ -29,7 +29,8 @@ import {
   Person as PersonIcon,
   ChevronRight as ChevronRightIcon,
   MedicalServices as MedicalIcon,
-  CalendarToday as CalendarIcon
+  CalendarToday as CalendarIcon,
+  History as HistoryIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
@@ -38,6 +39,7 @@ import { useThemeContext } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Prescription } from '../types/prescription';
 import DigiLockerGuard from '../components/DigiLockerGuard';
+import DispenseHistoryModal from '../components/DispenseHistoryModal';
 
 interface Stats {
   total: number;
@@ -57,6 +59,7 @@ export default function DoctorPrescriptions() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [stats, setStats] = useState<Stats | null>(null);
+  const [historyModalPrescription, setHistoryModalPrescription] = useState<Prescription | null>(null);
 
   useEffect(() => {
     fetchPrescriptions();
@@ -424,7 +427,35 @@ export default function DoctorPrescriptions() {
                         </Typography>
                       </Box>
                     </Box>
-                    {getStatusChip(prescription.status)}
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                      {(() => {
+                        const historyCount = Array.isArray(prescription.dispenseHistory) && prescription.dispenseHistory.length > 0
+                          ? prescription.dispenseHistory.length
+                          : (prescription.dispensedAt ? 1 : 0);
+                        if (historyCount === 0) return null;
+                        return (
+                          <Chip
+                            icon={<HistoryIcon sx={{ fontSize: '13px !important', color: '#047857 !important' }} />}
+                            label={`Dispensed ${historyCount}x`}
+                            size="small"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setHistoryModalPrescription(prescription);
+                            }}
+                            sx={{
+                              fontSize: '0.68rem',
+                              fontWeight: 800,
+                              bgcolor: 'rgba(16, 185, 129, 0.15)',
+                              color: '#047857',
+                              border: '1px solid rgba(16, 185, 129, 0.35)',
+                              cursor: 'pointer',
+                              '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.25)' }
+                            }}
+                          />
+                        );
+                      })()}
+                      {getStatusChip(prescription.status)}
+                    </Box>
                   </Box>
 
                   <Box sx={{ p: 1.5, borderRadius: '14px', bgcolor: mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(26, 49, 44, 0.04)', mb: 2 }}>
@@ -501,6 +532,13 @@ export default function DoctorPrescriptions() {
           ))}
         </Grid>
       )}
+
+      {/* Dispense History Modal */}
+      <DispenseHistoryModal
+        open={Boolean(historyModalPrescription)}
+        onClose={() => setHistoryModalPrescription(null)}
+        prescription={historyModalPrescription}
+      />
     </Container>
   );
 }

@@ -39,10 +39,12 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { useThemeContext } from '../contexts/ThemeContext';
-import { getPrescriptions, lookupPrescriptionByCode } from '../services/prescriptions';
+import { getPrescriptions, lookupPrescriptionByCode, extractCleanPrescriptionId } from '../services/prescriptions';
 import { Prescription } from '../types/prescription';
 import DispenseModal from '../components/DispenseModal';
 import QrScannerModal from '../components/QrScannerModal';
+import PharmacyInventory from '../components/PharmacyInventory';
+import { Inventory2 as InventoryIcon } from '@mui/icons-material';
 
 export default function PharmacistDashboard() {
   const { authState } = useAuth();
@@ -51,6 +53,9 @@ export default function PharmacistDashboard() {
   const isDark = mode === 'dark';
 
   const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = (searchParams.get('tab') === 'inventory' || searchParams.get('tab') === 'stock') ? 'inventory' : 'dispense';
+  const [dashboardTab, setDashboardTab] = useState<'dispense' | 'inventory'>(initialTab);
+
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -64,28 +69,11 @@ export default function PharmacistDashboard() {
 
   // Dedicated Prescription ID / URL validation
   const handleIdValidation = async (rawInput: string) => {
-    let id = rawInput.trim();
-    if (!id) return;
-
-    if (id.startsWith('{') && id.endsWith('}')) {
-      try {
-        const parsed = JSON.parse(id);
-        id = parsed.id || parsed.prescriptionId || parsed._id || id;
-      } catch (e) {}
+    const id = extractCleanPrescriptionId(rawInput);
+    if (!id) {
+      setSnackbar({ open: true, message: '❌ Please enter a valid Prescription ID or QR code.', severity: 'error' });
+      return;
     }
-
-    if (id.includes('?id=')) {
-      const match = id.match(/[?&]id=([^&]+)/);
-      if (match && match[1]) id = match[1];
-    } else if (id.includes('/')) {
-      const parts = id.split('?')[0].split('/');
-      const lastPart = parts.pop() || parts.pop();
-      if (lastPart && lastPart !== 'detail' && lastPart !== 'prescriptions' && lastPart !== 'lookup') {
-        id = lastPart;
-      }
-    }
-
-    id = id.split('?')[0].trim();
 
     setIdLookupLoading(true);
     setSnackbar({ open: true, message: `🔍 Verifying prescription ID: ${id}...`, severity: 'info' });
@@ -98,7 +86,7 @@ export default function PharmacistDashboard() {
         setSnackbar({ open: true, message: '✅ Prescription verified! Inspect digital signature and dispense.', severity: 'success' });
       }
     } catch (err: any) {
-      const msg = err.response?.data?.message || 'Prescription not found or invalid ID.';
+      const msg = err.response?.data?.message || err.message || 'Prescription not found or invalid ID.';
       setSnackbar({ open: true, message: `❌ ${msg}`, severity: 'error' });
     } finally {
       setIdLookupLoading(false);
@@ -180,7 +168,8 @@ export default function PharmacistDashboard() {
   const handleScanSuccess = async (decodedText: string) => {
     setScannerOpen(false);
     setLookupLoading(true);
-    setSnackbar({ open: true, message: `🔍 Looking up prescription: ${decodedText.substring(0, 30)}...`, severity: 'info' });
+    const cleanId = extractCleanPrescriptionId(decodedText);
+    setSnackbar({ open: true, message: `🔍 Looking up prescription: ${cleanId || decodedText.substring(0, 30)}...`, severity: 'info' });
 
     try {
       const result = await lookupPrescriptionByCode(decodedText);
@@ -190,9 +179,9 @@ export default function PharmacistDashboard() {
         setSnackbar({ open: true, message: '✅ Prescription found! Verify and dispense.', severity: 'success' });
       }
     } catch (err: any) {
-      const msg = err.response?.data?.message || 'Prescription not found for this QR code.';
+      const msg = err.response?.data?.message || err.message || 'Prescription not found for this QR code.';
       setSnackbar({ open: true, message: `❌ ${msg}`, severity: 'error' });
-      setSearch(decodedText);
+      setSearch(cleanId || decodedText);
     } finally {
       setLookupLoading(false);
     }
@@ -255,7 +244,71 @@ export default function PharmacistDashboard() {
         </Box>
       </Paper>
 
-      {/* Metrics Cards Grid */}
+      {/* Top Station Switcher Segmented Tabs */}
+      <Paper
+        elevation={0}
+        sx={{
+          p: 0.8,
+          mb: 3.5,
+          borderRadius: '22px',
+          bgcolor: isDark ? 'rgba(0,0,0,0.45)' : '#F1F5F9',
+          border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid #E2E8F0',
+          display: 'flex',
+          gap: 1
+        }}
+      >
+        <Button
+          fullWidth
+          variant={dashboardTab === 'dispense' ? 'contained' : 'text'}
+          onClick={() => setDashboardTab('dispense')}
+          startIcon={<PharmacyIcon />}
+          sx={{
+            py: 1.3,
+            borderRadius: '16px',
+            fontWeight: 900,
+            fontFamily: "'Outfit', sans-serif",
+            textTransform: 'none',
+            fontSize: '0.95rem',
+            bgcolor: dashboardTab === 'dispense' ? '#0D9488' : 'transparent',
+            color: dashboardTab === 'dispense' ? '#FFFFFF' : (isDark ? '#9CA3AF' : '#64748B'),
+            boxShadow: dashboardTab === 'dispense' ? '0 4px 16px rgba(13, 148, 136, 0.35)' : 'none',
+            '&:hover': {
+              bgcolor: dashboardTab === 'dispense' ? '#0F766E' : (isDark ? 'rgba(255,255,255,0.05)' : '#E2E8F0')
+            }
+          }}
+        >
+          🩺 Dispensing & Verification Station
+        </Button>
+
+        <Button
+          fullWidth
+          variant={dashboardTab === 'inventory' ? 'contained' : 'text'}
+          onClick={() => setDashboardTab('inventory')}
+          startIcon={<InventoryIcon />}
+          sx={{
+            py: 1.3,
+            borderRadius: '16px',
+            fontWeight: 900,
+            fontFamily: "'Outfit', sans-serif",
+            textTransform: 'none',
+            fontSize: '0.95rem',
+            bgcolor: dashboardTab === 'inventory' ? '#10B981' : 'transparent',
+            color: dashboardTab === 'inventory' ? '#FFFFFF' : (isDark ? '#9CA3AF' : '#64748B'),
+            boxShadow: dashboardTab === 'inventory' ? '0 4px 16px rgba(16, 185, 129, 0.35)' : 'none',
+            '&:hover': {
+              bgcolor: dashboardTab === 'inventory' ? '#059669' : (isDark ? 'rgba(255,255,255,0.05)' : '#E2E8F0')
+            }
+          }}
+        >
+          📦 My Stock & Inventory Management
+        </Button>
+      </Paper>
+
+      {dashboardTab === 'inventory' ? (
+        <PharmacyInventory onNotify={(msg, sev) => setSnackbar({ open: true, message: msg, severity: sev })} />
+      ) : (
+        <>
+          {/* Metrics Cards Grid */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
         <Grid item xs={4}>
           <Paper
@@ -630,7 +683,7 @@ export default function PharmacistDashboard() {
                       }}
                     />
                     <Chip
-                      label="✅ DISPENSED"
+                      label={(Array.isArray(rx.dispenseHistory) && rx.dispenseHistory.length > 1) ? `✅ DISPENSED (${rx.dispenseHistory.length}x)` : "✅ DISPENSED"}
                       size="small"
                       sx={{
                         bgcolor: isDark ? 'rgba(16, 185, 129, 0.2)' : '#ECFDF5',
@@ -681,6 +734,8 @@ export default function PharmacistDashboard() {
             </Card>
           ))}
         </Box>
+      )}
+      </>
       )}
 
       {/* Floating QR Scan FAB Button */}

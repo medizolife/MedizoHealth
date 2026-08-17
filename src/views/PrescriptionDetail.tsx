@@ -53,8 +53,18 @@ import {
   Contrast as ContrastIcon,
   NavigateNext as NextIcon,
   NavigateBefore as PrevIcon,
-  Add as AddIcon
+  Add as AddIcon,
+  AddCircleOutline as AddCircleOutlineIcon,
+  UploadFile as UploadFileIcon,
+  MedicalServices as MedicalServicesIcon,
+  Assignment as AssignmentIcon,
+  Biotech as BiotechIcon,
+  MonitorHeart as MonitorHeartIcon,
+  Description as DescriptionIcon,
+  Event as EventIcon,
+  History as HistoryIcon
 } from '@mui/icons-material';
+import DispenseHistoryModal from '../components/DispenseHistoryModal';
 
 const PrescriptionDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -70,6 +80,7 @@ const PrescriptionDetail = () => {
   const [qrModalOpen, setQrModalOpen] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [dispenseHistoryOpen, setDispenseHistoryOpen] = useState(false);
 
   // Test Reports states
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
@@ -89,6 +100,9 @@ const PrescriptionDetail = () => {
   const [darkModeViewer, setDarkModeViewer] = useState(false);
   const [reportFilter, setReportFilter] = useState('ALL');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const origin = typeof window !== 'undefined' && window.location.origin ? window.location.origin : 'https://medizoprod.medizolife.workers.dev';
+  const verificationQrPayload = id ? `${origin}/dashboard?rxId=${encodeURIComponent(id)}` : `${origin}/dashboard`;
   
   useEffect(() => {
     if (!id) return;
@@ -615,6 +629,17 @@ const PrescriptionDetail = () => {
   const hasPrescribedTests = investigationsList.length > 0;
   const testReports = prescription.testReports || [];
   const reportsCount = testReports.length;
+
+  const historyList = Array.isArray(prescription.dispenseHistory) && prescription.dispenseHistory.length > 0
+    ? prescription.dispenseHistory
+    : (prescription.dispensedAt ? [{
+        dispenseIndex: 1,
+        dispensedAt: prescription.dispensedAt,
+        dispenseNotes: prescription.dispenseNotes || 'Dispensed',
+        itemsDispensed: prescription.medications ? prescription.medications.map(m => ({ name: m.name, status: 'given' })) : [],
+        dispensedStatus: prescription.dispensedStatus || 'dispensed'
+      }] : []);
+  const dispenseCount = historyList.length;
   
   return (
     <Container maxWidth="lg" sx={{ pt: { xs: 2, md: 3 }, pb: 6, px: { xs: 2, sm: 3, md: 4 } }}>
@@ -683,7 +708,7 @@ const PrescriptionDetail = () => {
           </Paper>
         )}
 
-        {/* Quick Action Bar (Print, Download, Share, Upload Reports) */}
+        {/* Quick Action Bar (Print, Download, Share, Upload Reports, Dispense History) */}
         <Paper elevation={0} sx={{ p: 1.5, borderRadius: '18px', bgcolor: '#ffffff', border: '1px solid rgba(19, 79, 77, 0.15)', display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
             <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#134F4D' }}>
@@ -695,6 +720,20 @@ const PrescriptionDetail = () => {
               color={prescription.status === 'completed' ? 'success' : 'primary'} 
               sx={{ fontWeight: 800, height: 22, fontSize: '0.7rem' }} 
             />
+            {dispenseCount > 0 && (
+              <Chip 
+                label={`💊 Dispensed (${dispenseCount}x)`} 
+                size="small" 
+                sx={{ 
+                  fontWeight: 800, 
+                  height: 22, 
+                  fontSize: '0.7rem',
+                  bgcolor: 'rgba(16, 185, 129, 0.15)',
+                  color: '#047857',
+                  border: '1px solid rgba(16, 185, 129, 0.35)'
+                }} 
+              />
+            )}
             {hasPrescribedTests && (
               <Chip 
                 label={reportsCount > 0 ? `🧪 Reports Uploaded (${reportsCount})` : '🧪 Tests Required'} 
@@ -711,6 +750,24 @@ const PrescriptionDetail = () => {
             )}
           </Box>
           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<HistoryIcon sx={{ color: '#0D9488' }} />}
+              onClick={() => setDispenseHistoryOpen(true)}
+              sx={{
+                borderColor: 'rgba(13, 148, 136, 0.4)',
+                color: '#0D9488',
+                fontWeight: 800,
+                borderRadius: '12px',
+                px: 1.8,
+                py: 0.8,
+                bgcolor: 'rgba(13, 148, 136, 0.06)',
+                '&:hover': { bgcolor: 'rgba(13, 148, 136, 0.12)', borderColor: '#0D9488' }
+              }}
+            >
+              Dispense History {dispenseCount > 0 ? `(${dispenseCount})` : ''}
+            </Button>
             <Button
               variant="outlined"
               size="small"
@@ -749,7 +806,7 @@ const PrescriptionDetail = () => {
             <Button
               variant="contained"
               size="small"
-              startIcon={<CloudUploadIcon />}
+              startIcon={<UploadFileIcon />}
               onClick={() => openUploadModal()}
               sx={{
                 bgcolor: '#134F4D',
@@ -961,7 +1018,7 @@ const PrescriptionDetail = () => {
                             <Button
                               size="small"
                               variant="contained"
-                              startIcon={<CloudUploadIcon />}
+                              startIcon={<UploadFileIcon />}
                               onClick={() => openUploadModal(inv.testName)}
                               sx={{
                                 borderRadius: '10px',
@@ -999,12 +1056,26 @@ const PrescriptionDetail = () => {
                                   gap: 1
                                 }}
                               >
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: '180px' }}>
-                                  {report.fileType === 'pdf' ? (
-                                    <PdfIcon sx={{ color: '#dc2626', fontSize: 22 }} />
-                                  ) : (
-                                    <ImageIcon sx={{ color: '#2563eb', fontSize: 22 }} />
-                                  )}
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2, minWidth: '180px' }}>
+                                  <Box
+                                    sx={{
+                                      width: 36,
+                                      height: 36,
+                                      borderRadius: '8px',
+                                      bgcolor: report.fileType === 'pdf' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(19, 79, 77, 0.1)',
+                                      color: report.fileType === 'pdf' ? '#dc2626' : '#134F4D',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      flexShrink: 0
+                                    }}
+                                  >
+                                    {report.fileType === 'pdf' ? (
+                                      <PdfIcon sx={{ fontSize: 20 }} />
+                                    ) : (
+                                      <ImageIcon sx={{ fontSize: 20 }} />
+                                    )}
+                                  </Box>
                                   <Box>
                                     <Typography variant="caption" sx={{ fontWeight: 800, color: '#0f172a', display: 'block' }}>
                                       {report.originalName || report.filename}
@@ -1069,19 +1140,26 @@ const PrescriptionDetail = () => {
                             <Button
                               size="small"
                               variant="text"
-                              startIcon={<CloudUploadIcon />}
+                              startIcon={<AddCircleOutlineIcon sx={{ fontSize: '15px !important', color: '#047857' }} />}
                               onClick={() => openUploadModal(inv.testName)}
                               sx={{
                                 alignSelf: 'flex-start',
-                                fontSize: '0.72rem',
+                                fontSize: '0.74rem',
                                 fontWeight: 700,
-                                color: '#134F4D',
+                                color: '#047857',
                                 textTransform: 'none',
-                                p: 0,
-                                mt: 0.5
+                                p: '3px 8px',
+                                mt: 0.8,
+                                borderRadius: '8px',
+                                bgcolor: 'rgba(16, 185, 129, 0.08)',
+                                border: '1px solid rgba(16, 185, 129, 0.25)',
+                                '&:hover': {
+                                  bgcolor: 'rgba(16, 185, 129, 0.16)',
+                                  borderColor: 'rgba(16, 185, 129, 0.4)'
+                                }
                               }}
                             >
-                              + Upload Additional / Updated Report for {inv.testName}
+                              Upload Additional / Updated Report for {inv.testName}
                             </Button>
                           </Box>
                         )}
@@ -1102,7 +1180,7 @@ const PrescriptionDetail = () => {
             {((prescription as any).provisionalDiagnosis && (prescription as any).provisionalDiagnosis.length > 0) && (
               <Box sx={{ bgcolor: '#f8fafc', p: 2, borderRadius: '16px', mb: 2, border: '1px solid #e2e8f0' }}>
                 <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#134F4D', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                  🩺 Diagnosis
+                  <MedicalServicesIcon sx={{ fontSize: 18, color: '#134F4D' }} /> Diagnosis
                 </Typography>
                 <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
                   {(prescription as any).provisionalDiagnosis.map((d: string, i: number) => (
@@ -1115,7 +1193,7 @@ const PrescriptionDetail = () => {
             {((prescription as any).presentingComplaints && (prescription as any).presentingComplaints.length > 0) && (
               <Box sx={{ bgcolor: '#f8fafc', p: 2, borderRadius: '16px', mb: 2, border: '1px solid #e2e8f0' }}>
                 <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#134F4D', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                  📋 Presenting Complaints
+                  <AssignmentIcon sx={{ fontSize: 18, color: '#134F4D' }} /> Presenting Complaints
                 </Typography>
                 <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
                   {(prescription as any).presentingComplaints.map((c: string, i: number) => (
@@ -1128,7 +1206,7 @@ const PrescriptionDetail = () => {
             {((prescription as any).clinicalFindings && (prescription as any).clinicalFindings.length > 0) && (
               <Box sx={{ bgcolor: '#f8fafc', p: 2, borderRadius: '16px', mb: 2, border: '1px solid #e2e8f0' }}>
                 <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#134F4D', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                  🔬 Clinical Findings
+                  <BiotechIcon sx={{ fontSize: 18, color: '#134F4D' }} /> Clinical Findings
                 </Typography>
                 <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
                   {(prescription as any).clinicalFindings.map((f: string, i: number) => (
@@ -1142,7 +1220,7 @@ const PrescriptionDetail = () => {
             {(prescription as any).vitalSigns && Object.keys((prescription as any).vitalSigns).some(k => (prescription as any).vitalSigns[k]) && (
               <Box sx={{ bgcolor: '#f8fafc', p: 2, borderRadius: '16px', mb: 2, border: '1px solid #e2e8f0' }}>
                 <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#134F4D', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                  📊 Vital Signs
+                  <MonitorHeartIcon sx={{ fontSize: 18, color: '#134F4D' }} /> Vital Signs
                 </Typography>
                 <Grid container spacing={1}>
                   {(prescription as any).vitalSigns.bloodPressure && (
@@ -1182,7 +1260,9 @@ const PrescriptionDetail = () => {
             {/* Notes */}
             {(prescription as any).notes && (
               <Box sx={{ bgcolor: '#fffbeb', p: 2, borderRadius: '16px', mb: 2, border: '1px solid rgba(245, 158, 11, 0.2)' }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#92400e', mb: 0.5 }}>📝 Notes</Typography>
+                <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#92400e', mb: 0.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <DescriptionIcon sx={{ fontSize: 18, color: '#92400e' }} /> Notes
+                </Typography>
                 <Typography variant="body2" sx={{ color: '#78350f' }}>{(prescription as any).notes}</Typography>
               </Box>
             )}
@@ -1190,7 +1270,9 @@ const PrescriptionDetail = () => {
             {/* Follow-up */}
             {(prescription as any).followUpDate && (
               <Box sx={{ bgcolor: 'rgba(59, 130, 246, 0.04)', p: 2, borderRadius: '16px', mb: 2, border: '1px solid rgba(59, 130, 246, 0.15)' }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#1d4ed8', mb: 0.5 }}>📅 Follow-Up Date</Typography>
+                <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#1d4ed8', mb: 0.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <EventIcon sx={{ fontSize: 18, color: '#1d4ed8' }} /> Follow-Up Date
+                </Typography>
                 <Typography variant="body2" sx={{ fontWeight: 700, color: '#1e40af' }}>
                   {new Date((prescription as any).followUpDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                 </Typography>
@@ -1227,7 +1309,7 @@ const PrescriptionDetail = () => {
             <Box sx={{ mt: 2.5, pt: 2, borderTop: '1px dashed #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Box sx={{ p: 1, bgcolor: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                  <QRCode value={prescription.id || 'VALID-RX'} size={72} />
+                  <QRCode value={verificationQrPayload} size={72} />
                 </Box>
                 <Box>
                   <Typography variant="caption" sx={{ color: '#134F4D', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block' }}>
@@ -1293,7 +1375,7 @@ const PrescriptionDetail = () => {
               <Button
                 variant="contained"
                 size="small"
-                startIcon={<CloudUploadIcon />}
+                startIcon={<UploadFileIcon />}
                 onClick={() => openUploadModal()}
                 sx={{
                   borderRadius: '12px',
@@ -1568,7 +1650,7 @@ const PrescriptionDetail = () => {
                 Authenticity Token & QR Code
               </Typography>
               <Box sx={{ p: 2, bgcolor: '#f8fafc', borderRadius: '20px', display: 'inline-block', border: '1px solid #e2e8f0', mb: 1.5 }}>
-                <QRCode value={prescription.id || 'VALID-RX'} size={180} />
+                <QRCode value={verificationQrPayload} size={180} />
               </Box>
               <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#134F4D' }}>
                 #{prescription.id?.substring(0, 8) || 'RX-MEDIZO'}
@@ -2181,13 +2263,20 @@ const PrescriptionDetail = () => {
         </DialogTitle>
         <DialogContent>
           <Box sx={{ p: 2, bgcolor: '#ffffff', borderRadius: '16px', display: 'inline-block', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}>
-            <QRCode value={prescription.id || 'VALID-RX'} size={200} />
+            <QRCode value={verificationQrPayload} size={200} />
           </Box>
           <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 2 }}>
             Digital Signature Token: {prescription.id?.toUpperCase() || 'RX-MEDIZO'}
           </Typography>
         </DialogContent>
       </Dialog>
+
+      {/* Dispense History Modal */}
+      <DispenseHistoryModal
+        open={dispenseHistoryOpen}
+        onClose={() => setDispenseHistoryOpen(false)}
+        prescription={prescription}
+      />
     </Container>
   );
 };

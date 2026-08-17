@@ -9,7 +9,8 @@ import {
   People as PatientsIcon, 
   Person as ProfileIcon,
   Login as LoginIcon,
-  AppRegistration as RegisterIcon
+  AppRegistration as RegisterIcon,
+  Inventory2 as InventoryIcon
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -29,7 +30,10 @@ const MobileBottomNav = () => {
   const getActiveTab = () => {
     const path = location.pathname;
     if (path === '/' || path === '/home') return 'home';
-    if (path === '/dashboard') return 'dashboard';
+    if (path === '/dashboard') {
+      if (location.search.includes('tab=inventory') || location.search.includes('tab=stock')) return 'inventory';
+      return 'dashboard';
+    }
     if (path.startsWith('/prescriptions/new')) return 'new-rx';
     if (path.startsWith('/prescriptions')) return 'prescriptions';
     if (path.startsWith('/patients')) return 'patients';
@@ -46,6 +50,9 @@ const MobileBottomNav = () => {
         break;
       case 'dashboard':
         navigate('/dashboard');
+        break;
+      case 'inventory':
+        navigate('/dashboard?tab=inventory');
         break;
       case 'prescriptions':
         navigate('/prescriptions/all');
@@ -89,14 +96,16 @@ const MobileBottomNav = () => {
         transform: 'translateX(-50%) !important',
         width: { xs: 'calc(100% - 24px)', sm: '480px' },
         maxWidth: '480px',
-        zIndex: 1400,
-        borderRadius: '36px !important',
+        bgcolor: mode === 'dark' ? 'rgba(10, 18, 16, 0.88)' : 'rgba(255, 255, 255, 0.88)',
+        backdropFilter: 'blur(20px) saturate(180%)',
+        border: `1px solid ${mode === 'dark' ? 'rgba(137, 215, 183, 0.25)' : 'rgba(26, 49, 44, 0.12)'}`,
+        boxShadow: mode === 'dark' 
+          ? '0 12px 32px rgba(0, 0, 0, 0.6), 0 0 20px rgba(137, 215, 183, 0.15)' 
+          : '0 12px 32px rgba(26, 49, 44, 0.12), 0 2px 6px rgba(0,0,0,0.04)',
+        zIndex: 1100,
+        borderRadius: { xs: '24px', sm: '32px' },
         overflow: 'hidden',
-        border: mode === 'dark' ? '1px solid rgba(255, 255, 255, 0.15)' : '1px solid rgba(0, 0, 0, 0.1)',
-        bgcolor: mode === 'dark' ? 'rgba(15, 23, 42, 0.94) !important' : 'rgba(255, 255, 255, 0.96) !important',
-        backdropFilter: 'blur(30px) saturate(220%)',
-        WebkitBackdropFilter: 'blur(30px) saturate(220%)',
-        boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)'
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
       }}
     >
       <BottomNavigation
@@ -105,43 +114,45 @@ const MobileBottomNav = () => {
         showLabels
         sx={{
           bgcolor: 'transparent',
-          height: 64,
-          px: 0.5,
-          alignItems: 'center',
+          height: { xs: 58, sm: 64 },
           '& .MuiBottomNavigationAction-root': {
-            color: mode === 'dark' ? 'rgba(255, 255, 255, 0.65)' : '#475569',
-            py: 0.25,
-            px: 0.25,
             minWidth: 0,
-            flex: 1,
-            transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-            borderRadius: '24px',
-            '& .MuiBottomNavigationAction-label': {
-              fontSize: '0.68rem',
-              fontWeight: 700,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              mt: 0.2,
-              '&.Mui-selected': {
-                fontSize: '0.72rem',
-                fontWeight: 800
+            padding: { xs: '4px 0', sm: '6px 0' },
+            color: mode === 'dark' ? 'rgba(255, 255, 255, 0.55)' : 'rgba(0, 0, 0, 0.55)',
+            fontFamily: "'Outfit', sans-serif",
+            transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+            '&.Mui-selected': {
+              color: mode === 'dark' ? '#89D7B7' : '#1A312C',
+              '& .MuiBottomNavigationAction-label': {
+                fontSize: { xs: '0.70rem', sm: '0.75rem' },
+                fontWeight: 900,
+                transform: 'scale(1.05)'
+              },
+              '& .MuiSvgIcon-root': {
+                transform: 'translateY(-2px) scale(1.15)',
+                filter: mode === 'dark' ? 'drop-shadow(0 0 8px rgba(137, 215, 183, 0.6))' : 'none'
               }
             },
-            '&.Mui-selected': {
-              color: mode === 'dark' ? '#34D399' : '#059669',
-              '& .MuiSvgIcon-root': {
-                transform: 'translateY(-1px) scale(1.1)',
-                color: mode === 'dark' ? '#34D399' : '#059669',
-                filter: 'drop-shadow(0 0 8px rgba(16, 185, 129, 0.3))'
-              }
+            '& .MuiBottomNavigationAction-label': {
+              fontSize: { xs: '0.65rem', sm: '0.70rem' },
+              fontWeight: 700,
+              mt: 0.2
+            },
+            '& .MuiSvgIcon-root': {
+              fontSize: { xs: '1.25rem', sm: '1.4rem' },
+              transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
             }
           }
         }}
       >
         {isAuthenticated ? (
-          user?.role === 'doctor' ? [
-            <BottomNavigationAction key="dashboard" label="Feed" value="dashboard" icon={<DashboardIcon />} />,
+          user?.role === 'nurse' ? [
+            <BottomNavigationAction key="nurse" label="Care Hub" value="dashboard" icon={<DashboardIcon />} />,
+            <BottomNavigationAction key="patients" label="Patients" value="patients" icon={<PatientsIcon />} />,
+            <BottomNavigationAction key="prescriptions" label="Care Log" value="prescriptions" icon={<PrescriptionsIcon />} />,
+            <BottomNavigationAction key="profile" label="Profile" value="profile" icon={<ProfileIcon />} />
+          ] : user?.role === 'doctor' ? [
+            <BottomNavigationAction key="dashboard" label="Dashboard" value="dashboard" icon={<DashboardIcon />} />,
             <BottomNavigationAction key="prescriptions" label="Rx List" value="prescriptions" icon={<PrescriptionsIcon />} />,
             <BottomNavigationAction 
               key="new-rx" 
@@ -157,6 +168,7 @@ const MobileBottomNav = () => {
             <BottomNavigationAction key="profile" label="Profile" value="profile" icon={<ProfileIcon />} />
           ] : user?.role === 'pharmacist' ? [
             <BottomNavigationAction key="dashboard" label="Rx Feed" value="dashboard" icon={<DashboardIcon />} />,
+            <BottomNavigationAction key="inventory" label="My Stock" value="inventory" icon={<InventoryIcon />} />,
             <BottomNavigationAction 
               key="dispense" 
               label="Dispense" 

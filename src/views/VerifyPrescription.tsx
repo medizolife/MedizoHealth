@@ -41,6 +41,8 @@ import {
   MedicalServices as MedicalServicesIcon
 } from '@mui/icons-material';
 
+import { extractCleanPrescriptionId } from '../services/prescriptions';
+
 const VerifyPrescription = () => {
   const { id: routeId } = useParams<{ id: string }>();
   const location = useLocation();
@@ -53,26 +55,24 @@ const VerifyPrescription = () => {
   const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
 
-  // Extract ID from query parameter (?id=... or ?code=...) or route params
+  // Extract ID from query parameter (?rxId=..., ?id=..., ?code=...) or route params
   const extractId = () => {
     const searchParams = new URLSearchParams(location.search);
-    let target = routeId || searchParams.get('id') || searchParams.get('code') || searchParams.get('rxId') || '';
+    let target = routeId || searchParams.get('rxId') || searchParams.get('id') || searchParams.get('code') || searchParams.get('scan') || searchParams.get('verify') || '';
     if (!target && location.pathname.includes('/verify-prescription/')) {
       target = location.pathname.split('/verify-prescription/')[1] || '';
     }
-    
-    // Normalize if full URL was passed in param
-    if (target.includes('http') || target.includes('?id=')) {
-      const match = target.match(/[?&]id=([^&#]+)/);
-      if (match) target = match[1];
-      else {
-        target = target.split('/').filter(Boolean).pop() || target;
-      }
-    }
-    return target.split('?')[0].trim();
+    return extractCleanPrescriptionId(target);
   };
 
   const prescriptionId = extractId();
+
+  // If logged-in user is a Pharmacist, automatically route to Pharmacist Portal with pre-filled dispense modal
+  useEffect(() => {
+    if (isAuthenticated && user?.role === 'pharmacist' && prescriptionId) {
+      navigate(`/dashboard?rxId=${encodeURIComponent(prescriptionId)}`, { replace: true });
+    }
+  }, [isAuthenticated, user?.role, prescriptionId, navigate]);
 
   useEffect(() => {
     if (!prescriptionId) {
