@@ -52,8 +52,22 @@ export const dispensePrescription = async (id: string, dispenseNotes?: string): 
 };
 
 export const lookupPrescriptionByCode = async (code: string): Promise<{ success: boolean; prescription: Prescription & { doctorName?: string; doctorSpecialization?: string; doctorVerified?: boolean; patientEmail?: string } }> => {
-  const response = await api.get(`/prescriptions/lookup/${encodeURIComponent(code)}`);
-  return response.data;
+  let cleanCode = (code || '').trim();
+  if (cleanCode.includes('id=')) {
+    const match = cleanCode.match(/[?&]id=([^&#]+)/);
+    if (match) cleanCode = match[1];
+  } else if (cleanCode.includes('/')) {
+    cleanCode = cleanCode.split('/').filter(Boolean).pop() || cleanCode;
+  }
+  cleanCode = cleanCode.split('?')[0].trim();
+
+  try {
+    const response = await api.get(`/prescriptions/lookup/${encodeURIComponent(cleanCode)}`);
+    return response.data;
+  } catch (e) {
+    const pubRes = await api.get(`/prescriptions/public/${encodeURIComponent(cleanCode)}`);
+    return { success: true, prescription: pubRes.data };
+  }
 };
 
 export const uploadPrescriptionTestReport = async (prescriptionId: string, formData: FormData): Promise<{ success: boolean; message: string; report: any; testReports: any[]; prescription: Prescription }> => {

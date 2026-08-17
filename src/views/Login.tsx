@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import { useNavigate, useLocation, Link as RouterLink } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
 import { useTheme } from '@mui/material/styles';
 import { useAuth } from '../contexts/AuthContext';
@@ -108,11 +108,15 @@ const Login = () => {
     }, 3000);
   };
   
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const redirectTarget = searchParams.get('redirect') || (location.state as any)?.from?.pathname || '/dashboard';
+
   useEffect(() => {
     if (isAuthenticated && !verifyingLogin && !isSubmitting && !googleProcessing) {
-      navigate('/dashboard');
+      navigate(redirectTarget);
     }
-  }, [isAuthenticated, verifyingLogin, isSubmitting, googleProcessing, navigate]);
+  }, [isAuthenticated, verifyingLogin, isSubmitting, googleProcessing, navigate, redirectTarget]);
 
   useEffect(() => {
     if (resendCountdown > 0) {
@@ -174,7 +178,7 @@ const Login = () => {
         await loginMobile(mobileNumber, dateOfBirth, password);
       }
       start3SecondHold(() => {
-        navigate('/dashboard');
+        navigate(redirectTarget);
       });
     } catch (err) {
       setIsSubmitting(false);
@@ -210,7 +214,7 @@ const Login = () => {
         setGoogleProcessing(false);
       } else {
         start3SecondHold(() => {
-          navigate('/dashboard');
+          navigate(redirectTarget);
         });
       }
     } catch (err: any) {
@@ -229,7 +233,7 @@ const Login = () => {
       setRoleModalOpen(false);
       if (result && result.token) {
         start3SecondHold(() => {
-          navigate('/dashboard');
+          navigate(redirectTarget);
         });
       }
     } catch (err: any) {

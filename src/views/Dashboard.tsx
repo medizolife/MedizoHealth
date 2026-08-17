@@ -239,6 +239,18 @@ const Dashboard = () => {
   }, [searchParams, setSearchParams, refreshUser]);
 
   useEffect(() => {
+    const rxParam = searchParams.get('verify') || searchParams.get('id') || searchParams.get('rxId') || searchParams.get('scan');
+    if (rxParam) {
+      handleQrScanSuccess(rxParam);
+      searchParams.delete('verify');
+      searchParams.delete('id');
+      searchParams.delete('rxId');
+      searchParams.delete('scan');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
+  useEffect(() => {
     if (user?.role === 'doctor') {
       if (user?.digilockerVerified) {
         setDigilockerVerified(true);

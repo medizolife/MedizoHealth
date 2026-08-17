@@ -28,6 +28,7 @@ import NursePortal from './views/NursePortal';
 import DoctorNetworkPortal from './views/DoctorNetworkPortal';
 import BillingPortal from './views/BillingPortal';
 import HomeCarePortal from './views/HomeCarePortal';
+import VerifyPrescription from './views/VerifyPrescription';
 
 // Google OAuth Client ID
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '972944325297-fh67828kvguogf9coekjn6q07a2krv8o.apps.googleusercontent.com';
@@ -140,6 +141,10 @@ const AnimatedRoutes = () => {
         />
         <Route path="/prescriptions/share/:id" element={<PrescriptionDetail />} />
         <Route path="/prescriptions/public/:id" element={<PrescriptionDetail />} />
+        <Route path="/verify-prescription" element={<VerifyPrescription />} />
+        <Route path="/verify-prescription/:id" element={<VerifyPrescription />} />
+        <Route path="/verify" element={<VerifyPrescription />} />
+        <Route path="/verify/:id" element={<VerifyPrescription />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/terms" element={<TermsOfService />} />

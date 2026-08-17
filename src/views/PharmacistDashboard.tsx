@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Container,
   Typography,
@@ -49,6 +50,7 @@ export default function PharmacistDashboard() {
   const { mode } = useThemeContext();
   const isDark = mode === 'dark';
 
+  const [searchParams, setSearchParams] = useSearchParams();
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -118,6 +120,18 @@ export default function PharmacistDashboard() {
   useEffect(() => {
     fetchPrescriptionsList();
   }, []);
+
+  useEffect(() => {
+    const rxParam = searchParams.get('rxId') || searchParams.get('id') || searchParams.get('scan') || searchParams.get('verify');
+    if (rxParam) {
+      handleIdValidation(rxParam);
+      searchParams.delete('rxId');
+      searchParams.delete('id');
+      searchParams.delete('scan');
+      searchParams.delete('verify');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     const handleOpenScanner = () => setScannerOpen(true);
