@@ -10,8 +10,8 @@ import { Patient } from '../types/auth';
 import { Prescription } from '../types/prescription';
 import QrScannerModal from '../components/QrScannerModal';
 import InvestigationDetailDialog from '../components/InvestigationDetailDialog';
-import { FamilyProfile, RELATIONSHIP_LABELS, RELATIONSHIP_ICONS } from '../types/familyProfile';
-import { getProfilesByAccountId } from '../services/familyProfiles';
+import { FamilyProfile, CreateFamilyProfileData, RELATIONSHIP_LABELS, RELATIONSHIP_ICONS } from '../types/familyProfile';
+import { getProfilesByAccountId, createFamilyProfileForAccount } from '../services/familyProfiles';
 import DigiLockerGuard from '../components/DigiLockerGuard';
 import { 
   Container,
@@ -233,6 +233,83 @@ const NewPrescription = () => {
   const [familyProfiles, setFamilyProfiles] = useState<FamilyProfile[]>([]);
   const [selectedProfile, setSelectedProfile] = useState<FamilyProfile | null>(null);
   const [loadingProfiles, setLoadingProfiles] = useState(false);
+
+  // Add family member under account modal state
+  const [addFamilyMemberDialogOpen, setAddFamilyMemberDialogOpen] = useState(false);
+  const [addingFamilyMember, setAddingFamilyMember] = useState(false);
+  const [familyMemberForm, setFamilyMemberForm] = useState<CreateFamilyProfileData>({
+    relationship: 'child',
+    firstName: '',
+    lastName: '',
+    dateOfBirth: '',
+    gender: 'male',
+    phone: '',
+    bloodType: '',
+    medicalHistory: ''
+  });
+  const [familyMemberError, setFamilyMemberError] = useState('');
+
+  const handleOpenAddFamilyMemberDialog = () => {
+    setFamilyMemberForm({
+      relationship: 'child',
+      firstName: '',
+      lastName: selectedPatient?.lastName || '',
+      dateOfBirth: '',
+      gender: 'male',
+      phone: selectedPatient?.phone || '',
+      bloodType: '',
+      medicalHistory: ''
+    });
+    setFamilyMemberError('');
+    setAddFamilyMemberDialogOpen(true);
+  };
+
+  const handleAddFamilyMemberSubmit = async () => {
+    if (!formData.patientId) {
+      setFamilyMemberError('Please select a target patient first');
+      return;
+    }
+    if (!familyMemberForm.firstName.trim()) {
+      setFamilyMemberError('First name is required');
+      return;
+    }
+    if (!familyMemberForm.lastName.trim()) {
+      setFamilyMemberError('Last name is required');
+      return;
+    }
+
+    try {
+      setAddingFamilyMember(true);
+      setFamilyMemberError('');
+      const newProf = await createFamilyProfileForAccount(formData.patientId, {
+        ...familyMemberForm,
+        firstName: familyMemberForm.firstName.trim(),
+        lastName: familyMemberForm.lastName.trim(),
+        phone: familyMemberForm.phone || selectedPatient?.phone || ''
+      });
+
+      // Update familyProfiles state
+      setFamilyProfiles(prev => {
+        const exists = prev.some(p => p.id === newProf.id);
+        return exists ? prev : [...prev, newProf];
+      });
+
+      // Auto-select the newly added family member
+      setSelectedProfile(newProf);
+      setAddFamilyMemberDialogOpen(false);
+      setRxSnackbar({
+        open: true,
+        message: `✅ Family member ${newProf.firstName} (${RELATIONSHIP_LABELS[newProf.relationship] || newProf.relationship}) linked and selected!`,
+        severity: 'success'
+      });
+    } catch (err: any) {
+      console.error('Error adding family member:', err);
+      const msg = err.response?.data?.message || err.message || 'Failed to add family member';
+      setFamilyMemberError(msg);
+    } finally {
+      setAddingFamilyMember(false);
+    }
+  };
 
   const handleDownloadPastRxPdf = async (rxId: string) => {
     try {
@@ -1402,58 +1479,202 @@ const NewPrescription = () => {
               
               <Grid container spacing={2}>
                 <Grid item xs={12}>
-                  <FormControl fullWidth required size="small">
-                    <InputLabel id="patient-select-label" sx={{ color: mode === 'dark' ? '#94A3B8' : '#64748B', fontWeight: 700, fontSize: '0.85rem' }}>Search / Select Patient *</InputLabel>
-                    <Select
-                      labelId="patient-select-label"
-                      value={formData.patientId}
-                      label="Search / Select Patient *"
-                      onChange={handlePatientChange}
-                      sx={{ 
-                        borderRadius: '16px',
-                        fontWeight: 700,
-                        bgcolor: mode === 'dark' ? 'rgba(30, 41, 59, 0.6)' : 'rgba(248, 250, 252, 0.9)',
-                        border: '1px solid rgba(16, 185, 129, 0.2)',
-                        '& .MuiSelect-select': { py: 1.2, display: 'flex', alignItems: 'center', gap: 1 }
-                      }}
-                    >
-                      {patients.map((patient) => (
-                        <MenuItem key={patient.id || (patient as any)._id} value={patient.id || (patient as any)._id} sx={{ py: 1, borderRadius: '10px', mx: 0.5, my: 0.3 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: '100%' }}>
-                            <Box sx={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.75rem' }}>
-                              {(patient.firstName?.[0] || 'P').toUpperCase()}
-                            </Box>
-                            <Box sx={{ overflow: 'hidden' }}>
-                              <Typography variant="body2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#0F172A' }}>
-                                {patient.firstName} {patient.lastName}
-                              </Typography>
-                              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, display: 'block' }}>
-                                {patient.email}
-                              </Typography>
-                            </Box>
+                  <Autocomplete
+                    id="patient-search-select"
+                    options={patients}
+                    value={patients.find(p => (p.id || (p as any)._id) === formData.patientId) || null}
+                    onChange={(_, newValue) => {
+                      setFormData(prev => ({
+                        ...prev,
+                        patientId: newValue ? (newValue.id || (newValue as any)._id) : ''
+                      }));
+                    }}
+                    getOptionLabel={(option) => {
+                      if (!option) return '';
+                      if (typeof option === 'string') return option;
+                      const name = `${option.firstName || ''} ${option.lastName || ''}`.trim();
+                      const detail = option.email || option.phone || '';
+                      return detail ? `${name} (${detail})` : name;
+                    }}
+                    isOptionEqualToValue={(option, val) => 
+                      Boolean(val && (option.id || (option as any)._id) === (val.id || (val as any)._id))
+                    }
+                    filterOptions={(options, { inputValue }) => {
+                      const q = (inputValue || '').trim().toLowerCase();
+                      if (!q) return options;
+                      return options.filter(p => {
+                        const name = `${p.firstName || ''} ${p.lastName || ''}`.toLowerCase();
+                        const email = (p.email || '').toLowerCase();
+                        const phone = (p.phone || '').replace(/[\s\-\(\)\+]/g, '');
+                        const cleanQ = q.replace(/[\s\-\(\)\+]/g, '');
+                        return name.includes(q) || email.includes(q) || (cleanQ && phone.includes(cleanQ));
+                      });
+                    }}
+                    ListboxProps={{
+                      sx: {
+                        maxHeight: '236px !important', // Exactly 4 items visible at ~56px each
+                        overflowY: 'auto',
+                        p: 0.5,
+                        '&::-webkit-scrollbar': {
+                          width: '6px',
+                        },
+                        '&::-webkit-scrollbar-track': {
+                          background: mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                          borderRadius: '10px',
+                        },
+                        '&::-webkit-scrollbar-thumb': {
+                          background: '#10B981',
+                          borderRadius: '10px',
+                        },
+                        '& .MuiAutocomplete-option': {
+                          py: 1,
+                          px: 1.5,
+                          borderRadius: '12px',
+                          my: 0.3,
+                          transition: 'all 0.15s ease',
+                          '&[aria-selected="true"]': {
+                            bgcolor: mode === 'dark' ? 'rgba(16, 185, 129, 0.2) !important' : 'rgba(16, 185, 129, 0.12) !important',
+                          },
+                          '&:hover': {
+                            bgcolor: mode === 'dark' ? 'rgba(16, 185, 129, 0.12) !important' : 'rgba(16, 185, 129, 0.08) !important',
+                          }
+                        }
+                      }
+                    }}
+                    renderOption={(props, patient) => (
+                      <Box component="li" {...props} key={patient.id || (patient as any)._id}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: '100%' }}>
+                          <Box sx={{ 
+                            width: 32, 
+                            height: 32, 
+                            minWidth: 32,
+                            borderRadius: '50%', 
+                            background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)', 
+                            color: '#fff', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center', 
+                            fontWeight: 800, 
+                            fontSize: '0.75rem',
+                            boxShadow: '0 2px 6px rgba(16, 185, 129, 0.25)'
+                          }}>
+                            {(patient.firstName?.[0] || 'P').toUpperCase()}
                           </Box>
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                          <Box sx={{ overflow: 'hidden', flex: 1 }}>
+                            <Typography variant="body2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#0F172A', lineHeight: 1.2 }}>
+                              {patient.firstName} {patient.lastName}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: mode === 'dark' ? '#94A3B8' : '#64748B', fontWeight: 600, display: 'block', mt: 0.2 }}>
+                              {patient.email || patient.phone || 'No contact info'}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </Box>
+                    )}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        size="small"
+                        label="Search / Select Patient *"
+                        placeholder="Type to search patient by name, email or phone..."
+                        required={!formData.patientId}
+                        InputProps={{
+                          ...params.InputProps,
+                          startAdornment: (
+                            <>
+                              <InputAdornment position="start" sx={{ pl: 0.5 }}>
+                                <SearchIcon sx={{ color: '#10B981', fontSize: 20 }} />
+                              </InputAdornment>
+                              {params.InputProps.startAdornment}
+                            </>
+                          )
+                        }}
+                        sx={{ 
+                          '& .MuiOutlinedInput-root': {
+                            borderRadius: '16px',
+                            fontWeight: 700,
+                            bgcolor: mode === 'dark' ? 'rgba(30, 41, 59, 0.6)' : 'rgba(248, 250, 252, 0.9)',
+                            border: '1px solid rgba(16, 185, 129, 0.2)',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                              borderColor: '#10B981',
+                            },
+                            '&.Mui-focused': {
+                              borderColor: '#10B981',
+                              boxShadow: '0 0 0 3px rgba(16, 185, 129, 0.15)'
+                            }
+                          },
+                          '& .MuiInputLabel-root': {
+                            color: mode === 'dark' ? '#94A3B8' : '#64748B',
+                            fontWeight: 700,
+                            fontSize: '0.85rem',
+                            '&.Mui-focused': {
+                              color: '#10B981'
+                            }
+                          }
+                        }}
+                      />
+                    )}
+                    noOptionsText={
+                      <Box sx={{ py: 1, textAlign: 'center' }}>
+                        <Typography variant="body2" sx={{ color: mode === 'dark' ? '#94A3B8' : '#64748B', fontWeight: 600 }}>
+                          No matching patients found.
+                        </Typography>
+                        <Button 
+                          size="small" 
+                          startIcon={<PersonAddIcon />} 
+                          onClick={() => setNewPatientDialogOpen(true)}
+                          sx={{ mt: 1, textTransform: 'none', color: '#10B981', fontWeight: 700 }}
+                        >
+                          + Create New Patient
+                        </Button>
+                      </Box>
+                    }
+                  />
                 </Grid>
 
                 {/* Family Profiles Bar */}
-                {selectedPatient && familyProfiles.length > 0 && (
+                {selectedPatient && (
                   <Grid item xs={12}>
                     <Paper 
                       variant="outlined" 
                       sx={{ 
-                        p: 1.5, 
-                        borderRadius: '16px', 
-                        bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.05)' : 'rgba(66, 132, 117, 0.05)',
-                        borderColor: selectedProfile ? '#428475' : '#dc2626'
+                        p: 1.8, 
+                        borderRadius: '18px', 
+                        bgcolor: mode === 'dark' ? 'rgba(16, 185, 129, 0.04)' : 'rgba(16, 185, 129, 0.04)',
+                        borderColor: selectedProfile ? '#10B981' : '#dc2626',
+                        boxShadow: '0 4px 14px rgba(16, 185, 129, 0.06)'
                       }}
                     >
-                      <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', display: 'block', mb: 1 }}>
-                        👨‍👩‍👧‍👦 Select Family Member for this Prescription *:
-                      </Typography>
-                      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.2, flexWrap: 'wrap', gap: 1 }}>
+                        <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#059669', fontSize: '0.82rem' }}>
+                          👨‍👩‍👧‍👦 Select Family Member for this Prescription *:
+                        </Typography>
+                        <Button
+                          size="small"
+                          startIcon={<AddIcon sx={{ fontSize: 16 }} />}
+                          onClick={handleOpenAddFamilyMemberDialog}
+                          sx={{
+                            borderRadius: '12px',
+                            fontWeight: 800,
+                            fontSize: '0.74rem',
+                            py: 0.5,
+                            px: 1.5,
+                            bgcolor: mode === 'dark' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.12)',
+                            color: mode === 'dark' ? '#34D399' : '#059669',
+                            border: '1px solid rgba(16, 185, 129, 0.3)',
+                            textTransform: 'none',
+                            '&:hover': {
+                              bgcolor: 'rgba(16, 185, 129, 0.22)',
+                              borderColor: '#10B981'
+                            }
+                          }}
+                        >
+                          + Add Family Member
+                        </Button>
+                      </Box>
+
+                      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
                         {familyProfiles.map((profile) => (
                           <Paper
                             key={profile.id}
@@ -1462,21 +1683,26 @@ const NewPrescription = () => {
                             sx={{
                               p: 1,
                               px: 1.5,
-                              borderRadius: '12px',
+                              borderRadius: '14px',
                               cursor: 'pointer',
-                              border: selectedProfile?.id === profile.id ? '2px solid #428475' : '1px solid rgba(0,0,0,0.1)',
-                              bgcolor: selectedProfile?.id === profile.id ? (mode === 'dark' ? 'rgba(66, 132, 117, 0.3)' : '#e6f2ef') : 'transparent',
+                              border: selectedProfile?.id === profile.id ? '2px solid #10B981' : '1px solid rgba(16, 185, 129, 0.2)',
+                              bgcolor: selectedProfile?.id === profile.id ? (mode === 'dark' ? 'rgba(16, 185, 129, 0.22)' : '#e6f7f2') : (mode === 'dark' ? 'rgba(30, 41, 59, 0.5)' : 'rgba(255, 255, 255, 0.9)'),
                               display: 'flex',
                               alignItems: 'center',
-                              gap: 1
+                              gap: 1,
+                              transition: 'all 0.15s ease',
+                              '&:hover': {
+                                transform: 'translateY(-1px)',
+                                borderColor: '#10B981'
+                              }
                             }}
                           >
                             <Avatar
                               sx={{
                                 width: 28,
                                 height: 28,
-                                bgcolor: selectedProfile?.id === profile.id ? '#1A312C' : '#428475',
-                                color: '#89D7B7',
+                                bgcolor: selectedProfile?.id === profile.id ? '#059669' : (mode === 'dark' ? '#334155' : '#e2e8f0'),
+                                color: selectedProfile?.id === profile.id ? '#ffffff' : (mode === 'dark' ? '#94a3b8' : '#475569'),
                                 fontSize: '0.8rem',
                                 fontWeight: 800
                               }}
@@ -1484,21 +1710,49 @@ const NewPrescription = () => {
                               {RELATIONSHIP_ICONS[profile.relationship] || '👤'}
                             </Avatar>
                             <Box>
-                              <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', display: 'block', lineHeight: 1.2, fontSize: '0.76rem' }}>
-                                {profile.firstName}
+                              <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#0F172A', display: 'block', lineHeight: 1.2, fontSize: '0.78rem' }}>
+                                {profile.firstName} {profile.lastName}
                               </Typography>
-                              <Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b', fontSize: '0.62rem' }}>
+                              <Typography variant="caption" sx={{ fontWeight: 600, color: '#64748b', fontSize: '0.65rem' }}>
                                 {RELATIONSHIP_LABELS[profile.relationship]}
                               </Typography>
                             </Box>
-                            <Typography variant="caption" sx={{ fontWeight: 800, fontFamily: 'monospace', color: '#428475', fontSize: '0.65rem' }}>
+                            <Typography variant="caption" sx={{ fontWeight: 800, fontFamily: 'monospace', color: '#10B981', fontSize: '0.65rem', bgcolor: 'rgba(16, 185, 129, 0.1)', px: 0.8, py: 0.2, borderRadius: '6px' }}>
                               {profile.patientDisplayId}
                             </Typography>
                           </Paper>
                         ))}
+
+                        {/* Quick Add Member Action Card */}
+                        <Paper
+                          onClick={handleOpenAddFamilyMemberDialog}
+                          elevation={0}
+                          sx={{
+                            p: 1,
+                            px: 1.5,
+                            borderRadius: '14px',
+                            cursor: 'pointer',
+                            border: '1.5px dashed rgba(16, 185, 129, 0.4)',
+                            bgcolor: 'transparent',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 0.8,
+                            color: mode === 'dark' ? '#34D399' : '#059669',
+                            transition: 'all 0.15s ease',
+                            '&:hover': {
+                              bgcolor: 'rgba(16, 185, 129, 0.08)',
+                              borderColor: '#10B981'
+                            }
+                          }}
+                        >
+                          <AddIcon sx={{ fontSize: 18 }} />
+                          <Typography variant="caption" sx={{ fontWeight: 800, fontSize: '0.74rem' }}>
+                            + Add Member
+                          </Typography>
+                        </Paper>
                       </Box>
                       {!selectedProfile && (
-                        <Typography variant="caption" sx={{ color: '#dc2626', fontWeight: 600, mt: 1, display: 'block', fontSize: '0.7rem' }}>
+                        <Typography variant="caption" sx={{ color: '#dc2626', fontWeight: 600, mt: 1, display: 'block', fontSize: '0.72rem' }}>
                           ⚠️ Please select which family member this prescription is for
                         </Typography>
                       )}
@@ -5069,6 +5323,192 @@ const NewPrescription = () => {
             }}
           >
             + ADD PATIENT
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ─── Dialog: Add Family Member under Patient Account ─── */}
+      <Dialog
+        open={addFamilyMemberDialogOpen}
+        onClose={() => setAddFamilyMemberDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '24px',
+            bgcolor: mode === 'dark' ? 'rgba(15, 23, 42, 0.98)' : 'rgba(255, 255, 255, 0.98)',
+            backdropFilter: 'blur(24px)',
+            color: mode === 'dark' ? '#FAF2F5' : '#0F172A',
+            border: '1px solid rgba(16, 185, 129, 0.2)'
+          }
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: 1.2, pb: 1 }}>
+          <Box sx={{ p: 1, borderRadius: '12px', bgcolor: 'rgba(16, 185, 129, 0.12)', color: '#10B981', display: 'flex' }}>
+            <PersonAddIcon sx={{ fontSize: 22 }} />
+          </Box>
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: 900, lineHeight: 1.2 }}>
+              Add Family Member
+            </Typography>
+            <Typography variant="caption" sx={{ color: mode === 'dark' ? '#94A3B8' : '#64748B', fontWeight: 600 }}>
+              Under account: {selectedPatient?.firstName} {selectedPatient?.lastName} ({selectedPatient?.phone || selectedPatient?.email})
+            </Typography>
+          </Box>
+        </DialogTitle>
+
+        <DialogContent sx={{ pt: 2 }}>
+          {familyMemberError && (
+            <Alert severity="error" sx={{ mb: 2, borderRadius: '14px', fontWeight: 700 }}>
+              {familyMemberError}
+            </Alert>
+          )}
+
+          <Grid container spacing={2}>
+            {/* Relationship */}
+            <Grid item xs={12}>
+              <FormControl fullWidth size="small">
+                <InputLabel sx={{ fontWeight: 700 }}>Relationship *</InputLabel>
+                <Select
+                  value={familyMemberForm.relationship}
+                  label="Relationship *"
+                  onChange={(e) => setFamilyMemberForm({ ...familyMemberForm, relationship: e.target.value as any })}
+                  sx={{ borderRadius: '14px', fontWeight: 700 }}
+                >
+                  <MenuItem value="spouse">👫 Spouse / Wife / Husband</MenuItem>
+                  <MenuItem value="child">👶 Child / Son / Daughter</MenuItem>
+                  <MenuItem value="parent">👴 Parent / Father / Mother</MenuItem>
+                  <MenuItem value="sibling">🧑‍🤝‍🧑 Sibling / Brother / Sister</MenuItem>
+                  <MenuItem value="other">👤 Other Dependent</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+
+            {/* Names */}
+            <Grid item xs={6}>
+              <TextField
+                fullWidth
+                size="small"
+                label="First Name *"
+                placeholder="e.g. Rahul"
+                value={familyMemberForm.firstName}
+                onChange={(e) => setFamilyMemberForm({ ...familyMemberForm, firstName: e.target.value })}
+                InputProps={{ sx: { borderRadius: '14px', fontWeight: 700 } }}
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Last Name *"
+                placeholder="e.g. Kumar"
+                value={familyMemberForm.lastName}
+                onChange={(e) => setFamilyMemberForm({ ...familyMemberForm, lastName: e.target.value })}
+                InputProps={{ sx: { borderRadius: '14px', fontWeight: 700 } }}
+              />
+            </Grid>
+
+            {/* DOB & Gender */}
+            <Grid item xs={6}>
+              <TextField
+                fullWidth
+                size="small"
+                type="date"
+                label="Date of Birth"
+                InputLabelProps={{ shrink: true }}
+                value={familyMemberForm.dateOfBirth}
+                onChange={(e) => setFamilyMemberForm({ ...familyMemberForm, dateOfBirth: e.target.value })}
+                InputProps={{ sx: { borderRadius: '14px' } }}
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Gender</InputLabel>
+                <Select
+                  value={familyMemberForm.gender}
+                  label="Gender"
+                  onChange={(e) => setFamilyMemberForm({ ...familyMemberForm, gender: e.target.value })}
+                  sx={{ borderRadius: '14px' }}
+                >
+                  <MenuItem value="male">Male</MenuItem>
+                  <MenuItem value="female">Female</MenuItem>
+                  <MenuItem value="other">Other</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+
+            {/* Phone & Blood Type */}
+            <Grid item xs={6}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Phone Number"
+                placeholder="Optional (defaults to primary phone)"
+                value={familyMemberForm.phone}
+                onChange={(e) => setFamilyMemberForm({ ...familyMemberForm, phone: e.target.value })}
+                InputProps={{ sx: { borderRadius: '14px' } }}
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Blood Type</InputLabel>
+                <Select
+                  value={familyMemberForm.bloodType}
+                  label="Blood Type"
+                  onChange={(e) => setFamilyMemberForm({ ...familyMemberForm, bloodType: e.target.value })}
+                  sx={{ borderRadius: '14px' }}
+                >
+                  <MenuItem value="">Unknown</MenuItem>
+                  <MenuItem value="A+">A+</MenuItem>
+                  <MenuItem value="A-">A-</MenuItem>
+                  <MenuItem value="B+">B+</MenuItem>
+                  <MenuItem value="B-">B-</MenuItem>
+                  <MenuItem value="AB+">AB+</MenuItem>
+                  <MenuItem value="AB-">AB-</MenuItem>
+                  <MenuItem value="O+">O+</MenuItem>
+                  <MenuItem value="O-">O-</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+
+            {/* Medical History / Allergies Notes */}
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                size="small"
+                multiline
+                rows={2}
+                label="Known Allergies / Medical Notes"
+                placeholder="e.g. Allergic to Penicillin, Asthmatic, etc."
+                value={familyMemberForm.medicalHistory}
+                onChange={(e) => setFamilyMemberForm({ ...familyMemberForm, medicalHistory: e.target.value })}
+                InputProps={{ sx: { borderRadius: '14px' } }}
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+
+        <DialogActions sx={{ p: 2.5, pt: 1, gap: 1 }}>
+          <Button
+            onClick={() => setAddFamilyMemberDialogOpen(false)}
+            sx={{ borderRadius: '12px', fontWeight: 700, color: mode === 'dark' ? '#94A3B8' : '#64748B' }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            disabled={addingFamilyMember || !familyMemberForm.firstName.trim() || !familyMemberForm.lastName.trim()}
+            onClick={handleAddFamilyMemberSubmit}
+            sx={{
+              borderRadius: '14px',
+              bgcolor: 'linear-gradient(135deg, #059669 0%, #10B981 100%)',
+              color: '#ffffff',
+              fontWeight: 800,
+              px: 2.5,
+              boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)'
+            }}
+          >
+            {addingFamilyMember ? <CircularProgress size={20} sx={{ color: '#fff' }} /> : 'Add & Select'}
           </Button>
         </DialogActions>
       </Dialog>

@@ -58,6 +58,15 @@ export const getProfilesByAccountId = async (accountId: string): Promise<FamilyP
 };
 
 /**
+ * Doctor/Admin: Create a new family profile under a specific patient account
+ */
+export const createFamilyProfileForAccount = async (accountId: string, data: CreateFamilyProfileData): Promise<FamilyProfile> => {
+  clearApiCache();
+  const response = await api.post<{ profile: FamilyProfile }>(`/family-profiles/account/${accountId}`, data);
+  return response.data.profile;
+};
+
+/**
  * Ensure self-profile exists for the logged-in patient
  */
 export const ensureSelfProfile = async (): Promise<FamilyProfile> => {
