@@ -413,6 +413,9 @@ const NewPrescription = () => {
   });
   const [medSearchOpen, setMedSearchOpen] = useState(false);
 
+  // Custom interval input state — kept separate so typing multi-digit numbers (e.g. "36") doesn't get wiped
+  const [customIntervalText, setCustomIntervalText] = useState('');
+
   // Popover state for per-time-of-day dose count + meal relation
   const [mealPopoverAnchor, setMealPopoverAnchor] = useState<HTMLElement | null>(null);
   const [mealPopoverTimeKey, setMealPopoverTimeKey] = useState<'morning' | 'afternoon' | 'evening' | 'night'>('morning');
@@ -969,6 +972,7 @@ const NewPrescription = () => {
           quantity: qtyStr
         }]
       });
+      setCustomIntervalText('');
       setNewMedication({
         name: '',
         type: 'Tablet',
@@ -3600,7 +3604,20 @@ const NewPrescription = () => {
                       <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#34D399' : '#059669', textTransform: 'uppercase', letterSpacing: 0.6, fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: 0.6 }}>
                         <span>🔄</span> Dosing Alteration / Interval:
                       </Typography>
-                      {newMedication.intervalDays && newMedication.intervalDays > 1 ? (
+                      {newMedication.intervalType === 'custom' && (customIntervalText || newMedication.intervalDays) ? (
+                        <Chip
+                          label={`Custom: Every ${customIntervalText || newMedication.intervalDays} days (${Number(customIntervalText || newMedication.intervalDays) === 1 ? 'Daily' : Number(customIntervalText || newMedication.intervalDays) === 2 ? 'Alternate Days' : `1 dose / ${customIntervalText || newMedication.intervalDays}d`})`}
+                          size="small"
+                          sx={{
+                            height: 22,
+                            fontSize: '0.65rem',
+                            fontWeight: 900,
+                            background: 'linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%)',
+                            color: '#ffffff',
+                            borderRadius: '10px'
+                          }}
+                        />
+                      ) : newMedication.intervalDays && newMedication.intervalDays > 1 ? (
                         <Chip
                           label={`Takes every ${newMedication.intervalDays} days (${newMedication.intervalDays === 2 ? 'Alternate Days' : newMedication.intervalDays === 7 ? 'Weekly' : `1 dose / ${newMedication.intervalDays}d`})`}
                           size="small"
@@ -3639,7 +3656,8 @@ const NewPrescription = () => {
                         { days: 7, label: 'Weekly (Every 7d)' },
                         { days: 10, label: 'Every 10 Days' }
                       ].map((preset) => {
-                        const isSelected = (newMedication.intervalDays || 1) === preset.days;
+                        // Presets are selected ONLY if user is NOT in custom mode
+                        const isSelected = newMedication.intervalType !== 'custom' && (newMedication.intervalDays || 1) === preset.days;
                         return (
                           <Chip
                             key={preset.days}
@@ -3647,9 +3665,20 @@ const NewPrescription = () => {
                             size="small"
                             clickable
                             onClick={() => {
+                              setCustomIntervalText('');
+                              const presetTypeMap: Record<number, 'daily' | 'alternate' | 'every_3_days' | 'every_4_days' | 'every_5_days' | 'weekly' | 'every_10_days'> = {
+                                1: 'daily',
+                                2: 'alternate',
+                                3: 'every_3_days',
+                                4: 'every_4_days',
+                                5: 'every_5_days',
+                                7: 'weekly',
+                                10: 'every_10_days'
+                              };
                               const updated = recalcMedication({
                                 ...newMedication,
                                 intervalDays: preset.days,
+                                intervalType: presetTypeMap[preset.days] || 'daily',
                                 intervalLabel: preset.days === 1 ? 'Daily' : preset.days === 2 ? 'Alternate Days' : `Every ${preset.days} Days`
                               });
                               setNewMedication(updated);
@@ -3674,37 +3703,118 @@ const NewPrescription = () => {
                       })}
 
                       {/* Custom Alteration Number Input */}
-                      <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.6, bgcolor: mode === 'dark' ? 'rgba(30, 41, 59, 0.6)' : 'rgba(139, 92, 246, 0.05)', p: '2px 8px', borderRadius: '12px', border: '1px solid rgba(139, 92, 246, 0.25)' }}>
-                        <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#C4B5FD' : '#6D28D9', fontSize: '0.7rem' }}>
-                          Custom: Every
-                        </Typography>
-                        <TextField
-                          size="small"
-                          type="number"
-                          placeholder="Days"
-                          value={![1, 2, 3, 4, 5, 7, 10].includes(newMedication.intervalDays || 1) ? (newMedication.intervalDays || '') : ''}
-                          onChange={(e) => {
-                            const val = parseInt(e.target.value, 10) || 1;
-                            if (val >= 1) {
-                              const updated = recalcMedication({
-                                ...newMedication,
-                                intervalDays: val,
-                                intervalLabel: val === 1 ? 'Daily' : val === 2 ? 'Alternate Days' : `Every ${val} Days`
-                              });
-                              setNewMedication(updated);
-                            }
-                          }}
-                          inputProps={{ min: 1, max: 90 }}
-                          sx={{
-                            width: 55,
-                            '& input': { textAlign: 'center', fontWeight: 800, p: '4px', fontSize: '0.78rem' },
-                            '& .MuiOutlinedInput-root': { borderRadius: '8px', bgcolor: mode === 'dark' ? 'rgba(15, 23, 42, 0.8)' : '#ffffff' }
-                          }}
-                        />
-                        <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#C4B5FD' : '#6D28D9', fontSize: '0.7rem' }}>
-                          days
-                        </Typography>
-                      </Box>
+                      {(() => {
+                        const isCustomActive = newMedication.intervalType === 'custom' || !!customIntervalText;
+                        return (
+                          <Box
+                            onClick={() => {
+                              if (newMedication.intervalType !== 'custom') {
+                                const cur = newMedication.intervalDays || 1;
+                                const initText = cur > 1 ? String(cur) : '';
+                                setCustomIntervalText(initText);
+                                setNewMedication({
+                                  ...newMedication,
+                                  intervalType: 'custom'
+                                });
+                              }
+                            }}
+                            sx={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 0.6,
+                              bgcolor: isCustomActive
+                                ? (mode === 'dark' ? 'rgba(139, 92, 246, 0.22)' : 'rgba(139, 92, 246, 0.12)')
+                                : (mode === 'dark' ? 'rgba(30, 41, 59, 0.6)' : 'rgba(139, 92, 246, 0.05)'),
+                              p: '2px 8px',
+                              borderRadius: '12px',
+                              border: isCustomActive
+                                ? '2px solid #8B5CF6'
+                                : '1px solid rgba(139, 92, 246, 0.25)',
+                              boxShadow: isCustomActive ? '0 2px 8px rgba(139, 92, 246, 0.25)' : 'none',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease'
+                            }}
+                          >
+                            <Typography variant="caption" sx={{ fontWeight: 800, color: isCustomActive ? (mode === 'dark' ? '#DDD6FE' : '#6D28D9') : (mode === 'dark' ? '#C4B5FD' : '#6D28D9'), fontSize: '0.7rem' }}>
+                              Custom: Every
+                            </Typography>
+                            <TextField
+                              size="small"
+                              type="number"
+                              placeholder="Days"
+                              value={customIntervalText}
+                              onFocus={() => {
+                                if (newMedication.intervalType !== 'custom') {
+                                  const cur = newMedication.intervalDays || 1;
+                                  const initText = cur > 1 ? String(cur) : '';
+                                  setCustomIntervalText(initText);
+                                  setNewMedication({
+                                    ...newMedication,
+                                    intervalType: 'custom'
+                                  });
+                                }
+                              }}
+                              onChange={(e) => {
+                                const raw = e.target.value;
+                                setCustomIntervalText(raw);
+                                const val = parseInt(raw, 10);
+                                if (val >= 1 && val <= 365) {
+                                  const updated = recalcMedication({
+                                    ...newMedication,
+                                    intervalDays: val,
+                                    intervalType: 'custom',
+                                    intervalLabel: `Every ${val} Days`
+                                  });
+                                  setNewMedication(updated);
+                                } else {
+                                  // Even while empty or typing, keep custom mode so presets don't activate
+                                  setNewMedication({
+                                    ...newMedication,
+                                    intervalType: 'custom'
+                                  });
+                                }
+                              }}
+                              onBlur={() => {
+                                const val = parseInt(customIntervalText, 10);
+                                if (val >= 1 && val <= 365) {
+                                  const updated = recalcMedication({
+                                    ...newMedication,
+                                    intervalDays: val,
+                                    intervalType: 'custom',
+                                    intervalLabel: `Every ${val} Days`
+                                  });
+                                  setNewMedication(updated);
+                                } else {
+                                  // If left blank when leaving field, reset to everyday daily
+                                  setCustomIntervalText('');
+                                  const updated = recalcMedication({
+                                    ...newMedication,
+                                    intervalDays: 1,
+                                    intervalType: 'daily',
+                                    intervalLabel: 'Daily'
+                                  });
+                                  setNewMedication(updated);
+                                }
+                              }}
+                              inputProps={{ min: 1, max: 365 }}
+                              sx={{
+                                width: 55,
+                                '& input': { textAlign: 'center', fontWeight: 800, p: '4px', fontSize: '0.78rem', color: mode === 'dark' ? '#ffffff' : 'inherit' },
+                                '& .MuiOutlinedInput-root': {
+                                  borderRadius: '8px',
+                                  bgcolor: mode === 'dark' ? 'rgba(15, 23, 42, 0.8)' : '#ffffff',
+                                  '& fieldset': {
+                                    borderColor: isCustomActive ? '#8B5CF6' : undefined
+                                  }
+                                }
+                              }}
+                            />
+                            <Typography variant="caption" sx={{ fontWeight: 800, color: isCustomActive ? (mode === 'dark' ? '#DDD6FE' : '#6D28D9') : (mode === 'dark' ? '#C4B5FD' : '#6D28D9'), fontSize: '0.7rem' }}>
+                              days
+                            </Typography>
+                          </Box>
+                        );
+                      })()}
                     </Box>
                   </Grid>
 
