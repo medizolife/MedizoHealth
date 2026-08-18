@@ -416,11 +416,11 @@ export default function DoctorPrescriptions() {
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                       <Avatar sx={{ width: 44, height: 44, bgcolor: 'rgba(137, 215, 183, 0.25)', color: '#428475', fontWeight: 800 }}>
-                        {prescription.patientName?.[0] || 'P'}
+                        {(prescription.patientName && prescription.patientName !== 'Unknown Patient' ? prescription.patientName : 'Patient')[0]}
                       </Avatar>
                       <Box>
                         <Typography variant="subtitle1" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', lineHeight: 1.2 }}>
-                          {prescription.patientName}
+                          {prescription.patientName && prescription.patientName !== 'Unknown Patient' ? prescription.patientName : 'Patient'}
                         </Typography>
                         <Typography variant="caption" sx={{ color: '#428475', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 0.5 }}>
                           <CalendarIcon sx={{ fontSize: 13 }} /> {formatDate(prescription.createdAt)}

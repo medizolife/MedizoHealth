@@ -23,7 +23,8 @@ import {
   FlashlightOff as FlashOffIcon,
   Search as SearchIcon,
   SwitchCamera as SwitchCameraIcon,
-  ImageSearch as ImageSearchIcon
+  ImageSearch as ImageSearchIcon,
+  Shield as ShieldIcon
 } from '@mui/icons-material';
 
 interface QrScannerModalProps {
@@ -719,38 +720,33 @@ export default function QrScannerModal({ open, onClose, onScanSuccess }: QrScann
           </Button>
         </Box>
 
-        {/* Decoder Badge */}
-        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 1.5, gap: 1 }}>
-          <Chip
-            label={hasBarcodeDetector ? '⚡ Native Scanner' : '🔍 jsQR Scanner'}
-            size="small"
+        {/* Security & Verification Trust Badge */}
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mt: 2 }}>
+          <Box
             sx={{
-              height: 20,
-              fontSize: '0.6rem',
-              fontWeight: 800,
-              bgcolor: hasBarcodeDetector ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-              color: hasBarcodeDetector ? '#34D399' : '#FBBF24',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 0.8,
+              py: 0.6,
+              px: 1.6,
+              borderRadius: '20px',
+              bgcolor: 'rgba(13, 148, 136, 0.14)',
+              border: '1px solid rgba(45, 212, 191, 0.3)',
             }}
-          />
-          <Chip
-            label="Client-Side Only"
-            size="small"
-            sx={{
-              height: 20,
-              fontSize: '0.6rem',
-              fontWeight: 800,
-              bgcolor: 'rgba(96, 165, 250, 0.15)',
-              color: '#60A5FA',
-            }}
-          />
+          >
+            <ShieldIcon sx={{ fontSize: 15, color: '#2DD4BF' }} />
+            <Typography variant="caption" sx={{ color: '#2DD4BF', fontWeight: 800, fontSize: '0.72rem', letterSpacing: 0.4 }}>
+              Encrypted Digital Rx Verification
+            </Typography>
+          </Box>
         </Box>
 
-        {/* Help Text */}
+        {/* Help Guidance Text */}
         <Typography
           variant="caption"
-          sx={{ color: 'rgba(255,255,255,0.4)', display: 'block', textAlign: 'center', mt: 1, lineHeight: 1.5 }}
+          sx={{ color: 'rgba(255,255,255,0.5)', display: 'block', textAlign: 'center', mt: 1, lineHeight: 1.5, fontSize: '0.75rem' }}
         >
-          Scan the QR code on a printed or digital prescription, or manually enter the prescription ID / QR code string.
+          Align the camera with the official prescription QR code, or paste the Rx identifier to verify dispensing history.
         </Typography>
       </DialogContent>
     </Dialog>

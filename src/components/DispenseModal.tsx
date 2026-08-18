@@ -50,6 +50,10 @@ type MedStatus = 'pending' | 'given' | 'not_available' | 'not_needed';
 interface MedicineStatusEntry {
   medicineName: string;
   status: MedStatus;
+  prescribedQuantity: number;
+  dispensedQuantity: number;
+  unit: string;
+  isFull: boolean;
   updatedAt?: string;
 }
 
@@ -59,6 +63,14 @@ interface DispenseModalProps {
   prescription: Prescription | null;
   onDispensedSuccess?: () => void;
 }
+
+// Helper to extract numeric quantity from string (e.g. "10 Tablets" -> 10)
+const parseNumericQty = (qtyStr?: string | number): number => {
+  if (typeof qtyStr === 'number') return qtyStr;
+  if (!qtyStr) return 0;
+  const match = String(qtyStr).match(/\d+/);
+  return match ? parseInt(match[0], 10) : 0;
+};
 
 export default function DispenseModal({ open, onClose, prescription, onDispensedSuccess }: DispenseModalProps) {
   const { mode } = useThemeContext();
@@ -72,6 +84,7 @@ export default function DispenseModal({ open, onClose, prescription, onDispensed
   const [copied, setCopied] = useState(false);
   const [autoDeductStock, setAutoDeductStock] = useState(true);
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
+  const [isEditingDispense, setIsEditingDispense] = useState(false);
 
   const statusConfig: Record<MedStatus, { label: string; color: string; activeBg: string; activeBorder: string; icon: React.ReactNode }> = {
     pending: {
@@ -82,14 +95,14 @@ export default function DispenseModal({ open, onClose, prescription, onDispensed
       icon: <PendingIcon sx={{ fontSize: 15 }} />,
     },
     given: {
-      label: 'Given',
+      label: 'Given / Fulfilled',
       color: '#10B981',
       activeBg: isDark ? 'rgba(16, 185, 129, 0.2)' : '#ECFDF5',
       activeBorder: '#10B981',
       icon: <CheckCircleIcon sx={{ fontSize: 15 }} />,
     },
     not_available: {
-      label: 'Not Available',
+      label: 'Out of Stock',
       color: '#F59E0B',
       activeBg: isDark ? 'rgba(245, 158, 11, 0.2)' : '#FFFBEB',
       activeBorder: '#F59E0B',
@@ -105,27 +118,78 @@ export default function DispenseModal({ open, onClose, prescription, onDispensed
   };
 
   useEffect(() => {
-    if (prescription?.medications && prescription.medications.length > 0) {
-      setMedStatuses(
-        prescription.medications.map(med => ({
-          medicineName: med.name,
-          status: 'pending' as MedStatus,
-          updatedAt: new Date().toISOString(),
-        }))
-      );
-    } else if (prescription?.medication) {
-      setMedStatuses([{
-        medicineName: prescription.medication,
-        status: 'pending' as MedStatus,
-        updatedAt: new Date().toISOString(),
-      }]);
-    } else {
+    if (!prescription) {
       setMedStatuses([]);
+      setIsEditingDispense(false);
+      return;
     }
-    setDispenseNotes('');
+
+    const meds = prescription.medications && prescription.medications.length > 0
+      ? prescription.medications
+      : prescription.medication
+        ? [{ 
+            name: prescription.medication, 
+            dosage: prescription.dosage || '', 
+            duration: prescription.duration || '', 
+            quantity: (prescription as any).quantity || '10 Tablets', 
+            instructions: prescription.instructions || '',
+            type: '' 
+          }]
+        : [];
+
+    const pastItems = (prescription as any)?.dispensedBy?.itemsDispensed || 
+                      (Array.isArray(prescription.dispenseHistory) && prescription.dispenseHistory.length > 0 
+                        ? prescription.dispenseHistory[0]?.itemsDispensed 
+                        : null);
+
+    const isDispensed = prescription.dispensedStatus === 'dispensed';
+
+    const initialStatuses: MedicineStatusEntry[] = meds.map(med => {
+      const totalPrescribed = parseNumericQty(med.quantity) || 10;
+      const unit = String(med.quantity || '').replace(/\d+/g, '').trim() || 'Tablets';
+      
+      // Check if this medicine was recorded in a past dispensing event
+      const recorded = Array.isArray(pastItems) 
+        ? pastItems.find((p: any) => (p.name || p.medicineName)?.toLowerCase() === med.name?.toLowerCase()) 
+        : null;
+      
+      if (recorded) {
+        const pastStatus: MedStatus = (recorded.status === 'not_available' || recorded.status === 'not_needed' || recorded.status === 'given')
+          ? (recorded.status as MedStatus)
+          : 'given';
+        const pastQty = recorded.dispensedQuantity !== undefined 
+          ? Number(recorded.dispensedQuantity) 
+          : (recorded.quantity !== undefined ? parseNumericQty(recorded.quantity) : totalPrescribed);
+        
+        return {
+          medicineName: med.name,
+          status: pastStatus,
+          prescribedQuantity: totalPrescribed,
+          dispensedQuantity: pastStatus === 'given' ? pastQty : 0,
+          unit,
+          isFull: pastQty >= totalPrescribed,
+          updatedAt: new Date().toISOString()
+        };
+      }
+
+      // Default for fresh dispensing: 'given' with full prescribed quantity
+      return {
+        medicineName: med.name,
+        status: 'given' as MedStatus,
+        prescribedQuantity: totalPrescribed,
+        dispensedQuantity: totalPrescribed,
+        unit,
+        isFull: true,
+        updatedAt: new Date().toISOString()
+      };
+    });
+
+    setMedStatuses(initialStatuses);
+    setDispenseNotes(prescription.dispenseNotes || '');
     setError('');
     setSuccess('');
     setCopied(false);
+    setIsEditingDispense(!isDispensed);
   }, [prescription]);
 
   if (!prescription) return null;
@@ -138,30 +202,102 @@ export default function DispenseModal({ open, onClose, prescription, onDispensed
         dispenseIndex: 1,
         dispensedAt: prescription.dispensedAt,
         dispenseNotes: prescription.dispenseNotes || 'Dispensed',
-        itemsDispensed: prescription.medications ? prescription.medications.map(m => ({ name: m.name, status: 'given' })) : [],
+        itemsDispensed: prescription.medications ? prescription.medications.map(m => ({ name: m.name, status: 'given', quantity: m.quantity })) : [],
         dispensedStatus: prescription.dispensedStatus || 'dispensed'
       }] : []);
   const dispenseHistoryCount = historyList.length;
 
   const handleStatusChange = (medicineName: string, newStatus: MedStatus) => {
     setMedStatuses(prev =>
-      prev.map(ms =>
-        ms.medicineName === medicineName
-          ? { ...ms, status: newStatus, updatedAt: new Date().toISOString() }
-          : ms
-      )
+      prev.map(ms => {
+        if (ms.medicineName !== medicineName) return ms;
+        if (newStatus === 'given') {
+          return {
+            ...ms,
+            status: 'given',
+            dispensedQuantity: ms.dispensedQuantity > 0 ? ms.dispensedQuantity : ms.prescribedQuantity,
+            isFull: (ms.dispensedQuantity > 0 ? ms.dispensedQuantity : ms.prescribedQuantity) >= ms.prescribedQuantity,
+            updatedAt: new Date().toISOString()
+          };
+        } else {
+          return {
+            ...ms,
+            status: newStatus,
+            dispensedQuantity: 0,
+            isFull: false,
+            updatedAt: new Date().toISOString()
+          };
+        }
+      })
     );
   };
 
-  const getStatus = (medicineName: string): MedStatus => {
-    return medStatuses.find(ms => ms.medicineName === medicineName)?.status || 'pending';
+  const handleQuantityChange = (medicineName: string, newQty: number) => {
+    setMedStatuses(prev =>
+      prev.map(ms => {
+        if (ms.medicineName !== medicineName) return ms;
+        const validQty = Math.max(0, isNaN(newQty) ? 0 : newQty);
+        let newStatus: MedStatus = ms.status;
+        if (validQty > 0) newStatus = 'given';
+        else if (validQty === 0 && ms.status === 'given') newStatus = 'not_available';
+
+        return {
+          ...ms,
+          status: newStatus,
+          dispensedQuantity: validQty,
+          isFull: validQty >= ms.prescribedQuantity,
+          updatedAt: new Date().toISOString()
+        };
+      })
+    );
+  };
+
+  const handleToggleFull = (medicineName: string, isChecked: boolean) => {
+    setMedStatuses(prev =>
+      prev.map(ms => {
+        if (ms.medicineName !== medicineName) return ms;
+        if (isChecked) {
+          return {
+            ...ms,
+            status: 'given',
+            dispensedQuantity: ms.prescribedQuantity,
+            isFull: true,
+            updatedAt: new Date().toISOString()
+          };
+        } else {
+          const partial = Math.max(1, Math.floor(ms.prescribedQuantity / 2));
+          return {
+            ...ms,
+            status: 'given',
+            dispensedQuantity: partial,
+            isFull: false,
+            updatedAt: new Date().toISOString()
+          };
+        }
+      })
+    );
+  };
+
+  const getStatusEntry = (medicineName: string): MedicineStatusEntry => {
+    return medStatuses.find(ms => ms.medicineName === medicineName) || {
+      medicineName,
+      status: 'given',
+      prescribedQuantity: 10,
+      dispensedQuantity: 10,
+      unit: 'Tablets',
+      isFull: true
+    };
   };
 
   const allStatusesSet = medStatuses.length > 0 && medStatuses.every(ms => ms.status !== 'pending');
 
+  const totalPrescribedTablets = medStatuses.reduce((acc, ms) => acc + ms.prescribedQuantity, 0);
+  const totalDispensedTablets = medStatuses.reduce((acc, ms) => acc + (ms.status === 'given' ? ms.dispensedQuantity : 0), 0);
+  const totalGivenMeds = medStatuses.filter(ms => ms.status === 'given' && ms.dispensedQuantity > 0).length;
+
   const handleFulfill = async () => {
     if (!allStatusesSet) {
-      setError('Please select a status (Given / Not Available / Not Needed) for ALL medicines before submitting.');
+      setError('Please select a status for ALL medicines before submitting.');
       return;
     }
 
@@ -169,28 +305,46 @@ export default function DispenseModal({ open, onClose, prescription, onDispensed
     setError('');
     setSuccess('');
     try {
+      const summaryItems = medStatuses.map(ms => {
+        if (ms.status === 'given') {
+          return `${ms.medicineName}: ${ms.dispensedQuantity}/${ms.prescribedQuantity} ${ms.unit} (${ms.isFull ? 'Full' : 'Partial'})`;
+        }
+        return `${ms.medicineName}: ${ms.status.replace('_', ' ')}`;
+      });
+
       const notes = [
         dispenseNotes,
-        ...medStatuses
-          .filter(ms => ms.status !== 'given')
-          .map(ms => `${ms.medicineName}: ${ms.status.replace('_', ' ')}`)
+        `Fulfilled: ${totalDispensedTablets}/${totalPrescribedTablets} total units`,
+        ...summaryItems
       ].filter(Boolean).join('; ');
+
+      const payloadMeds = medStatuses.map(ms => ({
+        name: ms.medicineName,
+        medicineName: ms.medicineName,
+        status: ms.status,
+        quantity: `${ms.dispensedQuantity} ${ms.unit}`,
+        dispensedQuantity: ms.dispensedQuantity,
+        prescribedQuantity: ms.prescribedQuantity,
+        unit: ms.unit,
+        isFull: ms.isFull
+      }));
 
       const res = await dispensePrescription(
         prescription.id,
         notes || 'All prescribed items verified and dispensed.',
-        medStatuses.map(ms => ({ medicineName: ms.medicineName, status: ms.status }))
+        payloadMeds
       );
       if (res.success || res.prescription) {
         if (autoDeductStock) {
           const givenMeds = medStatuses
-            .filter(ms => ms.status === 'given')
-            .map(ms => ({ name: ms.medicineName, quantity: 1 }));
+            .filter(ms => ms.status === 'given' && ms.dispensedQuantity > 0)
+            .map(ms => ({ name: ms.medicineName, quantity: ms.dispensedQuantity }));
           if (givenMeds.length > 0) {
             batchDeductDispensedStock(givenMeds).catch(err => console.error('Inventory auto-deduct notice:', err));
           }
         }
         setSuccess('✅ Prescription fulfilled & marked as dispensed!');
+        setIsEditingDispense(false);
         setTimeout(() => {
           if (onDispensedSuccess) onDispensedSuccess();
           onClose();
@@ -529,48 +683,57 @@ export default function DispenseModal({ open, onClose, prescription, onDispensed
 
         <Divider sx={{ my: 2.5, borderColor: isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0' }} />
 
-        {/* Real-time Medicines Given Counter Banner */}
+        {/* Real-time Medicines Given & Tablet Units Counter Banner */}
         <Paper
           elevation={0}
           sx={{
-            p: 2,
+            p: 2.2,
             mb: 2.5,
-            borderRadius: '20px',
+            borderRadius: '22px',
             bgcolor: isDark ? 'rgba(13, 148, 136, 0.15)' : '#E6FFFA',
-            border: '1.5px solid #0D9488',
-            display: 'flex',
-            alignItems: 'center',
-            justify: 'space-between',
-            flexWrap: 'wrap',
-            gap: 1.5
+            border: isDark ? '1.5px solid rgba(13, 148, 136, 0.4)' : '1.5px solid #0D9488',
           }}
         >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
-            <CheckCircleIcon sx={{ color: isDark ? '#2DD4BF' : '#0D9488', fontSize: 26 }} />
-            <Box>
-              <Typography variant="subtitle2" sx={{ fontWeight: 900, color: isDark ? '#2DD4BF' : '#0F766E', fontSize: '0.95rem' }}>
-                Medicines Given Counter: {medStatuses.filter(ms => ms.status === 'given').length} of {medications.length} Given
-              </Typography>
-              <Typography variant="caption" sx={{ color: isDark ? '#9CA3AF' : '#475569', fontWeight: 700, fontSize: '0.78rem' }}>
-                {medStatuses.filter(ms => ms.status === 'given').length === medications.length
-                  ? '✅ All prescribed medicines are marked GIVEN to the patient.'
-                  : `⚠️ ${medications.length - medStatuses.filter(ms => ms.status === 'given').length} medicine(s) not marked as given.`}
-              </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1.5, mb: 1.2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
+              <CheckCircleIcon sx={{ color: isDark ? '#2DD4BF' : '#0D9488', fontSize: 28 }} />
+              <Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: 900, color: isDark ? '#2DD4BF' : '#0F766E', fontSize: '1rem' }}>
+                  Medicines Given: {totalGivenMeds} of {medications.length} Marked Given
+                </Typography>
+                <Typography variant="caption" sx={{ color: isDark ? '#9CA3AF' : '#475569', fontWeight: 800, fontSize: '0.82rem', display: 'block' }}>
+                  Total Tablets Dispensed: <strong style={{ color: isDark ? '#34D399' : '#059669' }}>{totalDispensedTablets}</strong> of <strong>{totalPrescribedTablets}</strong> Units ({totalPrescribedTablets > 0 ? Math.round((totalDispensedTablets / totalPrescribedTablets) * 100) : 100}%)
+                </Typography>
+              </Box>
+            </Box>
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+              <Chip
+                label={`${totalDispensedTablets} / ${totalPrescribedTablets} UNITS`}
+                sx={{
+                  fontWeight: 900,
+                  fontSize: '0.82rem',
+                  bgcolor: '#0D9488',
+                  color: '#FFFFFF',
+                  px: 1,
+                  py: 0.5,
+                  height: 28,
+                  boxShadow: '0 4px 12px rgba(13, 148, 136, 0.3)'
+                }}
+              />
             </Box>
           </Box>
-          <Chip
-            label={`${medStatuses.filter(ms => ms.status === 'given').length} / ${medications.length} GIVEN`}
-            sx={{
-              fontWeight: 900,
-              fontSize: '0.82rem',
-              bgcolor: '#0D9488',
-              color: '#FFFFFF',
-              px: 1,
-              py: 0.5,
-              height: 28,
-              boxShadow: '0 4px 12px rgba(13, 148, 136, 0.3)'
-            }}
-          />
+          {/* Visual Progress Bar */}
+          <Box sx={{ width: '100%', height: 6, borderRadius: 3, bgcolor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(13, 148, 136, 0.2)', overflow: 'hidden' }}>
+            <Box
+              sx={{
+                width: `${totalPrescribedTablets > 0 ? Math.min(100, Math.round((totalDispensedTablets / totalPrescribedTablets) * 100)) : 100}%`,
+                height: '100%',
+                borderRadius: 3,
+                background: 'linear-gradient(90deg, #10B981 0%, #0D9488 100%)',
+                transition: 'width 0.3s ease'
+              }}
+            />
+          </Box>
         </Paper>
 
         {/* Medicine Checklist Section */}
@@ -579,20 +742,44 @@ export default function DispenseModal({ open, onClose, prescription, onDispensed
             <Typography variant="subtitle2" sx={{ color: isDark ? '#34D399' : '#047857', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 0.8 }}>
               <MedicationIcon sx={{ fontSize: 18 }} /> Medicine Checklist & Quantity Tracker
             </Typography>
-            <Chip
-              label={`${medications.length} items`}
-              size="small"
-              sx={{ height: 20, fontSize: '0.65rem', fontWeight: 800, bgcolor: isDark ? 'rgba(16, 185, 129, 0.15)' : '#ECFDF5', color: isDark ? '#34D399' : '#047857' }}
-            />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Chip
+                label={`${medications.length} items`}
+                size="small"
+                sx={{ height: 20, fontSize: '0.65rem', fontWeight: 800, bgcolor: isDark ? 'rgba(16, 185, 129, 0.15)' : '#ECFDF5', color: isDark ? '#34D399' : '#047857' }}
+              />
+              {isAlreadyDispensed && !isEditingDispense && (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => setIsEditingDispense(true)}
+                  sx={{
+                    height: 24,
+                    fontSize: '0.7rem',
+                    fontWeight: 900,
+                    borderRadius: '10px',
+                    borderColor: '#0D9488',
+                    color: isDark ? '#34D399' : '#0D9488',
+                    textTransform: 'none'
+                  }}
+                >
+                  🔄 Refill / Edit
+                </Button>
+              )}
+            </Box>
           </Box>
           <Typography variant="caption" sx={{ color: isDark ? '#9CA3AF' : '#64748B', display: 'block', mb: 2, fontWeight: 700, fontSize: '0.75rem' }}>
-            Select dispensing status for each prescribed medicine below to record quantities given to patient:
+            Specify tablets dispensed (Full vs Partial quantity) for each prescribed medicine:
           </Typography>
 
           {medications.length > 0 ? (
             medications.map((med, idx) => {
-              const currentStatus = getStatus(med.name);
+              const statusEntry = getStatusEntry(med.name);
+              const currentStatus = statusEntry.status;
               const config = statusConfig[currentStatus];
+              const prescribedQty = statusEntry.prescribedQuantity;
+              const dispensedQty = statusEntry.dispensedQuantity;
+              const isFull = statusEntry.isFull;
 
               return (
                 <Paper
@@ -601,20 +788,22 @@ export default function DispenseModal({ open, onClose, prescription, onDispensed
                   sx={{
                     p: 2.2,
                     mb: 2,
-                    borderRadius: '22px',
+                    borderRadius: '24px',
                     bgcolor: isDark ? 'rgba(255, 255, 255, 0.03)' : '#F8FAFC',
-                    border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid #E2E8F0',
+                    border: isDark 
+                      ? (isFull && currentStatus === 'given' ? '1.5px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(255,255,255,0.08)')
+                      : (isFull && currentStatus === 'given' ? '1.5px solid #6EE7B7' : '1px solid #E2E8F0'),
                     boxShadow: isDark ? 'none' : '0 2px 10px rgba(0, 0, 0, 0.03)',
                     transition: 'all 0.2s ease',
                   }}
                 >
                   {/* Medicine Info Header */}
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 1, mb: 1.5 }}>
                     <Box>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 900, color: isDark ? '#FFFFFF' : '#0F172A', letterSpacing: '0.02em', fontSize: '0.98rem' }}>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 900, color: isDark ? '#FFFFFF' : '#0F172A', letterSpacing: '0.02em', fontSize: '1.02rem' }}>
                         💊 {med.name.toUpperCase()}
                       </Typography>
-                      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 0.8 }}>
+                      <Box sx={{ display: 'flex', gap: 0.8, flexWrap: 'wrap', mt: 0.8 }}>
                         {med.dosage && (
                           <Chip 
                             label={`Dosage: ${med.dosage}`} 
@@ -629,13 +818,24 @@ export default function DispenseModal({ open, onClose, prescription, onDispensed
                             sx={{ fontWeight: 800, fontSize: '0.72rem', bgcolor: isDark ? 'rgba(59, 130, 246, 0.2)' : '#DBEAFE', color: isDark ? '#60A5FA' : '#1E40AF' }} 
                           />
                         )}
-                        {med.quantity && (
+                        {med.intervalDays && Number(med.intervalDays) > 1 && (
                           <Chip 
-                            label={`📦 Dispense Qty: ${med.quantity}`} 
+                            label={`🔄 Interval: ${Number(med.intervalDays) === 2 ? 'Alternate Days (Every 2d)' : Number(med.intervalDays) === 7 ? 'Weekly (Every 7d)' : `Every ${med.intervalDays} Days`}`} 
                             size="small" 
-                            sx={{ fontWeight: 900, fontSize: '0.72rem', bgcolor: isDark ? 'rgba(16, 185, 129, 0.2)' : '#D1FAE5', color: isDark ? '#34D399' : '#047857', border: `1px solid ${isDark ? '#10B981' : '#6EE7B7'}` }} 
+                            sx={{ fontWeight: 900, fontSize: '0.72rem', background: 'linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%)', color: '#ffffff' }} 
                           />
                         )}
+                        <Chip 
+                          label={`📦 Prescribed: ${prescribedQty} ${statusEntry.unit}`} 
+                          size="small" 
+                          sx={{ 
+                            fontWeight: 900, 
+                            fontSize: '0.72rem', 
+                            bgcolor: isDark ? 'rgba(16, 185, 129, 0.2)' : '#D1FAE5', 
+                            color: isDark ? '#34D399' : '#047857', 
+                            border: `1px solid ${isDark ? '#10B981' : '#6EE7B7'}` 
+                          }} 
+                        />
                       </Box>
                       {med.instructions && (
                         <Typography variant="body2" sx={{ color: isDark ? '#FBBF24' : '#D97706', fontWeight: 800, mt: 0.8, display: 'block', fontSize: '0.82rem' }}>
@@ -643,29 +843,66 @@ export default function DispenseModal({ open, onClose, prescription, onDispensed
                         </Typography>
                       )}
                     </Box>
-                    <Chip
-                      icon={config.icon as React.ReactElement}
-                      label={config.label}
-                      size="small"
-                      sx={{
-                        bgcolor: config.activeBg,
-                        color: config.color,
-                        fontWeight: 900,
-                        fontSize: '0.72rem',
-                        border: `1px solid ${config.activeBorder}`,
-                        px: 0.5,
-                        '& .MuiChip-icon': { color: config.color }
-                      }}
-                    />
+
+                    {/* Live Quantity Summary Badge */}
+                    <Box sx={{ textAlign: 'right' }}>
+                      {currentStatus === 'given' ? (
+                        isFull ? (
+                          <Chip
+                            icon={<CheckCircleIcon sx={{ fontSize: '15px !important', color: '#10B981 !important' }} />}
+                            label={`✅ Full: ${dispensedQty}/${prescribedQty} ${statusEntry.unit}`}
+                            size="small"
+                            sx={{
+                              bgcolor: isDark ? 'rgba(16, 185, 129, 0.2)' : '#ECFDF5',
+                              color: '#10B981',
+                              fontWeight: 900,
+                              fontSize: '0.75rem',
+                              border: '1px solid #10B981',
+                              px: 0.5
+                            }}
+                          />
+                        ) : (
+                          <Chip
+                            icon={<WarningIcon sx={{ fontSize: '15px !important', color: '#F59E0B !important' }} />}
+                            label={`⚠️ Partial: ${dispensedQty}/${prescribedQty} (${prescribedQty - dispensedQty} Left)`}
+                            size="small"
+                            sx={{
+                              bgcolor: isDark ? 'rgba(245, 158, 11, 0.2)' : '#FFFBEB',
+                              color: '#D97706',
+                              fontWeight: 900,
+                              fontSize: '0.75rem',
+                              border: '1px solid #F59E0B',
+                              px: 0.5
+                            }}
+                          />
+                        )
+                      ) : (
+                        <Chip
+                          icon={config.icon as React.ReactElement}
+                          label={config.label}
+                          size="small"
+                          sx={{
+                            bgcolor: config.activeBg,
+                            color: config.color,
+                            fontWeight: 900,
+                            fontSize: '0.75rem',
+                            border: `1px solid ${config.activeBorder}`,
+                            px: 0.5,
+                            '& .MuiChip-icon': { color: config.color }
+                          }}
+                        />
+                      )}
+                    </Box>
                   </Box>
 
-                  {/* Modern Interactive Segmented Pill Selector (Replaces Generic Radios) */}
-                  {!isAlreadyDispensed && (
+                  {/* Interactive Dispense Controls */}
+                  {(!isAlreadyDispensed || isEditingDispense) ? (
                     <Box sx={{ mt: 2, pt: 1.5, borderTop: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #E2E8F0' }}>
+                      {/* Status Buttons */}
                       <Typography variant="caption" sx={{ color: isDark ? '#9CA3AF' : '#64748B', fontWeight: 800, display: 'block', mb: 1, fontSize: '0.68rem', textTransform: 'uppercase' }}>
-                        Set Item Status:
+                        Dispensing Status:
                       </Typography>
-                      <Grid container spacing={1}>
+                      <Grid container spacing={1} sx={{ mb: 1.5 }}>
                         {(['given', 'not_available', 'not_needed'] as MedStatus[]).map((statusOption) => {
                           const optionCfg = statusConfig[statusOption];
                           const isSelected = currentStatus === statusOption;
@@ -677,7 +914,7 @@ export default function DispenseModal({ open, onClose, prescription, onDispensed
                                 disabled={loading}
                                 onClick={() => handleStatusChange(med.name, statusOption)}
                                 sx={{
-                                  py: 1,
+                                  py: 0.9,
                                   px: 1,
                                   borderRadius: '14px',
                                   fontSize: '0.75rem',
@@ -685,14 +922,10 @@ export default function DispenseModal({ open, onClose, prescription, onDispensed
                                   textTransform: 'none',
                                   display: 'flex',
                                   alignItems: 'center',
-                                  justify: 'center',
+                                  justifyContent: 'center',
                                   gap: 0.6,
-                                  bgcolor: isSelected
-                                    ? optionCfg.activeBg
-                                    : (isDark ? 'rgba(255,255,255,0.04)' : '#FFFFFF'),
-                                  color: isSelected
-                                    ? optionCfg.color
-                                    : (isDark ? '#9CA3AF' : '#64748B'),
+                                  bgcolor: isSelected ? optionCfg.activeBg : (isDark ? 'rgba(255,255,255,0.04)' : '#FFFFFF'),
+                                  color: isSelected ? optionCfg.color : (isDark ? '#9CA3AF' : '#64748B'),
                                   border: `1.5px solid ${isSelected ? optionCfg.activeBorder : (isDark ? 'rgba(255,255,255,0.1)' : '#E2E8F0')}`,
                                   boxShadow: isSelected ? `0 4px 14px ${optionCfg.color}25` : 'none',
                                   transition: 'all 0.15s ease',
@@ -705,12 +938,96 @@ export default function DispenseModal({ open, onClose, prescription, onDispensed
                                 }}
                               >
                                 {optionCfg.icon}
-                                <span>{optionCfg.label}</span>
+                                <span>{statusOption === 'given' ? (isFull ? 'Full Dispense' : 'Partial Dispense') : optionCfg.label}</span>
                               </Button>
                             </Grid>
                           );
                         })}
                       </Grid>
+
+                      {/* Quantity Stepper & Quick Full Checkbox (Shown when status is 'given') */}
+                      {currentStatus === 'given' && (
+                        <Paper
+                          elevation={0}
+                          sx={{
+                            p: 1.5,
+                            borderRadius: '16px',
+                            bgcolor: isDark ? 'rgba(0,0,0,0.3)' : '#F0FDF4',
+                            border: isDark ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid #BBF7D0',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            flexWrap: 'wrap',
+                            gap: 1.5
+                          }}
+                        >
+                          {/* Checkbox for Full Dispense */}
+                          <FormControlLabel
+                            control={
+                              <Checkbox
+                                checked={isFull}
+                                onChange={(e) => handleToggleFull(med.name, e.target.checked)}
+                                sx={{ color: '#10B981', '&.Mui-checked': { color: '#10B981' }, py: 0 }}
+                              />
+                            }
+                            label={
+                              <Typography sx={{ fontSize: '0.82rem', fontWeight: 900, color: isDark ? '#A7F3D0' : '#14532D' }}>
+                                Fully Dispensed ({prescribedQty} {statusEntry.unit})
+                              </Typography>
+                            }
+                          />
+
+                          {/* Number Stepper */}
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="caption" sx={{ fontWeight: 800, color: isDark ? '#9CA3AF' : '#64748B', fontSize: '0.75rem' }}>
+                              Dispensing Qty:
+                            </Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', bgcolor: isDark ? '#1E293B' : '#FFFFFF', borderRadius: '12px', border: '1px solid #CBD5E1', p: 0.3 }}>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleQuantityChange(med.name, Math.max(0, dispensedQty - 1))}
+                                disabled={dispensedQty <= 0}
+                                sx={{ width: 28, height: 28, color: '#0D9488', fontWeight: 900 }}
+                              >
+                                -
+                              </IconButton>
+                              <TextField
+                                size="small"
+                                value={dispensedQty}
+                                onChange={(e) => handleQuantityChange(med.name, parseInt(e.target.value, 10) || 0)}
+                                type="number"
+                                inputProps={{ min: 0, max: prescribedQty * 5, style: { textAlign: 'center', width: 44, padding: '2px 4px', fontWeight: 900, fontSize: '0.9rem' } }}
+                                sx={{ '& fieldset': { border: 'none' } }}
+                              />
+                              <IconButton
+                                size="small"
+                                onClick={() => handleQuantityChange(med.name, dispensedQty + 1)}
+                                sx={{ width: 28, height: 28, color: '#0D9488', fontWeight: 900 }}
+                              >
+                                +
+                              </IconButton>
+                            </Box>
+                            <Typography variant="caption" sx={{ fontWeight: 800, color: isDark ? '#9CA3AF' : '#64748B', fontSize: '0.78rem' }}>
+                              / {prescribedQty} {statusEntry.unit}
+                            </Typography>
+                          </Box>
+                        </Paper>
+                      )}
+                    </Box>
+                  ) : (
+                    /* Read-only view for already dispensed items */
+                    <Box sx={{ mt: 1.5, pt: 1.2, borderTop: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #E2E8F0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Typography variant="body2" sx={{ fontWeight: 800, color: isDark ? '#34D399' : '#047857', fontSize: '0.85rem' }}>
+                        ✅ Dispensed: {dispensedQty} of {prescribedQty} {statusEntry.unit} ({isFull ? '100% Full' : 'Partial'})
+                      </Typography>
+                      <Button
+                        size="small"
+                        variant="text"
+                        onClick={() => setIsEditingDispense(true)}
+                        sx={{ fontSize: '0.75rem', fontWeight: 800, color: isDark ? '#34D399' : '#0D9488', textTransform: 'none' }}
+                      >
+                        ✏️ Adjust / Refill
+                      </Button>
                     </Box>
                   )}
                 </Paper>
@@ -726,7 +1043,7 @@ export default function DispenseModal({ open, onClose, prescription, onDispensed
         </Box>
 
         {/* Pharmacist Dispense Notes & Stock Auto-Deduct */}
-        {!isAlreadyDispensed && (
+        {(!isAlreadyDispensed || isEditingDispense) && (
           <Box sx={{ mb: 2 }}>
             <Box sx={{
               p: 1.5,
@@ -866,7 +1183,7 @@ export default function DispenseModal({ open, onClose, prescription, onDispensed
         >
           Close
         </Button>
-        {!isAlreadyDispensed && (
+        {(!isAlreadyDispensed || isEditingDispense) && (
           <Button
             variant="contained"
             onClick={handleFulfill}
@@ -887,7 +1204,7 @@ export default function DispenseModal({ open, onClose, prescription, onDispensed
               transition: 'all 0.2s ease'
             }}
           >
-            {loading ? 'Fulfilling...' : 'Confirm Dispensing'}
+            {loading ? 'Fulfilling...' : (isAlreadyDispensed ? 'Confirm Refill / Update' : 'Confirm Dispensing')}
           </Button>
         )}
       </DialogActions>

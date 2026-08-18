@@ -224,7 +224,7 @@ const Login = () => {
     }
   };
 
-  const handleSelectRoleAndComplete = async (role: 'doctor' | 'patient') => {
+  const handleSelectRoleAndComplete = async (role: 'doctor' | 'patient' | 'pharmacist') => {
     if (!pendingGoogleCredential) return;
     setSubmittingRole(true);
     setGoogleError(null);
@@ -1220,6 +1220,40 @@ const Login = () => {
               </Typography>
               <Typography variant="caption" sx={{ color: isDark ? '#94A3B8' : '#64748b', display: 'block' }}>
                 View prescriptions, track medication schedules & health history.
+              </Typography>
+            </Box>
+          </Paper>
+
+          {/* Pharmacist Option */}
+          <Paper
+            elevation={0}
+            onClick={() => !submittingRole && handleSelectRoleAndComplete('pharmacist')}
+            sx={{
+              p: 2.5,
+              borderRadius: '16px',
+              border: isDark ? '2px solid rgba(102, 205, 170, 0.35)' : '2px solid rgba(13, 148, 136, 0.25)',
+              bgcolor: isDark ? '#1A312C' : '#ffffff',
+              cursor: submittingRole ? 'wait' : 'pointer',
+              transition: 'all 0.2s ease',
+              '&:hover': {
+                borderColor: isDark ? '#66CDAA' : '#0d9488',
+                bgcolor: isDark ? 'rgba(102, 205, 170, 0.12)' : 'rgba(13, 148, 136, 0.04)',
+                transform: 'translateY(-2px)'
+              },
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2
+            }}
+          >
+            <Box sx={{ width: 44, height: 44, borderRadius: '12px', bgcolor: isDark ? '#0d9488' : '#14b8a6', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem' }}>
+              💊
+            </Box>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 800, color: isDark ? '#66CDAA' : '#0d9488' }}>
+                Pharmacist / Pharmacy
+              </Typography>
+              <Typography variant="caption" sx={{ color: isDark ? '#94A3B8' : '#64748b', display: 'block' }}>
+                Verify e-prescriptions via QR, dispense medicines & manage pharmacy inventory.
               </Typography>
             </Box>
           </Paper>

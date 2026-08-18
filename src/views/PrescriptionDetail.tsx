@@ -868,6 +868,13 @@ const PrescriptionDetail = () => {
                       </Box>
                       <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', my: 0.5 }}>
                         <Chip label={`Dosage: ${med.dosage || 'As directed'}`} size="small" sx={{ fontWeight: 700, bgcolor: '#f1f5f9', fontSize: '0.72rem' }} />
+                        {med.intervalDays && Number(med.intervalDays) > 1 && (
+                          <Chip 
+                            label={`🔄 Interval: ${Number(med.intervalDays) === 2 ? 'Alternate Days (Every 2d)' : Number(med.intervalDays) === 7 ? 'Weekly (Every 7d)' : `Every ${med.intervalDays} Days`}`} 
+                            size="small" 
+                            sx={{ fontWeight: 900, background: 'linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%)', color: '#ffffff', fontSize: '0.72rem' }} 
+                          />
+                        )}
                         <Chip label={`⏱️ Duration: ${med.duration || 'As needed'}`} size="small" sx={{ fontWeight: 700, bgcolor: 'rgba(59, 130, 246, 0.1)', color: '#1d4ed8', fontSize: '0.72rem' }} />
                         {med.quantity && (
                           <Chip label={`📦 Quantity: ${med.quantity}`} size="small" sx={{ fontWeight: 800, bgcolor: 'rgba(16, 185, 129, 0.12)', color: '#047857', fontSize: '0.72rem' }} />

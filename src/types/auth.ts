@@ -101,7 +101,7 @@ export interface RegisterData {
   mobileNumber?: string;
   dateOfBirth?: string;
   password: string;
-  role: 'doctor' | 'patient';
+  role: 'doctor' | 'patient' | 'pharmacist' | 'nurse';
 }
 
 export interface AuthContextType {

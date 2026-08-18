@@ -84,6 +84,11 @@ const GoogleLoginButton = ({ onSuccess, onClose, showRoleSelection = true, defau
               control={<Radio size="small" />} 
               label="Doctor" 
             />
+            <FormControlLabel 
+              value="pharmacist" 
+              control={<Radio size="small" />} 
+              label="Pharmacist" 
+            />
           </RadioGroup>
         </FormControl>
       )}

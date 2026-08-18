@@ -29,6 +29,7 @@ import DoctorNetworkPortal from './views/DoctorNetworkPortal';
 import BillingPortal from './views/BillingPortal';
 import HomeCarePortal from './views/HomeCarePortal';
 import VerifyPrescription from './views/VerifyPrescription';
+import PharmacyInventoryView from './views/PharmacyInventoryView';
 
 // Google OAuth Client ID
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '972944325297-fh67828kvguogf9coekjn6q07a2krv8o.apps.googleusercontent.com';
@@ -96,6 +97,38 @@ const AnimatedRoutes = () => {
           element={
             <ProtectedRoute>
               <HomeCarePortal />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/pharmacy/inventory" 
+          element={
+            <ProtectedRoute requiredRole="pharmacist">
+              <PharmacyInventoryView />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/pharmacy/stock" 
+          element={
+            <ProtectedRoute requiredRole="pharmacist">
+              <PharmacyInventoryView />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/inventory" 
+          element={
+            <ProtectedRoute requiredRole="pharmacist">
+              <PharmacyInventoryView />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/stock" 
+          element={
+            <ProtectedRoute requiredRole="pharmacist">
+              <PharmacyInventoryView />
             </ProtectedRoute>
           } 
         />

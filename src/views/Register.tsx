@@ -102,7 +102,7 @@ const Register = () => {
     const { firstName, lastName, email, password, confirmPassword, role } = formData;
 
     if (!role) {
-      setRoleError('Please select your role (Patient or Doctor)');
+      setRoleError('Please select your role (Patient, Doctor, or Pharmacist)');
       return;
     }
 
@@ -120,7 +120,7 @@ const Register = () => {
         return;
       }
 
-      await register({ firstName, lastName, email, password, role: role as 'doctor' | 'patient' });
+      await register({ firstName, lastName, email, password, role: role as 'doctor' | 'patient' | 'pharmacist' });
       navigate('/login');
     } catch (err) {
       console.error('Registration failed:', err);
@@ -134,7 +134,7 @@ const Register = () => {
     setRoleError('');
 
     if (!formData.role) {
-      setRoleError('Please select your role (Patient or Doctor) before signing up with Google');
+      setRoleError('Please select your role (Patient, Doctor, or Pharmacist) before signing up with Google');
       return;
     }
 

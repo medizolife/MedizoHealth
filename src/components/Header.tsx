@@ -44,6 +44,12 @@ import LocalPharmacyIcon from '@mui/icons-material/LocalPharmacy';
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 import HistoryIcon from '@mui/icons-material/History';
 import PhoneAndroidIcon from '@mui/icons-material/PhoneAndroid';
+import Inventory2Icon from '@mui/icons-material/Inventory2';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import HubIcon from '@mui/icons-material/Hub';
+import HomeWorkIcon from '@mui/icons-material/HomeWork';
+import PeopleIcon from '@mui/icons-material/People';
+import FactCheckIcon from '@mui/icons-material/FactCheck';
 
 import { Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -131,6 +137,28 @@ export default function Header() {
     navigate('/login');
   };
 
+  const getNavLinkStyle = (isActive: boolean) => ({
+    fontWeight: 800,
+    fontSize: '0.82rem',
+    textTransform: 'none',
+    borderRadius: '14px',
+    px: 1.8,
+    py: 0.65,
+    fontFamily: "'Outfit', sans-serif",
+    color: isActive 
+      ? (mode === 'dark' ? '#66CDAA' : 'var(--color-forest)') 
+      : (mode === 'dark' ? 'rgba(255, 255, 255, 0.75)' : 'rgba(18, 48, 41, 0.75)'),
+    bgcolor: isActive 
+      ? (mode === 'dark' ? 'rgba(102, 205, 170, 0.15)' : 'rgba(42, 107, 93, 0.12)') 
+      : 'transparent',
+    border: isActive ? '1px solid var(--color-mint)' : '1px solid transparent',
+    transition: 'all 0.2s ease',
+    '&:hover': { 
+      bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.2)' : 'rgba(42, 107, 93, 0.15)',
+      borderColor: 'var(--color-mint)'
+    }
+  });
+
   const renderThemeIcon = () => {
     if (mode === 'dark') {
       return <DarkModeIcon sx={{ color: 'var(--color-mint)', fontSize: 18 }} />;
@@ -197,94 +225,239 @@ export default function Header() {
 
           {/* Desktop Navigation Links (Visible on md & larger screens) */}
           {isAuthenticated && (
-            <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 1.5, mx: 2 }}>
-              <Button
-                component={RouterLink}
-                to="/dashboard"
-                size="small"
-                startIcon={<LocalHospitalIcon sx={{ fontSize: 18 }} />}
-                sx={{
-                  fontWeight: 800,
-                  fontSize: '0.82rem',
-                  textTransform: 'none',
-                  borderRadius: '14px',
-                  px: 2,
-                  py: 0.7,
-                  color: location.pathname === '/' || location.pathname === '/dashboard' ? (mode === 'dark' ? '#66CDAA' : 'var(--color-forest)') : (mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(18, 48, 41, 0.7)'),
-                  bgcolor: location.pathname === '/' || location.pathname === '/dashboard' ? (mode === 'dark' ? 'rgba(102, 205, 170, 0.15)' : 'rgba(42, 107, 93, 0.12)') : 'transparent',
-                  border: location.pathname === '/' || location.pathname === '/dashboard' ? '1px solid var(--color-mint)' : '1px solid transparent',
-                  '&:hover': { bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.2)' : 'rgba(42, 107, 93, 0.15)' }
-                }}
-              >
-                Dashboard
-              </Button>
+            <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 1, mx: 2, flexWrap: 'wrap' }}>
+              {user?.role === 'pharmacist' ? (
+                <>
+                  <Button
+                    component={RouterLink}
+                    to="/dashboard"
+                    size="small"
+                    startIcon={<LocalPharmacyIcon sx={{ fontSize: 18 }} />}
+                    sx={getNavLinkStyle(location.pathname === '/' || location.pathname === '/dashboard')}
+                  >
+                    Rx Feed
+                  </Button>
 
-              <Button
-                component={RouterLink}
-                to="/prescriptions/all"
-                size="small"
-                startIcon={<MedicationIcon sx={{ fontSize: 18 }} />}
-                sx={{
-                  fontWeight: 800,
-                  fontSize: '0.82rem',
-                  textTransform: 'none',
-                  borderRadius: '14px',
-                  px: 2,
-                  py: 0.7,
-                  color: location.pathname.startsWith('/prescriptions') && !location.pathname.includes('/new') ? (mode === 'dark' ? '#66CDAA' : 'var(--color-forest)') : (mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(18, 48, 41, 0.7)'),
-                  bgcolor: location.pathname.startsWith('/prescriptions') && !location.pathname.includes('/new') ? (mode === 'dark' ? 'rgba(102, 205, 170, 0.15)' : 'rgba(42, 107, 93, 0.12)') : 'transparent',
-                  border: location.pathname.startsWith('/prescriptions') && !location.pathname.includes('/new') ? '1px solid var(--color-mint)' : '1px solid transparent',
-                  '&:hover': { bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.2)' : 'rgba(42, 107, 93, 0.15)' }
-                }}
-              >
-                {user?.role === 'doctor' ? 'All Prescriptions' : 'My Prescriptions'}
-              </Button>
+                  <Button
+                    component={RouterLink}
+                    to="/pharmacy/inventory"
+                    size="small"
+                    startIcon={<Inventory2Icon sx={{ fontSize: 18 }} />}
+                    sx={getNavLinkStyle(location.pathname.startsWith('/pharmacy/inventory') || location.pathname.startsWith('/pharmacy/stock') || location.pathname === '/inventory')}
+                  >
+                    My Stock &amp; Inventory
+                  </Button>
 
-              {user?.role === 'doctor' && (
-                <Button
-                  component={RouterLink}
-                  to="/patients"
-                  size="small"
-                  startIcon={<VerifiedUserIcon sx={{ fontSize: 18 }} />}
-                  sx={{
-                    fontWeight: 800,
-                    fontSize: '0.82rem',
-                    textTransform: 'none',
-                    borderRadius: '14px',
-                    px: 2,
-                    py: 0.7,
-                    color: location.pathname.startsWith('/patients') ? (mode === 'dark' ? '#66CDAA' : 'var(--color-forest)') : (mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(18, 48, 41, 0.7)'),
-                    bgcolor: location.pathname.startsWith('/patients') ? (mode === 'dark' ? 'rgba(102, 205, 170, 0.15)' : 'rgba(42, 107, 93, 0.12)') : 'transparent',
-                    border: location.pathname.startsWith('/patients') ? '1px solid var(--color-mint)' : '1px solid transparent',
-                    '&:hover': { bgcolor: mode === 'dark' ? 'rgba(102, 205, 170, 0.2)' : 'rgba(42, 107, 93, 0.15)' }
-                  }}
-                >
-                  Patient Management
-                </Button>
-              )}
+                  <Button
+                    onClick={() => {
+                      if (location.pathname !== '/dashboard') navigate('/dashboard');
+                      setTimeout(() => window.dispatchEvent(new CustomEvent('open-qr-scanner')), 300);
+                    }}
+                    size="small"
+                    startIcon={<QrCodeScannerIcon sx={{ fontSize: 18 }} />}
+                    sx={getNavLinkStyle(false)}
+                  >
+                    Scan &amp; Dispense
+                  </Button>
 
-              {user?.role === 'doctor' && (
-                <Button
-                  component={RouterLink}
-                  to="/prescriptions/new"
-                  size="small"
-                  variant="contained"
-                  startIcon={<LocalPharmacyIcon sx={{ fontSize: 18 }} />}
-                  sx={{
-                    fontWeight: 800,
-                    fontSize: '0.82rem',
-                    textTransform: 'none',
-                    borderRadius: '14px',
-                    px: 2.2,
-                    py: 0.7,
-                    bgcolor: 'var(--color-forest)',
-                    color: '#ffffff',
-                    boxShadow: '0 4px 14px rgba(42, 107, 93, 0.3)',
-                    '&:hover': { bgcolor: '#1d4b41' }
-                  }}
-                >
-                  + New Prescription
-                </Button>
+                  <Button
+                    component={RouterLink}
+                    to="/prescriptions/all"
+                    size="small"
+                    startIcon={<HistoryIcon sx={{ fontSize: 18 }} />}
+                    sx={getNavLinkStyle(location.pathname.startsWith('/prescriptions'))}
+                  >
+                    Dispense Log
+                  </Button>
+
+                  <Button
+                    component={RouterLink}
+                    to="/billing"
+                    size="small"
+                    startIcon={<ReceiptLongIcon sx={{ fontSize: 18 }} />}
+                    sx={getNavLinkStyle(location.pathname.startsWith('/billing'))}
+                  >
+                    Billing
+                  </Button>
+                </>
+              ) : user?.role === 'doctor' ? (
+                <>
+                  <Button
+                    component={RouterLink}
+                    to="/dashboard"
+                    size="small"
+                    startIcon={<LocalHospitalIcon sx={{ fontSize: 18 }} />}
+                    sx={getNavLinkStyle(location.pathname === '/' || location.pathname === '/dashboard')}
+                  >
+                    Dashboard
+                  </Button>
+
+                  <Button
+                    component={RouterLink}
+                    to="/prescriptions/new"
+                    size="small"
+                    variant="contained"
+                    startIcon={<LocalPharmacyIcon sx={{ fontSize: 18 }} />}
+                    sx={{
+                      fontWeight: 800,
+                      fontSize: '0.82rem',
+                      textTransform: 'none',
+                      borderRadius: '14px',
+                      px: 2,
+                      py: 0.65,
+                      bgcolor: 'var(--color-forest)',
+                      color: '#ffffff',
+                      boxShadow: '0 4px 14px rgba(42, 107, 93, 0.3)',
+                      '&:hover': { bgcolor: '#1d4b41' }
+                    }}
+                  >
+                    + New Rx
+                  </Button>
+
+                  <Button
+                    component={RouterLink}
+                    to="/prescriptions/all"
+                    size="small"
+                    startIcon={<MedicationIcon sx={{ fontSize: 18 }} />}
+                    sx={getNavLinkStyle(location.pathname.startsWith('/prescriptions') && !location.pathname.includes('/new'))}
+                  >
+                    All Prescriptions
+                  </Button>
+
+                  <Button
+                    component={RouterLink}
+                    to="/patients"
+                    size="small"
+                    startIcon={<PeopleIcon sx={{ fontSize: 18 }} />}
+                    sx={getNavLinkStyle(location.pathname.startsWith('/patients'))}
+                  >
+                    Patients
+                  </Button>
+
+                  <Button
+                    component={RouterLink}
+                    to="/network"
+                    size="small"
+                    startIcon={<HubIcon sx={{ fontSize: 18 }} />}
+                    sx={getNavLinkStyle(location.pathname.startsWith('/network') || location.pathname.startsWith('/referrals'))}
+                  >
+                    Doctor Network
+                  </Button>
+
+                  <Button
+                    component={RouterLink}
+                    to="/billing"
+                    size="small"
+                    startIcon={<ReceiptLongIcon sx={{ fontSize: 18 }} />}
+                    sx={getNavLinkStyle(location.pathname.startsWith('/billing'))}
+                  >
+                    Billing
+                  </Button>
+                </>
+              ) : user?.role === 'nurse' ? (
+                <>
+                  <Button
+                    component={RouterLink}
+                    to="/dashboard"
+                    size="small"
+                    startIcon={<LocalHospitalIcon sx={{ fontSize: 18 }} />}
+                    sx={getNavLinkStyle(location.pathname === '/' || location.pathname === '/dashboard' || location.pathname === '/nurse')}
+                  >
+                    Care Hub
+                  </Button>
+
+                  <Button
+                    component={RouterLink}
+                    to="/patients"
+                    size="small"
+                    startIcon={<PeopleIcon sx={{ fontSize: 18 }} />}
+                    sx={getNavLinkStyle(location.pathname.startsWith('/patients'))}
+                  >
+                    Patients
+                  </Button>
+
+                  <Button
+                    component={RouterLink}
+                    to="/home-care"
+                    size="small"
+                    startIcon={<HomeWorkIcon sx={{ fontSize: 18 }} />}
+                    sx={getNavLinkStyle(location.pathname.startsWith('/home-care'))}
+                  >
+                    Home Care
+                  </Button>
+
+                  <Button
+                    component={RouterLink}
+                    to="/prescriptions/all"
+                    size="small"
+                    startIcon={<MedicationIcon sx={{ fontSize: 18 }} />}
+                    sx={getNavLinkStyle(location.pathname.startsWith('/prescriptions'))}
+                  >
+                    Care Log
+                  </Button>
+
+                  <Button
+                    component={RouterLink}
+                    to="/billing"
+                    size="small"
+                    startIcon={<ReceiptLongIcon sx={{ fontSize: 18 }} />}
+                    sx={getNavLinkStyle(location.pathname.startsWith('/billing'))}
+                  >
+                    Billing
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    component={RouterLink}
+                    to="/dashboard"
+                    size="small"
+                    startIcon={<LocalHospitalIcon sx={{ fontSize: 18 }} />}
+                    sx={getNavLinkStyle(location.pathname === '/' || location.pathname === '/dashboard')}
+                  >
+                    Health Feed
+                  </Button>
+
+                  <Button
+                    component={RouterLink}
+                    to="/prescriptions/all"
+                    size="small"
+                    startIcon={<MedicationIcon sx={{ fontSize: 18 }} />}
+                    sx={getNavLinkStyle(location.pathname.startsWith('/prescriptions'))}
+                  >
+                    My Prescriptions
+                  </Button>
+
+                  <Button
+                    component={RouterLink}
+                    to="/home-care"
+                    size="small"
+                    startIcon={<HomeWorkIcon sx={{ fontSize: 18 }} />}
+                    sx={getNavLinkStyle(location.pathname.startsWith('/home-care'))}
+                  >
+                    Home Care
+                  </Button>
+
+                  <Button
+                    component={RouterLink}
+                    to="/billing"
+                    size="small"
+                    startIcon={<ReceiptLongIcon sx={{ fontSize: 18 }} />}
+                    sx={getNavLinkStyle(location.pathname.startsWith('/billing'))}
+                  >
+                    Billing
+                  </Button>
+
+                  <Button
+                    component={RouterLink}
+                    to="/verify-prescription"
+                    size="small"
+                    startIcon={<FactCheckIcon sx={{ fontSize: 18 }} />}
+                    sx={getNavLinkStyle(location.pathname.startsWith('/verify'))}
+                  >
+                    Verify Rx
+                  </Button>
+                </>
               )}
             </Box>
           )}
@@ -824,7 +997,25 @@ export default function Header() {
                           <LocalPharmacyIcon sx={{ fontSize: 20 }} />
                         </Box>
                       </ListItemIcon>
-                      <ListItemText primary="Pharmacy Portal" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.9rem' }} />
+                      <ListItemText primary="Pharmacy Feed" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.9rem' }} />
+                    </ListItemButton>
+
+                    <ListItemButton 
+                      onClick={() => handleNavigation('/pharmacy/inventory')} 
+                      sx={{ 
+                        borderRadius: '16px', 
+                        mb: 0.8, 
+                        py: 1.2,
+                        transition: 'all 0.2s ease',
+                        '&:hover': { transform: 'translateX(4px)', bgcolor: mode === 'dark' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.08)' }
+                      }}
+                    >
+                      <ListItemIcon sx={{ minWidth: 38 }}>
+                        <Box sx={{ p: 0.8, borderRadius: '10px', bgcolor: 'rgba(16, 185, 129, 0.15)', color: '#10B981', display: 'flex' }}>
+                          <Inventory2Icon sx={{ fontSize: 20 }} />
+                        </Box>
+                      </ListItemIcon>
+                      <ListItemText primary="My Stock & Inventory" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.9rem' }} />
                     </ListItemButton>
 
                     <ListItemButton 
@@ -864,6 +1055,24 @@ export default function Header() {
                     </ListItemButton>
 
                     <ListItemButton 
+                      onClick={() => handleNavigation('/billing')} 
+                      sx={{ 
+                        borderRadius: '16px', 
+                        mb: 0.8, 
+                        py: 1.2,
+                        transition: 'all 0.2s ease',
+                        '&:hover': { transform: 'translateX(4px)', bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.12)' : 'rgba(66, 132, 117, 0.08)' }
+                      }}
+                    >
+                      <ListItemIcon sx={{ minWidth: 38 }}>
+                        <Box sx={{ p: 0.8, borderRadius: '10px', bgcolor: 'rgba(59, 130, 246, 0.15)', color: '#3B82F6', display: 'flex' }}>
+                          <ReceiptLongIcon sx={{ fontSize: 20 }} />
+                        </Box>
+                      </ListItemIcon>
+                      <ListItemText primary="Billing & Invoices" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.9rem' }} />
+                    </ListItemButton>
+
+                    <ListItemButton 
                       onClick={() => handleNavigation('/profile')} 
                       sx={{ 
                         borderRadius: '16px', 
@@ -879,6 +1088,245 @@ export default function Header() {
                         </Box>
                       </ListItemIcon>
                       <ListItemText primary="Pharmacy Profile" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.9rem' }} />
+                    </ListItemButton>
+                  </>
+                ) : user?.role === 'doctor' ? (
+                  <>
+                    <ListItemButton 
+                      onClick={() => handleNavigation('/dashboard')} 
+                      sx={{ 
+                        borderRadius: '16px', 
+                        mb: 0.8, 
+                        py: 1.2,
+                        transition: 'all 0.2s ease',
+                        '&:hover': { transform: 'translateX(4px)', bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.12)' : 'rgba(66, 132, 117, 0.08)' }
+                      }}
+                    >
+                      <ListItemIcon sx={{ minWidth: 38 }}>
+                        <Box sx={{ p: 0.8, borderRadius: '10px', bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.15)' : 'rgba(66, 132, 117, 0.1)', color: mode === 'dark' ? '#89D7B7' : '#2A6B5D', display: 'flex' }}>
+                          <LocalHospitalIcon sx={{ fontSize: 20 }} />
+                        </Box>
+                      </ListItemIcon>
+                      <ListItemText primary="Doctor Dashboard" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.9rem' }} />
+                    </ListItemButton>
+
+                    <ListItemButton 
+                      onClick={() => handleNavigation('/prescriptions/new')} 
+                      sx={{ 
+                        borderRadius: '16px', 
+                        mb: 0.8, 
+                        py: 1.2,
+                        bgcolor: mode === 'dark' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(42, 107, 93, 0.1)',
+                        transition: 'all 0.2s ease',
+                        '&:hover': { transform: 'translateX(4px)', bgcolor: mode === 'dark' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(42, 107, 93, 0.18)' }
+                      }}
+                    >
+                      <ListItemIcon sx={{ minWidth: 38 }}>
+                        <Box sx={{ p: 0.8, borderRadius: '10px', bgcolor: '#059669', color: '#ffffff', display: 'flex' }}>
+                          <LocalPharmacyIcon sx={{ fontSize: 20 }} />
+                        </Box>
+                      </ListItemIcon>
+                      <ListItemText primary="+ New Prescription" primaryTypographyProps={{ fontWeight: 900, color: mode === 'dark' ? '#34D399' : '#059669', fontSize: '0.9rem' }} />
+                    </ListItemButton>
+                    
+                    <ListItemButton 
+                      onClick={() => handleNavigation('/prescriptions/all')} 
+                      sx={{ 
+                        borderRadius: '16px', 
+                        mb: 0.8, 
+                        py: 1.2,
+                        transition: 'all 0.2s ease',
+                        '&:hover': { transform: 'translateX(4px)', bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.12)' : 'rgba(66, 132, 117, 0.08)' }
+                      }}
+                    >
+                      <ListItemIcon sx={{ minWidth: 38 }}>
+                        <Box sx={{ p: 0.8, borderRadius: '10px', bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.15)' : 'rgba(66, 132, 117, 0.1)', color: mode === 'dark' ? '#89D7B7' : '#2A6B5D', display: 'flex' }}>
+                          <MedicationIcon sx={{ fontSize: 20 }} />
+                        </Box>
+                      </ListItemIcon>
+                      <ListItemText primary="All Prescriptions" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.9rem' }} />
+                    </ListItemButton>
+                    
+                    <ListItemButton 
+                      onClick={() => handleNavigation('/patients')} 
+                      sx={{ 
+                        borderRadius: '16px', 
+                        mb: 0.8, 
+                        py: 1.2,
+                        transition: 'all 0.2s ease',
+                        '&:hover': { transform: 'translateX(4px)', bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.12)' : 'rgba(66, 132, 117, 0.08)' }
+                      }}
+                    >
+                      <ListItemIcon sx={{ minWidth: 38 }}>
+                        <Box sx={{ p: 0.8, borderRadius: '10px', bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.15)' : 'rgba(66, 132, 117, 0.1)', color: mode === 'dark' ? '#89D7B7' : '#2A6B5D', display: 'flex' }}>
+                          <PeopleIcon sx={{ fontSize: 20 }} />
+                        </Box>
+                      </ListItemIcon>
+                      <ListItemText primary="Patient Management" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.9rem' }} />
+                    </ListItemButton>
+
+                    <ListItemButton 
+                      onClick={() => handleNavigation('/network')} 
+                      sx={{ 
+                        borderRadius: '16px', 
+                        mb: 0.8, 
+                        py: 1.2,
+                        transition: 'all 0.2s ease',
+                        '&:hover': { transform: 'translateX(4px)', bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.12)' : 'rgba(66, 132, 117, 0.08)' }
+                      }}
+                    >
+                      <ListItemIcon sx={{ minWidth: 38 }}>
+                        <Box sx={{ p: 0.8, borderRadius: '10px', bgcolor: 'rgba(139, 92, 246, 0.15)', color: '#8B5CF6', display: 'flex' }}>
+                          <HubIcon sx={{ fontSize: 20 }} />
+                        </Box>
+                      </ListItemIcon>
+                      <ListItemText primary="Doctor Network & Referrals" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.9rem' }} />
+                    </ListItemButton>
+
+                    <ListItemButton 
+                      onClick={() => handleNavigation('/billing')} 
+                      sx={{ 
+                        borderRadius: '16px', 
+                        mb: 0.8, 
+                        py: 1.2,
+                        transition: 'all 0.2s ease',
+                        '&:hover': { transform: 'translateX(4px)', bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.12)' : 'rgba(66, 132, 117, 0.08)' }
+                      }}
+                    >
+                      <ListItemIcon sx={{ minWidth: 38 }}>
+                        <Box sx={{ p: 0.8, borderRadius: '10px', bgcolor: 'rgba(59, 130, 246, 0.15)', color: '#3B82F6', display: 'flex' }}>
+                          <ReceiptLongIcon sx={{ fontSize: 20 }} />
+                        </Box>
+                      </ListItemIcon>
+                      <ListItemText primary="Billing & Claims" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.9rem' }} />
+                    </ListItemButton>
+                    
+                    <ListItemButton 
+                      onClick={() => handleNavigation('/profile')} 
+                      sx={{ 
+                        borderRadius: '16px', 
+                        mb: 0.8, 
+                        py: 1.2,
+                        transition: 'all 0.2s ease',
+                        '&:hover': { transform: 'translateX(4px)', bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.12)' : 'rgba(66, 132, 117, 0.08)' }
+                      }}
+                    >
+                      <ListItemIcon sx={{ minWidth: 38 }}>
+                        <Box sx={{ p: 0.8, borderRadius: '10px', bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.15)' : 'rgba(66, 132, 117, 0.1)', color: mode === 'dark' ? '#89D7B7' : '#2A6B5D', display: 'flex' }}>
+                          <PersonIcon sx={{ fontSize: 20 }} />
+                        </Box>
+                      </ListItemIcon>
+                      <ListItemText primary="Doctor Profile & Verification" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.9rem' }} />
+                    </ListItemButton>
+                  </>
+                ) : user?.role === 'nurse' ? (
+                  <>
+                    <ListItemButton 
+                      onClick={() => handleNavigation('/dashboard')} 
+                      sx={{ 
+                        borderRadius: '16px', 
+                        mb: 0.8, 
+                        py: 1.2,
+                        transition: 'all 0.2s ease',
+                        '&:hover': { transform: 'translateX(4px)', bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.12)' : 'rgba(66, 132, 117, 0.08)' }
+                      }}
+                    >
+                      <ListItemIcon sx={{ minWidth: 38 }}>
+                        <Box sx={{ p: 0.8, borderRadius: '10px', bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.15)' : 'rgba(66, 132, 117, 0.1)', color: mode === 'dark' ? '#89D7B7' : '#2A6B5D', display: 'flex' }}>
+                          <LocalHospitalIcon sx={{ fontSize: 20 }} />
+                        </Box>
+                      </ListItemIcon>
+                      <ListItemText primary="Care Hub Dashboard" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.9rem' }} />
+                    </ListItemButton>
+
+                    <ListItemButton 
+                      onClick={() => handleNavigation('/patients')} 
+                      sx={{ 
+                        borderRadius: '16px', 
+                        mb: 0.8, 
+                        py: 1.2,
+                        transition: 'all 0.2s ease',
+                        '&:hover': { transform: 'translateX(4px)', bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.12)' : 'rgba(66, 132, 117, 0.08)' }
+                      }}
+                    >
+                      <ListItemIcon sx={{ minWidth: 38 }}>
+                        <Box sx={{ p: 0.8, borderRadius: '10px', bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.15)' : 'rgba(66, 132, 117, 0.1)', color: mode === 'dark' ? '#89D7B7' : '#2A6B5D', display: 'flex' }}>
+                          <PeopleIcon sx={{ fontSize: 20 }} />
+                        </Box>
+                      </ListItemIcon>
+                      <ListItemText primary="Patient Care Records" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.9rem' }} />
+                    </ListItemButton>
+
+                    <ListItemButton 
+                      onClick={() => handleNavigation('/home-care')} 
+                      sx={{ 
+                        borderRadius: '16px', 
+                        mb: 0.8, 
+                        py: 1.2,
+                        transition: 'all 0.2s ease',
+                        '&:hover': { transform: 'translateX(4px)', bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.12)' : 'rgba(66, 132, 117, 0.08)' }
+                      }}
+                    >
+                      <ListItemIcon sx={{ minWidth: 38 }}>
+                        <Box sx={{ p: 0.8, borderRadius: '10px', bgcolor: 'rgba(236, 72, 153, 0.15)', color: '#EC4899', display: 'flex' }}>
+                          <HomeWorkIcon sx={{ fontSize: 20 }} />
+                        </Box>
+                      </ListItemIcon>
+                      <ListItemText primary="Home Care Visits" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.9rem' }} />
+                    </ListItemButton>
+
+                    <ListItemButton 
+                      onClick={() => handleNavigation('/prescriptions/all')} 
+                      sx={{ 
+                        borderRadius: '16px', 
+                        mb: 0.8, 
+                        py: 1.2,
+                        transition: 'all 0.2s ease',
+                        '&:hover': { transform: 'translateX(4px)', bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.12)' : 'rgba(66, 132, 117, 0.08)' }
+                      }}
+                    >
+                      <ListItemIcon sx={{ minWidth: 38 }}>
+                        <Box sx={{ p: 0.8, borderRadius: '10px', bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.15)' : 'rgba(66, 132, 117, 0.1)', color: mode === 'dark' ? '#89D7B7' : '#2A6B5D', display: 'flex' }}>
+                          <MedicationIcon sx={{ fontSize: 20 }} />
+                        </Box>
+                      </ListItemIcon>
+                      <ListItemText primary="Care & Medication Log" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.9rem' }} />
+                    </ListItemButton>
+
+                    <ListItemButton 
+                      onClick={() => handleNavigation('/billing')} 
+                      sx={{ 
+                        borderRadius: '16px', 
+                        mb: 0.8, 
+                        py: 1.2,
+                        transition: 'all 0.2s ease',
+                        '&:hover': { transform: 'translateX(4px)', bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.12)' : 'rgba(66, 132, 117, 0.08)' }
+                      }}
+                    >
+                      <ListItemIcon sx={{ minWidth: 38 }}>
+                        <Box sx={{ p: 0.8, borderRadius: '10px', bgcolor: 'rgba(59, 130, 246, 0.15)', color: '#3B82F6', display: 'flex' }}>
+                          <ReceiptLongIcon sx={{ fontSize: 20 }} />
+                        </Box>
+                      </ListItemIcon>
+                      <ListItemText primary="Billing" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.9rem' }} />
+                    </ListItemButton>
+
+                    <ListItemButton 
+                      onClick={() => handleNavigation('/profile')} 
+                      sx={{ 
+                        borderRadius: '16px', 
+                        mb: 0.8, 
+                        py: 1.2,
+                        transition: 'all 0.2s ease',
+                        '&:hover': { transform: 'translateX(4px)', bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.12)' : 'rgba(66, 132, 117, 0.08)' }
+                      }}
+                    >
+                      <ListItemIcon sx={{ minWidth: 38 }}>
+                        <Box sx={{ p: 0.8, borderRadius: '10px', bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.15)' : 'rgba(66, 132, 117, 0.1)', color: mode === 'dark' ? '#89D7B7' : '#2A6B5D', display: 'flex' }}>
+                          <PersonIcon sx={{ fontSize: 20 }} />
+                        </Box>
+                      </ListItemIcon>
+                      <ListItemText primary="Nurse Profile" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.9rem' }} />
                     </ListItemButton>
                   </>
                 ) : (
@@ -898,7 +1346,7 @@ export default function Header() {
                           <LocalHospitalIcon sx={{ fontSize: 20 }} />
                         </Box>
                       </ListItemIcon>
-                      <ListItemText primary="Dashboard Feed" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.9rem' }} />
+                      <ListItemText primary="Health Feed" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.9rem' }} />
                     </ListItemButton>
                     
                     <ListItemButton 
@@ -916,28 +1364,62 @@ export default function Header() {
                           <MedicationIcon sx={{ fontSize: 20 }} />
                         </Box>
                       </ListItemIcon>
-                      <ListItemText primary={user?.role === 'doctor' ? 'All Prescriptions' : 'My Prescriptions'} primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.9rem' }} />
+                      <ListItemText primary="My Prescriptions" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.9rem' }} />
                     </ListItemButton>
-                    
-                    {user?.role === 'doctor' && (
-                      <ListItemButton 
-                        onClick={() => handleNavigation('/patients')} 
-                        sx={{ 
-                          borderRadius: '16px', 
-                          mb: 0.8, 
-                          py: 1.2,
-                          transition: 'all 0.2s ease',
-                          '&:hover': { transform: 'translateX(4px)', bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.12)' : 'rgba(66, 132, 117, 0.08)' }
-                        }}
-                      >
-                        <ListItemIcon sx={{ minWidth: 38 }}>
-                          <Box sx={{ p: 0.8, borderRadius: '10px', bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.15)' : 'rgba(66, 132, 117, 0.1)', color: mode === 'dark' ? '#89D7B7' : '#2A6B5D', display: 'flex' }}>
-                            <VerifiedUserIcon sx={{ fontSize: 20 }} />
-                          </Box>
-                        </ListItemIcon>
-                        <ListItemText primary="Patient Management" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.9rem' }} />
-                      </ListItemButton>
-                    )}
+
+                    <ListItemButton 
+                      onClick={() => handleNavigation('/home-care')} 
+                      sx={{ 
+                        borderRadius: '16px', 
+                        mb: 0.8, 
+                        py: 1.2,
+                        transition: 'all 0.2s ease',
+                        '&:hover': { transform: 'translateX(4px)', bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.12)' : 'rgba(66, 132, 117, 0.08)' }
+                      }}
+                    >
+                      <ListItemIcon sx={{ minWidth: 38 }}>
+                        <Box sx={{ p: 0.8, borderRadius: '10px', bgcolor: 'rgba(236, 72, 153, 0.15)', color: '#EC4899', display: 'flex' }}>
+                          <HomeWorkIcon sx={{ fontSize: 20 }} />
+                        </Box>
+                      </ListItemIcon>
+                      <ListItemText primary="Home Care Services" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.9rem' }} />
+                    </ListItemButton>
+
+                    <ListItemButton 
+                      onClick={() => handleNavigation('/billing')} 
+                      sx={{ 
+                        borderRadius: '16px', 
+                        mb: 0.8, 
+                        py: 1.2,
+                        transition: 'all 0.2s ease',
+                        '&:hover': { transform: 'translateX(4px)', bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.12)' : 'rgba(66, 132, 117, 0.08)' }
+                      }}
+                    >
+                      <ListItemIcon sx={{ minWidth: 38 }}>
+                        <Box sx={{ p: 0.8, borderRadius: '10px', bgcolor: 'rgba(59, 130, 246, 0.15)', color: '#3B82F6', display: 'flex' }}>
+                          <ReceiptLongIcon sx={{ fontSize: 20 }} />
+                        </Box>
+                      </ListItemIcon>
+                      <ListItemText primary="Billing & Receipts" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.9rem' }} />
+                    </ListItemButton>
+
+                    <ListItemButton 
+                      onClick={() => handleNavigation('/verify-prescription')} 
+                      sx={{ 
+                        borderRadius: '16px', 
+                        mb: 0.8, 
+                        py: 1.2,
+                        transition: 'all 0.2s ease',
+                        '&:hover': { transform: 'translateX(4px)', bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.12)' : 'rgba(66, 132, 117, 0.08)' }
+                      }}
+                    >
+                      <ListItemIcon sx={{ minWidth: 38 }}>
+                        <Box sx={{ p: 0.8, borderRadius: '10px', bgcolor: 'rgba(16, 185, 129, 0.15)', color: '#10B981', display: 'flex' }}>
+                          <FactCheckIcon sx={{ fontSize: 20 }} />
+                        </Box>
+                      </ListItemIcon>
+                      <ListItemText primary="Verify Digital Rx" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.9rem' }} />
+                    </ListItemButton>
                     
                     <ListItemButton 
                       onClick={() => handleNavigation('/profile')} 
@@ -954,7 +1436,7 @@ export default function Header() {
                           <PersonIcon sx={{ fontSize: 20 }} />
                         </Box>
                       </ListItemIcon>
-                      <ListItemText primary="My Profile" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.9rem' }} />
+                      <ListItemText primary="My Profile & Family" primaryTypographyProps={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.9rem' }} />
                     </ListItemButton>
                   </>
                 )}

@@ -395,6 +395,10 @@ const NewPrescription = () => {
     name: '',
     type: 'Tablet',
     dosage: '',
+    frequency: 'Daily (Everyday)',
+    intervalDays: 1,
+    intervalType: 'daily',
+    intervalLabel: 'Daily',
     duration: '5 Days',
     durationValue: 5,
     durationUnit: 'Days',
@@ -454,7 +458,8 @@ const NewPrescription = () => {
     timing: { morning?: number; afternoon?: number; evening?: number; night?: number },
     durVal: number | string,
     durUnit: string,
-    medForm: string = 'Tablet'
+    medForm: string = 'Tablet',
+    intervalDays: number = 1
   ) => {
     const m = timing.morning || 0;
     const a = timing.afternoon || 0;
@@ -465,52 +470,66 @@ const NewPrescription = () => {
     const val = typeof durVal === 'number' ? durVal : parseInt(String(durVal), 10) || 0;
     if (val <= 0 || totalDosesPerDay <= 0) return { qtyVal: 0, qtyUnit: getDispensaryUnit(medForm), qtyStr: '', detailStr: '' };
 
-    let days = val;
-    if (durUnit === 'Weeks') days = val * 7;
-    if (durUnit === 'Months') days = val * 30;
+    let totalCalendarDays = val;
+    if (durUnit === 'Weeks') totalCalendarDays = val * 7;
+    if (durUnit === 'Months') totalCalendarDays = val * 30;
+
+    const interval = Math.max(1, intervalDays || 1);
+    const activeDoseDays = Math.ceil(totalCalendarDays / interval);
+    const intervalNote = interval === 1 
+      ? 'Daily' 
+      : interval === 2 
+        ? 'Alternate Days (Every 2d)' 
+        : `Every ${interval} Days`;
 
     if (medForm === 'Syrup') {
-      const mlPerDay = totalDosesPerDay * 5; // 1 dose = 1 tsp = 5ml
-      const totalMl = mlPerDay * days;
+      const mlPerDoseDay = totalDosesPerDay * 5; // 1 dose = 1 tsp = 5ml
+      const totalMl = mlPerDoseDay * activeDoseDays;
       const bottles = Math.ceil(totalMl / 100) || 1;
       return {
         qtyVal: bottles,
         qtyUnit: 'Bottles',
         qtyStr: `${bottles} Bottle${bottles > 1 ? 's' : ''} (${totalMl}ml total)`,
-        detailStr: `⚡ ${mlPerDay}ml/day (${totalDosesPerDay} tsp) × ${days} Days = ${totalMl}ml total → ${bottles} Bottle(s)`
+        detailStr: interval > 1
+          ? `⚡ ${mlPerDoseDay}ml/dose-day × ${activeDoseDays} dose days (${intervalNote} over ${totalCalendarDays}d) = ${totalMl}ml total → ${bottles} Bottle(s)`
+          : `⚡ ${mlPerDoseDay}ml/day (${totalDosesPerDay} tsp) × ${totalCalendarDays} Days = ${totalMl}ml total → ${bottles} Bottle(s)`
       };
     }
 
     if (medForm === 'Drops') {
-      const dropsPerDay = totalDosesPerDay * 5; // 1 dose = 5 drops
-      const totalDrops = dropsPerDay * days;
+      const dropsPerDoseDay = totalDosesPerDay * 5; // 1 dose = 5 drops
+      const totalDrops = dropsPerDoseDay * activeDoseDays;
       const bottles = Math.ceil(totalDrops / 200) || 1; // 200 drops per 10ml bottle
       return {
         qtyVal: bottles,
         qtyUnit: 'Bottles',
         qtyStr: `${bottles} Bottle${bottles > 1 ? 's' : ''} (${totalDrops} drops total)`,
-        detailStr: `⚡ ${dropsPerDay} drops/day × ${days} Days = ${totalDrops} drops total → ${bottles} Bottle(s)`
+        detailStr: interval > 1
+          ? `⚡ ${dropsPerDoseDay} drops/dose-day × ${activeDoseDays} dose days (${intervalNote} over ${totalCalendarDays}d) = ${totalDrops} drops total → ${bottles} Bottle(s)`
+          : `⚡ ${dropsPerDoseDay} drops/day × ${totalCalendarDays} Days = ${totalDrops} drops total → ${bottles} Bottle(s)`
       };
     }
 
     if (medForm === 'Ointment') {
-      const tubes = days > 14 ? 2 : 1;
+      const tubes = activeDoseDays > 14 ? 2 : 1;
       return {
         qtyVal: tubes,
         qtyUnit: 'Tubes',
         qtyStr: `${tubes} Tube${tubes > 1 ? 's' : ''}`,
-        detailStr: `⚡ ${tubes} Tube (${days} Days duration)`
+        detailStr: `⚡ ${tubes} Tube (${activeDoseDays} application days, ${intervalNote})`
       };
     }
 
     // Tablets, Capsules, Injections
-    const totalUnits = totalDosesPerDay * days;
+    const totalUnits = totalDosesPerDay * activeDoseDays;
     const unit = getDispensaryUnit(medForm);
     return {
       qtyVal: totalUnits,
       qtyUnit: unit,
       qtyStr: `${totalUnits} ${unit}`,
-      detailStr: `⚡ ${totalDosesPerDay} ${unit.toLowerCase()}/day × ${days} Days = ${totalUnits} ${unit}`
+      detailStr: interval > 1
+        ? `⚡ ${totalDosesPerDay} ${unit.toLowerCase()}/intake × ${activeDoseDays} dose days (${intervalNote} over ${totalCalendarDays}d) = ${totalUnits} ${unit}`
+        : `⚡ ${totalDosesPerDay} ${unit.toLowerCase()}/day × ${totalCalendarDays} Days = ${totalUnits} ${unit}`
     };
   };
 
@@ -553,12 +572,26 @@ const NewPrescription = () => {
     return `${m}-${a}-${e}-${n}`;
   };
 
-  // Recalculate quantity and dosage whenever timing, duration, or SOS changes
+  // Recalculate quantity and dosage whenever timing, duration, SOS, or alteration interval changes
   const recalcMedication = (med: MedicationItem): MedicationItem => {
     const t = med.timing || { morning: 0, afternoon: 0, evening: 0, night: 0 };
-    const calc = calculateQuantityFromTiming(t, med.durationValue || 5, med.durationUnit || 'Days', med.type);
+    const interval = Math.max(1, Number(med.intervalDays) || 1);
+    const calc = calculateQuantityFromTiming(t, med.durationValue || 5, med.durationUnit || 'Days', med.type, interval);
+    
+    let freqStr = 'Daily (Everyday)';
+    if (interval === 2) freqStr = 'Alternate Days (Every 2 Days)';
+    else if (interval === 3) freqStr = 'Every 3 Days';
+    else if (interval === 4) freqStr = 'Every 4 Days';
+    else if (interval === 5) freqStr = 'Every 5 Days';
+    else if (interval === 7) freqStr = 'Weekly (Every 7 Days)';
+    else if (interval === 10) freqStr = 'Every 10 Days';
+    else if (interval > 1) freqStr = `Every ${interval} Days`;
+
     return {
       ...med,
+      intervalDays: interval,
+      frequency: med.isSOS ? 'SOS — When Needed' : freqStr,
+      intervalLabel: interval === 1 ? 'Daily' : interval === 2 ? 'Alternate Days' : `Every ${interval} Days`,
       dosage: buildDosageString(t, med.type, med.isSOS, med.sosReason),
       quantityValue: calc.qtyVal,
       quantityUnit: calc.qtyUnit,
@@ -940,6 +973,10 @@ const NewPrescription = () => {
         name: '',
         type: 'Tablet',
         dosage: '',
+        frequency: 'Daily (Everyday)',
+        intervalDays: 1,
+        intervalType: 'daily',
+        intervalLabel: 'Daily',
         duration: '5 Days',
         durationValue: 5,
         durationUnit: 'Days',
@@ -1078,6 +1115,30 @@ const NewPrescription = () => {
         prescriptionData.familyProfileId = selectedProfile.id;
         prescriptionData.accountId = selectedProfile.accountId;
         prescriptionData.patientDisplayId = selectedProfile.patientDisplayId;
+        prescriptionData.patientName = `${selectedProfile.firstName || ''} ${selectedProfile.lastName || ''}`.trim();
+        prescriptionData.patientGender = selectedProfile.gender || '';
+        prescriptionData.patientDOB = selectedProfile.dateOfBirth || '';
+        if (selectedProfile.dateOfBirth) {
+          const dobTime = new Date(selectedProfile.dateOfBirth).getTime();
+          if (!isNaN(dobTime)) {
+            const years = Math.floor((Date.now() - dobTime) / (365.25 * 86400000));
+            if (years >= 0 && years < 150) prescriptionData.patientAge = String(years);
+          }
+        }
+      } else if (selectedPatient) {
+        prescriptionData.patientName = `${selectedPatient.firstName || ''} ${selectedPatient.lastName || ''}`.trim();
+        prescriptionData.patientGender = selectedPatient.gender || '';
+        prescriptionData.patientDOB = selectedPatient.dateOfBirth || (selectedPatient as any).dob || '';
+        prescriptionData.patientEmail = selectedPatient.email || '';
+        prescriptionData.patientPhone = selectedPatient.phone || selectedPatient.contactNumber || '';
+        const dobVal = selectedPatient.dateOfBirth || (selectedPatient as any).dob;
+        if (dobVal) {
+          const dobTime = new Date(dobVal).getTime();
+          if (!isNaN(dobTime)) {
+            const years = Math.floor((Date.now() - dobTime) / (365.25 * 86400000));
+            if (years >= 0 && years < 150) prescriptionData.patientAge = String(years);
+          }
+        }
       }
       
       const prescription = await createPrescription(prescriptionData);
@@ -2782,14 +2843,20 @@ const NewPrescription = () => {
                   <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#34D399' : '#059669', textTransform: 'uppercase', letterSpacing: 0.6, fontSize: '0.72rem', display: 'block', mb: 0.8 }}>
                     Provisional Diagnosis
                   </Typography>
-                  <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Box sx={{ display: 'flex', gap: 1, alignItems: 'stretch' }}>
                     <TextField
                       fullWidth
-                      size="small"
-                      placeholder="e.g., Acute Gastritis / GERD"
+                      multiline
+                      rows={2}
+                      placeholder="e.g., Acute Gastritis / GERD (with epigastric distress)..."
                       value={newDiagnosis}
                       onChange={(e) => setNewDiagnosis(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addToArray('provisionalDiagnosis', newDiagnosis, setNewDiagnosis))}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          addToArray('provisionalDiagnosis', newDiagnosis, setNewDiagnosis);
+                        }
+                      }}
                       InputProps={{ 
                         sx: { 
                           borderRadius: '16px',
@@ -2806,7 +2873,6 @@ const NewPrescription = () => {
                       sx={{ 
                         background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)', 
                         minWidth: 48, 
-                        height: 40,
                         borderRadius: '14px', 
                         px: 2,
                         boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)',
@@ -2826,10 +2892,11 @@ const NewPrescription = () => {
                           fontWeight: 800, 
                           fontSize: '0.78rem',
                           borderRadius: '10px',
-                          bgcolor: 'linear-gradient(135deg, #059669 0%, #10B981 100%)', 
-                          color: '#ffffff',
-                          boxShadow: '0 2px 8px rgba(16, 185, 129, 0.25)',
-                          '& .MuiChip-deleteIcon': { color: '#ffffff', opacity: 0.8, '&:hover': { opacity: 1 } }
+                          bgcolor: mode === 'dark' ? 'rgba(16, 185, 129, 0.18)' : '#ECFDF5', 
+                          color: mode === 'dark' ? '#34D399' : '#047857',
+                          border: mode === 'dark' ? '1px solid rgba(16, 185, 129, 0.35)' : '1px solid #A7F3D0',
+                          boxShadow: '0 2px 8px rgba(16, 185, 129, 0.15)',
+                          '& .MuiChip-deleteIcon': { color: mode === 'dark' ? '#34D399' : '#047857', opacity: 0.85, '&:hover': { opacity: 1, color: '#EF4444' } }
                         }} 
                       />
                     ))}
@@ -3527,6 +3594,120 @@ const NewPrescription = () => {
                     </Box>
                   </Popover>
 
+                  {/* ─── Dosing Alteration / Interval Section ─── */}
+                  <Grid item xs={12}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.8, flexWrap: 'wrap', gap: 1 }}>
+                      <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#34D399' : '#059669', textTransform: 'uppercase', letterSpacing: 0.6, fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: 0.6 }}>
+                        <span>🔄</span> Dosing Alteration / Interval:
+                      </Typography>
+                      {newMedication.intervalDays && newMedication.intervalDays > 1 ? (
+                        <Chip
+                          label={`Takes every ${newMedication.intervalDays} days (${newMedication.intervalDays === 2 ? 'Alternate Days' : newMedication.intervalDays === 7 ? 'Weekly' : `1 dose / ${newMedication.intervalDays}d`})`}
+                          size="small"
+                          sx={{
+                            height: 22,
+                            fontSize: '0.65rem',
+                            fontWeight: 900,
+                            background: 'linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%)',
+                            color: '#ffffff',
+                            borderRadius: '10px'
+                          }}
+                        />
+                      ) : (
+                        <Chip
+                          label="Everyday (Daily)"
+                          size="small"
+                          sx={{
+                            height: 20,
+                            fontSize: '0.62rem',
+                            fontWeight: 800,
+                            bgcolor: 'rgba(16, 185, 129, 0.12)',
+                            color: mode === 'dark' ? '#34D399' : '#059669',
+                            borderRadius: '8px'
+                          }}
+                        />
+                      )}
+                    </Box>
+
+                    <Box sx={{ display: 'flex', gap: 0.8, flexWrap: 'wrap', alignItems: 'center' }}>
+                      {[
+                        { days: 1, label: 'Everyday (Daily)' },
+                        { days: 2, label: 'Alternate Days (Every 2d)' },
+                        { days: 3, label: 'Every 3 Days' },
+                        { days: 4, label: 'Every 4 Days' },
+                        { days: 5, label: 'Every 5 Days' },
+                        { days: 7, label: 'Weekly (Every 7d)' },
+                        { days: 10, label: 'Every 10 Days' }
+                      ].map((preset) => {
+                        const isSelected = (newMedication.intervalDays || 1) === preset.days;
+                        return (
+                          <Chip
+                            key={preset.days}
+                            label={preset.label}
+                            size="small"
+                            clickable
+                            onClick={() => {
+                              const updated = recalcMedication({
+                                ...newMedication,
+                                intervalDays: preset.days,
+                                intervalLabel: preset.days === 1 ? 'Daily' : preset.days === 2 ? 'Alternate Days' : `Every ${preset.days} Days`
+                              });
+                              setNewMedication(updated);
+                            }}
+                            sx={{
+                              fontWeight: 800,
+                              fontSize: '0.72rem',
+                              borderRadius: '10px',
+                              cursor: 'pointer',
+                              background: isSelected
+                                ? (preset.days === 1
+                                    ? 'linear-gradient(135deg, #059669 0%, #10B981 100%)'
+                                    : 'linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%)')
+                                : mode === 'dark' ? 'rgba(30, 41, 59, 0.6)' : 'rgba(139, 92, 246, 0.08)',
+                              color: isSelected ? '#ffffff' : mode === 'dark' ? '#C4B5FD' : '#6D28D9',
+                              border: isSelected ? 'none' : '1px solid rgba(139, 92, 246, 0.25)',
+                              boxShadow: isSelected ? '0 2px 8px rgba(139, 92, 246, 0.35)' : 'none',
+                              transition: 'all 0.15s ease'
+                            }}
+                          />
+                        );
+                      })}
+
+                      {/* Custom Alteration Number Input */}
+                      <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.6, bgcolor: mode === 'dark' ? 'rgba(30, 41, 59, 0.6)' : 'rgba(139, 92, 246, 0.05)', p: '2px 8px', borderRadius: '12px', border: '1px solid rgba(139, 92, 246, 0.25)' }}>
+                        <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#C4B5FD' : '#6D28D9', fontSize: '0.7rem' }}>
+                          Custom: Every
+                        </Typography>
+                        <TextField
+                          size="small"
+                          type="number"
+                          placeholder="Days"
+                          value={![1, 2, 3, 4, 5, 7, 10].includes(newMedication.intervalDays || 1) ? (newMedication.intervalDays || '') : ''}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value, 10) || 1;
+                            if (val >= 1) {
+                              const updated = recalcMedication({
+                                ...newMedication,
+                                intervalDays: val,
+                                intervalLabel: val === 1 ? 'Daily' : val === 2 ? 'Alternate Days' : `Every ${val} Days`
+                              });
+                              setNewMedication(updated);
+                            }
+                          }}
+                          inputProps={{ min: 1, max: 90 }}
+                          sx={{
+                            width: 55,
+                            '& input': { textAlign: 'center', fontWeight: 800, p: '4px', fontSize: '0.78rem' },
+                            '& .MuiOutlinedInput-root': { borderRadius: '8px', bgcolor: mode === 'dark' ? 'rgba(15, 23, 42, 0.8)' : '#ffffff' }
+                          }}
+                        />
+                        <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#C4B5FD' : '#6D28D9', fontSize: '0.7rem' }}>
+                          days
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Grid>
+
                   {/* Duration Inputs & Presets */}
                   <Grid item xs={7} sm={4}>
                     <TextField
@@ -3648,7 +3829,7 @@ const NewPrescription = () => {
                       onChange={(e) => setNewMedication({ ...newMedication, quantity: e.target.value })}
                       helperText={(() => {
                         const t = newMedication.timing || { morning: 0, afternoon: 0, evening: 0, night: 0 };
-                        const calc = calculateQuantityFromTiming(t, newMedication.durationValue || 5, newMedication.durationUnit || 'Days', newMedication.type);
+                        const calc = calculateQuantityFromTiming(t, newMedication.durationValue || 5, newMedication.durationUnit || 'Days', newMedication.type, newMedication.intervalDays || 1);
                         return calc.detailStr || 'Select time of day to auto-calculate';
                       })()}
                       InputProps={{ 
@@ -3774,6 +3955,13 @@ const NewPrescription = () => {
                               size="small" 
                               sx={{ fontWeight: 800, bgcolor: 'rgba(16, 185, 129, 0.1)', color: '#059669', fontSize: '0.72rem', borderRadius: '8px' }} 
                             />
+                            {med.intervalDays && Number(med.intervalDays) > 1 && (
+                              <Chip 
+                                label={`🔄 Interval: ${Number(med.intervalDays) === 2 ? 'Alternate Days (Every 2d)' : Number(med.intervalDays) === 7 ? 'Weekly (Every 7d)' : `Every ${med.intervalDays} Days`}`} 
+                                size="small" 
+                                sx={{ fontWeight: 900, background: 'linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%)', color: '#ffffff', fontSize: '0.72rem', borderRadius: '8px' }} 
+                              />
+                            )}
                             <Chip 
                               label={`⏱️ Duration: ${med.duration || 'N/A'}`} 
                               size="small" 
@@ -5501,11 +5689,12 @@ const NewPrescription = () => {
             onClick={handleAddFamilyMemberSubmit}
             sx={{
               borderRadius: '14px',
-              bgcolor: 'linear-gradient(135deg, #059669 0%, #10B981 100%)',
+              background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)',
               color: '#ffffff',
               fontWeight: 800,
               px: 2.5,
-              boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)'
+              boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)',
+              '&:hover': { background: 'linear-gradient(135deg, #047857 0%, #059669 100%)' }
             }}
           >
             {addingFamilyMember ? <CircularProgress size={20} sx={{ color: '#fff' }} /> : 'Add & Select'}

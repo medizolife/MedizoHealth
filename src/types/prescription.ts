@@ -14,6 +14,10 @@ export interface MedicationItem {
   name: string;
   type?: string;
   dosage: string;
+  frequency?: string;
+  intervalDays?: number;
+  intervalType?: 'daily' | 'alternate' | 'every_3_days' | 'every_4_days' | 'every_5_days' | 'weekly' | 'every_10_days' | 'custom';
+  intervalLabel?: string;
   duration: string;
   durationValue?: number | string;
   durationUnit?: string;

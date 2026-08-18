@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   Container,
   Typography,
@@ -35,7 +35,8 @@ import {
   ContentPasteSearch as PasteIcon,
   LocalHospital as HospitalIcon,
   Verified as VerifiedIcon,
-  ImageSearch as ImageSearchIcon
+  ImageSearch as ImageSearchIcon,
+  Inventory2 as InventoryIcon
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { useThemeContext } from '../contexts/ThemeContext';
@@ -43,19 +44,15 @@ import { getPrescriptions, lookupPrescriptionByCode, extractCleanPrescriptionId 
 import { Prescription } from '../types/prescription';
 import DispenseModal from '../components/DispenseModal';
 import QrScannerModal from '../components/QrScannerModal';
-import PharmacyInventory from '../components/PharmacyInventory';
-import { Inventory2 as InventoryIcon } from '@mui/icons-material';
 
 export default function PharmacistDashboard() {
+  const navigate = useNavigate();
   const { authState } = useAuth();
   const { user } = authState;
   const { mode } = useThemeContext();
   const isDark = mode === 'dark';
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialTab = (searchParams.get('tab') === 'inventory' || searchParams.get('tab') === 'stock') ? 'inventory' : 'dispense';
-  const [dashboardTab, setDashboardTab] = useState<'dispense' | 'inventory'>(initialTab);
-
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -238,77 +235,40 @@ export default function PharmacistDashboard() {
               </Box>
             </Box>
           </Box>
-          <IconButton onClick={fetchPrescriptionsList} sx={{ color: isDark ? '#34D399' : '#059669', bgcolor: isDark ? 'rgba(16, 185, 129, 0.15)' : '#ECFDF5', '&:hover': { bgcolor: isDark ? 'rgba(16, 185, 129, 0.25)' : '#D1FAE5' } }}>
-            <RefreshIcon />
-          </IconButton>
+
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Button
+              variant="contained"
+              size="small"
+              onClick={() => navigate('/pharmacy/inventory')}
+              startIcon={<InventoryIcon sx={{ fontSize: '18px !important' }} />}
+              sx={{
+                borderRadius: '16px',
+                fontWeight: 900,
+                fontSize: { xs: '0.78rem', sm: '0.85rem' },
+                textTransform: 'none',
+                px: 2,
+                py: 1,
+                fontFamily: "'Outfit', sans-serif",
+                bgcolor: '#10B981',
+                color: '#FFFFFF',
+                boxShadow: '0 4px 14px rgba(16, 185, 129, 0.35)',
+                '&:hover': {
+                  bgcolor: '#059669',
+                  boxShadow: '0 6px 18px rgba(16, 185, 129, 0.45)'
+                }
+              }}
+            >
+              📦 My Stock
+            </Button>
+            <IconButton onClick={fetchPrescriptionsList} sx={{ color: isDark ? '#34D399' : '#059669', bgcolor: isDark ? 'rgba(16, 185, 129, 0.15)' : '#ECFDF5', borderRadius: '14px', p: 1, '&:hover': { bgcolor: isDark ? 'rgba(16, 185, 129, 0.25)' : '#D1FAE5' } }}>
+              <RefreshIcon />
+            </IconButton>
+          </Box>
         </Box>
       </Paper>
 
-      {/* Top Station Switcher Segmented Tabs */}
-      <Paper
-        elevation={0}
-        sx={{
-          p: 0.8,
-          mb: 3.5,
-          borderRadius: '22px',
-          bgcolor: isDark ? 'rgba(0,0,0,0.45)' : '#F1F5F9',
-          border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid #E2E8F0',
-          display: 'flex',
-          gap: 1
-        }}
-      >
-        <Button
-          fullWidth
-          variant={dashboardTab === 'dispense' ? 'contained' : 'text'}
-          onClick={() => setDashboardTab('dispense')}
-          startIcon={<PharmacyIcon />}
-          sx={{
-            py: 1.3,
-            borderRadius: '16px',
-            fontWeight: 900,
-            fontFamily: "'Outfit', sans-serif",
-            textTransform: 'none',
-            fontSize: '0.95rem',
-            bgcolor: dashboardTab === 'dispense' ? '#0D9488' : 'transparent',
-            color: dashboardTab === 'dispense' ? '#FFFFFF' : (isDark ? '#9CA3AF' : '#64748B'),
-            boxShadow: dashboardTab === 'dispense' ? '0 4px 16px rgba(13, 148, 136, 0.35)' : 'none',
-            '&:hover': {
-              bgcolor: dashboardTab === 'dispense' ? '#0F766E' : (isDark ? 'rgba(255,255,255,0.05)' : '#E2E8F0')
-            }
-          }}
-        >
-          🩺 Dispensing & Verification Station
-        </Button>
-
-        <Button
-          fullWidth
-          variant={dashboardTab === 'inventory' ? 'contained' : 'text'}
-          onClick={() => setDashboardTab('inventory')}
-          startIcon={<InventoryIcon />}
-          sx={{
-            py: 1.3,
-            borderRadius: '16px',
-            fontWeight: 900,
-            fontFamily: "'Outfit', sans-serif",
-            textTransform: 'none',
-            fontSize: '0.95rem',
-            bgcolor: dashboardTab === 'inventory' ? '#10B981' : 'transparent',
-            color: dashboardTab === 'inventory' ? '#FFFFFF' : (isDark ? '#9CA3AF' : '#64748B'),
-            boxShadow: dashboardTab === 'inventory' ? '0 4px 16px rgba(16, 185, 129, 0.35)' : 'none',
-            '&:hover': {
-              bgcolor: dashboardTab === 'inventory' ? '#059669' : (isDark ? 'rgba(255,255,255,0.05)' : '#E2E8F0')
-            }
-          }}
-        >
-          📦 My Stock & Inventory Management
-        </Button>
-      </Paper>
-
-      {dashboardTab === 'inventory' ? (
-        <PharmacyInventory onNotify={(msg, sev) => setSnackbar({ open: true, message: msg, severity: sev })} />
-      ) : (
-        <>
-          {/* Metrics Cards Grid */}
+      {/* Metrics Cards Grid */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
         <Grid item xs={4}>
           <Paper
@@ -734,8 +694,6 @@ export default function PharmacistDashboard() {
             </Card>
           ))}
         </Box>
-      )}
-      </>
       )}
 
       {/* Floating QR Scan FAB Button */}

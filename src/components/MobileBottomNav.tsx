@@ -30,8 +30,8 @@ const MobileBottomNav = () => {
   const getActiveTab = () => {
     const path = location.pathname;
     if (path === '/' || path === '/home') return 'home';
+    if (path.startsWith('/pharmacy/inventory') || path.startsWith('/pharmacy/stock') || path === '/inventory' || path === '/stock') return 'inventory';
     if (path === '/dashboard') {
-      if (location.search.includes('tab=inventory') || location.search.includes('tab=stock')) return 'inventory';
       return 'dashboard';
     }
     if (path.startsWith('/prescriptions/new')) return 'new-rx';
@@ -52,7 +52,7 @@ const MobileBottomNav = () => {
         navigate('/dashboard');
         break;
       case 'inventory':
-        navigate('/dashboard?tab=inventory');
+        navigate('/pharmacy/inventory');
         break;
       case 'prescriptions':
         navigate('/prescriptions/all');
