@@ -1134,16 +1134,10 @@ const NewPrescription = () => {
     });
   };
 
-  // Handle form submission
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  // Handle explicit prescription issuance
+  const handleIssuePrescription = async (e?: React.MouseEvent | React.FormEvent) => {
+    if (e) e.preventDefault();
 
-    // In card mode, only allow submission when the doctor is on the final step (Step 4: Advice & Follow-Up)
-    if (viewMode === 'cards' && activeStep < FORM_STEPS.length - 1) {
-      handleNextStep();
-      return;
-    }
-    
     if (!formData.patientId) {
       setError('Please select a patient before issuing prescription');
       setActiveStep(0);
@@ -1160,7 +1154,7 @@ const NewPrescription = () => {
     }
 
     if (!formData.medications || formData.medications.length === 0) {
-      setError('Please add at least one prescribed medication');
+      setError('Please add at least one prescribed medication before issuing');
       setActiveStep(2);
       window.scrollTo({ top: 120, behavior: 'smooth' });
       return;
@@ -1212,7 +1206,6 @@ const NewPrescription = () => {
             : (billingVisitType === 'standard' ? billingConsultFee : Number(billingConsultFee));
 
           const activeChannels = [
-            billingSendWhatsapp && 'whatsapp_sms',
             billingSendEmail && 'email',
             billingSendPatientApp && 'patient_app'
           ].filter(Boolean);
@@ -1547,7 +1540,7 @@ const NewPrescription = () => {
         </Grid>
       </Paper>
       
-      <Box component="form" onSubmit={handleSubmit}>
+      <Box component="form" onSubmit={(e) => { e.preventDefault(); if (activeStep === FORM_STEPS.length - 1) { handleIssuePrescription(e); } else { handleNextStep(); } }}>
         
         {/* ═══ STEP 1: PATIENT SELECTION & VITAL SIGNS ═══ */}
         {(viewMode === 'all' || activeStep === 0) && (
@@ -5091,31 +5084,14 @@ const NewPrescription = () => {
                       </FormControl>
                     </Grid>
 
-                    {/* Multi-Channel Patient Dispatch Toggles: WhatsApp & SMS, Email, Patient App */}
+                    {/* Multi-Channel Patient Dispatch Toggles: Email & Patient App */}
                     <Grid item xs={12}>
                       <Paper sx={{ p: 1.5, borderRadius: '16px', bgcolor: mode === 'dark' ? 'rgba(0,0,0,0.25)' : '#F8FAFC', border: mode === 'dark' ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.08)' }}>
                         <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#2A6B5D', textTransform: 'uppercase', letterSpacing: 0.5, fontSize: '0.72rem', display: 'block', mb: 0.8 }}>
                           Dispatch & Sync Channels
                         </Typography>
                         <Grid container spacing={1}>
-                          <Grid item xs={12} sm={4}>
-                            <FormControlLabel
-                              control={
-                                <Switch
-                                  size="small"
-                                  checked={billingSendWhatsapp}
-                                  onChange={(e) => setBillingSendWhatsapp(e.target.checked)}
-                                  color="success"
-                                />
-                              }
-                              label={
-                                <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#0E3B33', fontSize: '0.78rem' }}>
-                                  📱 WhatsApp & SMS
-                                </Typography>
-                              }
-                            />
-                          </Grid>
-                          <Grid item xs={12} sm={4}>
+                          <Grid item xs={12} sm={6}>
                             <FormControlLabel
                               control={
                                 <Switch
@@ -5132,7 +5108,7 @@ const NewPrescription = () => {
                               }
                             />
                           </Grid>
-                          <Grid item xs={12} sm={4}>
+                          <Grid item xs={12} sm={6}>
                             <FormControlLabel
                               control={
                                 <Switch
@@ -5179,6 +5155,76 @@ const NewPrescription = () => {
                 </Box>
               )}
             </Paper>
+
+            {/* ─── Final Review & Issue Prescription Card ─── */}
+            <Paper
+              elevation={6}
+              sx={{
+                p: { xs: 2.5, sm: 3.5 },
+                mt: 3,
+                borderRadius: '24px !important',
+                background: mode === 'dark'
+                  ? 'linear-gradient(135deg, rgba(6, 78, 59, 0.45), rgba(15, 23, 42, 0.95))'
+                  : 'linear-gradient(135deg, rgba(236, 253, 245, 0.95), rgba(255, 255, 255, 0.98))',
+                border: mode === 'dark' ? '1.5px solid rgba(16, 185, 129, 0.4)' : '1.5px solid rgba(16, 185, 129, 0.35)',
+                boxShadow: mode === 'dark' ? '0 12px 32px rgba(0,0,0,0.5)' : '0 12px 32px rgba(16, 185, 129, 0.15)'
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+                <Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                    <Chip
+                      label="STEP 4 OF 4 COMPLETE"
+                      size="small"
+                      sx={{
+                        bgcolor: mode === 'dark' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(16, 185, 129, 0.15)',
+                        color: mode === 'dark' ? '#34D399' : '#059669',
+                        fontWeight: 900,
+                        fontSize: '0.72rem',
+                        borderRadius: '8px'
+                      }}
+                    />
+                    <Typography variant="caption" sx={{ color: mode === 'dark' ? '#94A3B8' : '#64748B', fontWeight: 600 }}>
+                      Ready to generate digital Rx & dispatch
+                    </Typography>
+                  </Box>
+                  <Typography variant="h6" sx={{ fontWeight: 900, color: mode === 'dark' ? '#FAF2F5' : '#0F172A', fontSize: { xs: '1rem', sm: '1.2rem' } }}>
+                    Issue Prescription for {selectedPatient ? (selectedPatient.name || `${selectedPatient.firstName || ''} ${selectedPatient.lastName || ''}`.trim()) : 'Selected Patient'}
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: mode === 'dark' ? '#A7F3D0' : '#047857', fontWeight: 600, mt: 0.2 }}>
+                    💊 {formData.medications?.length || 0} Prescribed Meds • 🧪 {formData.investigations?.length || 0} Lab Tests Advised
+                  </Typography>
+                </Box>
+
+                <Button
+                  type="button"
+                  onClick={handleIssuePrescription}
+                  variant="contained"
+                  disabled={loading}
+                  startIcon={loading ? <CircularProgress size={24} sx={{ color: '#ffffff' }} /> : <SendIcon sx={{ fontSize: 22 }} />}
+                  sx={{
+                    height: 54,
+                    px: 4.5,
+                    background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)',
+                    color: '#ffffff',
+                    borderRadius: '18px',
+                    fontWeight: 900,
+                    fontSize: '1.05rem',
+                    letterSpacing: '0.02em',
+                    textTransform: 'none',
+                    boxShadow: '0 10px 28px rgba(16, 185, 129, 0.45)',
+                    border: '2px solid rgba(255, 255, 255, 0.25)',
+                    '&:hover': {
+                      background: 'linear-gradient(135deg, #047857 0%, #059669 100%)',
+                      boxShadow: '0 14px 36px rgba(16, 185, 129, 0.6)',
+                      transform: 'translateY(-2px)'
+                    }
+                  }}
+                >
+                  {loading ? '✨ Issuing Digital Prescription...' : '✨ Finalize & Issue Prescription'}
+                </Button>
+              </Box>
+            </Paper>
           </Box>
         )}
 
@@ -5203,6 +5249,7 @@ const NewPrescription = () => {
             {/* Left side: Cancel & Prev Step */}
             <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
               <Button
+                type="button"
                 variant="outlined"
                 onClick={() => navigate('/dashboard')}
                 sx={{ 
@@ -5221,6 +5268,7 @@ const NewPrescription = () => {
 
               {viewMode === 'cards' && activeStep > 0 && (
                 <Button
+                  type="button"
                   variant="outlined"
                   onClick={handlePrevStep}
                   startIcon={<PrevIcon />}
@@ -5236,7 +5284,7 @@ const NewPrescription = () => {
                     '&:hover': { bgcolor: mode === 'dark' ? 'rgba(137, 215, 183, 0.2)' : 'rgba(66, 132, 117, 0.12)' }
                   }}
                 >
-                  Previous Step
+                  ‹ Previous Step
                 </Button>
               )}
             </Box>
@@ -5269,21 +5317,22 @@ const NewPrescription = () => {
                   sx={{ 
                     height: 48, 
                     px: 3.5,
-                    background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)', 
+                    background: 'linear-gradient(135deg, #0284C7 0%, #2563EB 100%)', 
                     color: '#ffffff',
                     borderRadius: '16px',
                     fontWeight: 800,
                     fontSize: '0.92rem',
                     textTransform: 'none',
-                    boxShadow: '0 6px 20px rgba(16, 185, 129, 0.35)',
-                    '&:hover': { background: 'linear-gradient(135deg, #047857 0%, #059669 100%)', boxShadow: '0 8px 24px rgba(16, 185, 129, 0.45)' }
+                    boxShadow: '0 6px 20px rgba(37, 99, 235, 0.35)',
+                    '&:hover': { background: 'linear-gradient(135deg, #0369A1 0%, #1D4ED8 100%)', boxShadow: '0 8px 24px rgba(37, 99, 235, 0.45)' }
                   }}
                 >
-                  Next Step Card
+                  Continue to Step {activeStep + 2} ›
                 </Button>
               ) : (
                 <Button
-                  type="submit"
+                  type="button"
+                  onClick={handleIssuePrescription}
                   variant="contained"
                   disabled={loading}
                   startIcon={loading ? <CircularProgress size={22} sx={{ color: '#ffffff' }} /> : <SendIcon />}
@@ -5300,7 +5349,7 @@ const NewPrescription = () => {
                     '&:hover': { background: 'linear-gradient(135deg, #047857 0%, #059669 100%)' }
                   }}
                 >
-                  {loading ? 'Issuing Prescription...' : 'Issue Prescription'}
+                  {loading ? 'Issuing Prescription...' : '✨ Finalize & Issue Prescription'}
                 </Button>
               )}
             </Box>
@@ -5450,18 +5499,19 @@ const NewPrescription = () => {
                   borderRadius: '14px',
                   fontWeight: 800,
                   fontSize: '0.88rem',
-                  background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)',
+                  background: 'linear-gradient(135deg, #0284C7 0%, #2563EB 100%)',
                   color: '#ffffff',
-                  boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)',
+                  boxShadow: '0 4px 14px rgba(37, 99, 235, 0.3)',
                   textTransform: 'none'
                 }}
               >
-                Next Step Card
+                Continue to Step {activeStep + 2} ›
               </Button>
             ) : (
               <Button
                 fullWidth
-                type="submit"
+                type="button"
+                onClick={handleIssuePrescription}
                 size="small"
                 variant="contained"
                 disabled={loading}
@@ -5477,7 +5527,7 @@ const NewPrescription = () => {
                   textTransform: 'none'
                 }}
               >
-                {loading ? 'Issuing...' : 'Issue Prescription'}
+                {loading ? 'Issuing...' : '✨ Finalize & Issue'}
               </Button>
             )}
           </Box>

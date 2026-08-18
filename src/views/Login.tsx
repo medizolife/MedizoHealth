@@ -489,12 +489,6 @@ const Login = () => {
             </Typography>
           </Box>
 
-          {searchParams.get('expired') === '1' && !error && !googleError && (
-            <Alert severity="info" sx={{ mb: 1.25, py: 0.5, borderRadius: '12px', bgcolor: isDark ? 'rgba(102, 205, 170, 0.15)' : 'rgba(42, 107, 93, 0.1)', color: isDark ? '#A5E6D2' : '#2A6B5D', border: isDark ? '1px solid rgba(102, 205, 170, 0.3)' : '1px solid rgba(42, 107, 93, 0.2)', fontWeight: 600, fontSize: '0.78rem' }}>
-              Your session has ended or a new login is required. Please sign in to continue.
-            </Alert>
-          )}
-
           {error && (
             <Alert severity="error" sx={{ mb: 1.25, py: 0.25, borderRadius: '12px', bgcolor: 'rgba(239, 68, 68, 0.1)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
               {error}

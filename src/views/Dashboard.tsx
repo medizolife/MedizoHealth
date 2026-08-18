@@ -278,7 +278,7 @@ const Dashboard = () => {
     }
 
     const cachedList = getCachedData<Prescription[]>('prescriptions_list');
-    if (Array.isArray(cachedList)) {
+    if (Array.isArray(cachedList) && cachedList.length > 0) {
       setPrescriptions(cachedList);
       setLoading(false);
     } else {
@@ -287,7 +287,7 @@ const Dashboard = () => {
 
     const fetchPrescriptions = async (isBackgroundRefresh = false) => {
       try {
-        const data = await getPrescriptions(isBackgroundRefresh || Boolean(cachedList));
+        const data = await getPrescriptions(true);
         setPrescriptions(Array.isArray(data) ? data : []);
         setError(null);
       } catch (err) {
@@ -298,7 +298,7 @@ const Dashboard = () => {
       }
     };
 
-    fetchPrescriptions(Boolean(cachedList));
+    fetchPrescriptions(Boolean(cachedList && cachedList.length > 0));
   }, [authState.isAuthenticated]);
   
   const matchesSearch = (p: any): boolean => {

@@ -38,16 +38,16 @@ api.interceptors.request.use(config => {
 api.interceptors.response.use(
   response => response,
   error => {
-    console.error('API Error:', error.response?.data || error.message);
     if (error.response?.status === 401) {
       if (typeof window !== 'undefined') {
-        const path = window.location.pathname;
-        if (!path.includes('/login') && !path.includes('/register') && !path.includes('/auth')) {
+        const token = localStorage.getItem('token');
+        if (token) {
           localStorage.removeItem('token');
           localStorage.removeItem('user');
-          window.location.href = '/login?expired=1';
         }
       }
+    } else {
+      console.error('API Error:', error.response?.data || error.message);
     }
     return Promise.reject(error);
   }

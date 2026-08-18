@@ -169,7 +169,6 @@ export default function BillingPortal() {
 
     try {
       const activeChannels = [
-        sendWhatsapp && 'whatsapp_sms',
         sendEmail && 'email',
         sendPatientApp && 'patient_app'
       ].filter(Boolean);
@@ -277,18 +276,9 @@ export default function BillingPortal() {
       const bNum = billItem?.billNumber || 'Medical Bill';
       const bTot = billItem?.totalAmount || '';
 
-      const res = await healthcareApi.dispatchBill(bId, 'whatsapp_sms,email,patient_app');
+      const res = await healthcareApi.dispatchBill(bId, 'email,patient_app');
       if (res.success) {
-        if (typeof navigator !== 'undefined' && navigator.share) {
-          try {
-            await navigator.share({
-              title: `Medical Bill ${bNum}`,
-              text: `Medical Bill #${bNum} of ₹${bTot} is ready for payment/download.`,
-              url: window.location.origin + `/billing?billId=${bId}`
-            });
-          } catch (shareErr) {}
-        }
-        setToast('Bill dispatched via WhatsApp, SMS, Email & synced to Patient App!');
+        setToast('Bill dispatched via Email (PDF) & synced to Patient App!');
       }
     } catch (e) {
       alert('Failed to dispatch bill');
@@ -1002,22 +992,16 @@ export default function BillingPortal() {
                 Dispatch & Sync Channels
               </Typography>
               <Grid container spacing={1}>
-                <Grid item xs={12} sm={4}>
-                  <FormControlLabel
-                    control={<Switch size="small" checked={sendWhatsapp} onChange={(e) => setSendWhatsapp(e.target.checked)} color="success" />}
-                    label={<Typography variant="caption" sx={{ fontWeight: 800, color: textPrimary, fontSize: '0.78rem' }}>📱 WhatsApp & SMS</Typography>}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={4}>
+                <Grid item xs={12} sm={6}>
                   <FormControlLabel
                     control={<Switch size="small" checked={sendEmail} onChange={(e) => setSendEmail(e.target.checked)} color="success" />}
                     label={<Typography variant="caption" sx={{ fontWeight: 800, color: textPrimary, fontSize: '0.78rem' }}>📧 Email (PDF)</Typography>}
                   />
                 </Grid>
-                <Grid item xs={12} sm={4}>
+                <Grid item xs={12} sm={6}>
                   <FormControlLabel
                     control={<Switch size="small" checked={sendPatientApp} onChange={(e) => setSendPatientApp(e.target.checked)} color="success" />}
-                    label={<Typography variant="caption" sx={{ fontWeight: 800, color: textPrimary, fontSize: '0.78rem' }}>📲 Patient App</Typography>}
+                    label={<Typography variant="caption" sx={{ fontWeight: 800, color: textPrimary, fontSize: '0.78rem' }}>📲 Patient App & Portal</Typography>}
                   />
                 </Grid>
               </Grid>
