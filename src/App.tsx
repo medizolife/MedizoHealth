@@ -159,7 +159,7 @@ const AnimatedRoutes = () => {
         <Route 
           path="/patients" 
           element={
-            <ProtectedRoute requiredRole="doctor">
+            <ProtectedRoute requiredRole={['doctor', 'nurse', 'admin']}>
               <PatientManagement />
             </ProtectedRoute>
           } 

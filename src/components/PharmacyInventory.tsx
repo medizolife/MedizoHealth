@@ -482,6 +482,55 @@ export default function PharmacyInventory({ onNotify }: PharmacyInventoryProps) 
         </Grid>
       </Grid>
 
+      {/* Critical Expiry & Stock Action Alerts */}
+      {((stats?.expiredCount || 0) > 0 || (stats?.expiringSoonCount || 0) > 0 || (stats?.lowStockCount || 0) > 0) && (
+        <Alert
+          severity={(stats?.expiredCount || 0) > 0 ? 'error' : 'warning'}
+          icon={<ExpiryIcon />}
+          sx={{
+            mb: 3,
+            borderRadius: '20px',
+            bgcolor: (stats?.expiredCount || 0) > 0 ? 'rgba(239, 68, 68, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+            border: (stats?.expiredCount || 0) > 0 ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(245, 158, 11, 0.3)',
+            color: (stats?.expiredCount || 0) > 0 ? (isDark ? '#FCA5A5' : '#991B1B') : (isDark ? '#FDE68A' : '#92400E'),
+            alignItems: 'center',
+            '& .MuiAlert-icon': { color: (stats?.expiredCount || 0) > 0 ? '#EF4444' : '#F59E0B' }
+          }}
+          action={
+            <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 0.5 }}>
+              {(stats?.expiredCount || 0) > 0 && (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  color="error"
+                  onClick={() => setStatusFilter('expired')}
+                  sx={{ borderRadius: '10px', textTransform: 'none', fontWeight: 800, fontSize: '0.75rem' }}
+                >
+                  View {stats?.expiredCount} Expired
+                </Button>
+              )}
+              {(stats?.lowStockCount || 0) > 0 && (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  color="warning"
+                  onClick={() => setStatusFilter('low_stock')}
+                  sx={{ borderRadius: '10px', textTransform: 'none', fontWeight: 800, fontSize: '0.75rem' }}
+                >
+                  View {stats?.lowStockCount} Low Stock
+                </Button>
+              )}
+            </Stack>
+          }
+        >
+          <Typography variant="body2" sx={{ fontWeight: 700 }}>
+            {(stats?.expiredCount || 0) > 0 
+              ? `Action Required: You have ${stats?.expiredCount} expired medicine(s) and ${stats?.expiringSoonCount || 0} batch(es) nearing expiry within 30 days.`
+              : `Stock Notice: You have ${stats?.expiringSoonCount || 0} batch(es) nearing expiry within 30 days and ${stats?.lowStockCount || 0} low stock item(s).`}
+          </Typography>
+        </Alert>
+      )}
+
       {/* Main Stock Table Container Glass Card */}
       <Paper
         elevation={0}

@@ -250,8 +250,8 @@ export const login = async (credentials: LoginCredentials): Promise<{ user: User
   return response.data;
 };
 
-export const register = async (data: RegisterData): Promise<{ user: User }> => {
-  const response = await api.post<{ user: User }>('/auth/register', data);
+export const register = async (data: RegisterData): Promise<{ user: User; token: string }> => {
+  const response = await api.post<{ user: User; token: string }>('/auth/register', data);
   return response.data;
 };
 
@@ -271,15 +271,11 @@ export const getCurrentUser = async (): Promise<User> => {
   } catch (e) {
     role = '';
   }
-  let endpoint = '';
+  let endpoint = '/auth/me';
   if (role === 'doctor') {
     endpoint = '/doctors/profile';
   } else if (role === 'patient') {
     endpoint = '/patients/profile';
-  } else if (role === 'pharmacist') {
-    endpoint = '/auth/me';
-  } else {
-    throw new Error('Invalid user role');
   }
   const response = await api.get<User>(endpoint);
   return response.data;

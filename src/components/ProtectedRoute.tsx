@@ -9,7 +9,7 @@ import DigiLockerGuard from './DigiLockerGuard';
 
 interface ProtectedRouteProps {
   children: ReactNode;
-  requiredRole?: 'doctor' | 'patient' | 'pharmacist' | 'nurse' | 'admin';
+  requiredRole?: string | string[];
   requireDigiLocker?: boolean;
 }
 
@@ -35,8 +35,11 @@ const ProtectedRoute = ({ children, requiredRole, requireDigiLocker }: Protected
   }
 
   // Check role if required
-  if (requiredRole && user.role !== requiredRole) {
-    return <Navigate to="/unauthorized" replace />;
+  if (requiredRole) {
+    const allowed = Array.isArray(requiredRole) ? requiredRole.includes(user.role) : user.role === requiredRole;
+    if (!allowed) {
+      return <Navigate to="/unauthorized" replace />;
+    }
   }
 
   // Check DigiLocker verification for doctors if required

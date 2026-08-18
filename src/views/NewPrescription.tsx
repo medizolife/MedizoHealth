@@ -13,6 +13,9 @@ import InvestigationDetailDialog from '../components/InvestigationDetailDialog';
 import { FamilyProfile, CreateFamilyProfileData, RELATIONSHIP_LABELS, RELATIONSHIP_ICONS } from '../types/familyProfile';
 import { getProfilesByAccountId, createFamilyProfileForAccount } from '../services/familyProfiles';
 import DigiLockerGuard from '../components/DigiLockerGuard';
+import { healthcareApi } from '../services/healthcareExtensionsApi';
+import PaymentsIcon from '@mui/icons-material/Payments';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import { 
   Container,
   Typography,
@@ -372,6 +375,54 @@ const NewPrescription = () => {
     emergencyHelpline: '',
     notes: ''
   });
+
+  // ─── Indian Billing & Consultation Fee State ───
+  const [generateBillEnabled, setGenerateBillEnabled] = useState(true);
+  const [billingVisitType, setBillingVisitType] = useState<'standard' | 'follow_up' | 'custom'>('standard');
+  const [billingConsultFee, setBillingConsultFee] = useState<number>(500);
+  const [billingFollowUpFee, setBillingFollowUpFee] = useState<number>(0);
+  const [billingFollowUpEligibility, setBillingFollowUpEligibility] = useState<any>(null);
+  const [billingGstType, setBillingGstType] = useState<'exempt' | 'cgst_sgst' | 'igst'>('exempt');
+  const [billingGstRate, setBillingGstRate] = useState<number>(18);
+  const [billingDiscountType, setBillingDiscountType] = useState<'percent' | 'flat'>('percent');
+  const [billingDiscountPercent, setBillingDiscountPercent] = useState<number>(0);
+  const [billingDiscount, setBillingDiscount] = useState<number>(0);
+  const [billingConcessionReason, setBillingConcessionReason] = useState<string>('');
+  const [billingPaymentStatus, setBillingPaymentStatus] = useState<'paid' | 'unpaid'>('paid');
+  const [billingPaymentMethod, setBillingPaymentMethod] = useState<'cash' | 'upi' | 'card'>('cash');
+  const [billingSendWhatsapp, setBillingSendWhatsapp] = useState<boolean>(true);
+  const [billingSendEmail, setBillingSendEmail] = useState<boolean>(true);
+  const [billingSendPatientApp, setBillingSendPatientApp] = useState<boolean>(true);
+  const [billingSendToPatient, setBillingSendToPatient] = useState<boolean>(true);
+  const [billingProcedures, setBillingProcedures] = useState<Array<{ description: string; unitPrice: number; quantity: number; hsnSacCode: string; itemType: string }>>([]);
+  const [newProcName, setNewProcName] = useState('');
+  const [newProcPrice, setNewProcPrice] = useState(150);
+
+  useEffect(() => {
+    // Load doctor rate card defaults
+    healthcareApi.getDoctorRateCard().then((res: any) => {
+      if (res?.success && res?.rateCard) {
+        setBillingConsultFee(res.rateCard.consultationFee ?? 500);
+        setBillingFollowUpFee(res.rateCard.followUpFee ?? 0);
+        setBillingGstType(res.rateCard.defaultGstType || 'exempt');
+      }
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (formData.patientId) {
+      healthcareApi.checkFollowupEligibility(formData.patientId).then((res: any) => {
+        if (res?.success && res?.isEligible) {
+          setBillingFollowUpEligibility(res);
+          setBillingVisitType('follow_up');
+          setBillingConsultFee(res.followUpFee ?? 0);
+        } else {
+          setBillingFollowUpEligibility(null);
+          setBillingVisitType('standard');
+        }
+      }).catch(() => {});
+    }
+  }, [formData.patientId]);
 
   // Temp inputs for adding items
   const [newComplaint, setNewComplaint] = useState('');
@@ -1086,6 +1137,12 @@ const NewPrescription = () => {
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    // In card mode, only allow submission when the doctor is on the final step (Step 4: Advice & Follow-Up)
+    if (viewMode === 'cards' && activeStep < FORM_STEPS.length - 1) {
+      handleNextStep();
+      return;
+    }
     
     if (!formData.patientId) {
       setError('Please select a patient before issuing prescription');
@@ -1147,6 +1204,38 @@ const NewPrescription = () => {
       
       const prescription = await createPrescription(prescriptionData);
       
+      // Auto-generate Bill & Record Payment if enabled
+      if (generateBillEnabled && prescription?.id) {
+        try {
+          const finalConsultFee = billingVisitType === 'follow_up' 
+            ? billingFollowUpFee 
+            : (billingVisitType === 'standard' ? billingConsultFee : Number(billingConsultFee));
+
+          const activeChannels = [
+            billingSendWhatsapp && 'whatsapp_sms',
+            billingSendEmail && 'email',
+            billingSendPatientApp && 'patient_app'
+          ].filter(Boolean);
+
+          await healthcareApi.generateBillFromPrescription(prescription.id, {
+            consultationFee: Number(finalConsultFee),
+            visitType: billingVisitType,
+            customItems: billingProcedures,
+            gstType: billingGstType,
+            gstRate: billingGstType === 'exempt' ? 0 : Number(billingGstRate),
+            applyGst: billingGstType !== 'exempt',
+            discount: Number(billingDiscount),
+            concessionReason: billingConcessionReason,
+            markAsPaid: billingPaymentStatus === 'paid',
+            paymentMethod: billingPaymentMethod,
+            sendToPatient: activeChannels.length > 0,
+            dispatchChannel: activeChannels.join(',') || 'none'
+          });
+        } catch (bErr) {
+          console.error('Auto-bill generation notice:', bErr);
+        }
+      }
+
       setSuccess(true);
       
       setTimeout(() => {
@@ -2748,6 +2837,7 @@ const NewPrescription = () => {
                       }}
                     />
                     <Button 
+                      type="button"
                       variant="contained" 
                       onClick={() => addToArray('presentingComplaints', newComplaint, setNewComplaint)}
                       sx={{ 
@@ -2807,6 +2897,7 @@ const NewPrescription = () => {
                       }}
                     />
                     <Button 
+                      type="button"
                       variant="contained" 
                       onClick={() => addToArray('clinicalFindings', newFinding, setNewFinding)}
                       sx={{ 
@@ -2872,6 +2963,7 @@ const NewPrescription = () => {
                       }}
                     />
                     <Button 
+                      type="button"
                       variant="contained" 
                       onClick={() => addToArray('provisionalDiagnosis', newDiagnosis, setNewDiagnosis)}
                       sx={{ 
@@ -2931,6 +3023,7 @@ const NewPrescription = () => {
                       }}
                     />
                     <Button 
+                      type="button"
                       variant="contained" 
                       onClick={() => addToArray('currentMedications', newCurrentMed, setNewCurrentMed)}
                       sx={{ 
@@ -2990,6 +3083,7 @@ const NewPrescription = () => {
                       }}
                     />
                     <Button 
+                      type="button"
                       variant="contained" 
                       onClick={() => addToArray('pastSurgicalHistory', newSurgery, setNewSurgery)}
                       sx={{ 
@@ -4008,6 +4102,7 @@ const NewPrescription = () => {
 
                   <Grid item xs={12}>
                     <Button 
+                      type="button"
                       variant="contained" 
                       fullWidth 
                       onClick={addMedication}
@@ -4168,6 +4263,7 @@ const NewPrescription = () => {
                   }}
                 />
                 <Button 
+                  type="button"
                   variant="contained" 
                   onClick={() => addToArray('medicationNotes', newMedNote, setNewMedNote)}
                   sx={{ 
@@ -4449,6 +4545,7 @@ const NewPrescription = () => {
                       InputProps={{ sx: { borderRadius: '14px' } }}
                     />
                     <Button 
+                      type="button"
                       variant="contained" 
                       onClick={() => addToArray('dietModifications', newDiet, setNewDiet)}
                       sx={{ bgcolor: mode === 'dark' ? '#2A6B5D' : '#428475', minWidth: 44, borderRadius: '14px', px: 2 }}
@@ -4479,6 +4576,7 @@ const NewPrescription = () => {
                       InputProps={{ sx: { borderRadius: '14px' } }}
                     />
                     <Button 
+                      type="button"
                       variant="contained" 
                       onClick={() => addToArray('lifestyleChanges', newLifestyle, setNewLifestyle)}
                       sx={{ bgcolor: mode === 'dark' ? '#2A6B5D' : '#428475', minWidth: 44, borderRadius: '14px', px: 2 }}
@@ -4509,6 +4607,7 @@ const NewPrescription = () => {
                       InputProps={{ sx: { borderRadius: '14px' } }}
                     />
                     <Button 
+                      type="button"
                       variant="contained" 
                       onClick={() => addToArray('warningSigns', newWarning, setNewWarning)}
                       sx={{ bgcolor: '#ef4444', color: '#ffffff', minWidth: 44, borderRadius: '14px', px: 2 }}
@@ -4604,6 +4703,7 @@ const NewPrescription = () => {
                       InputProps={{ sx: { borderRadius: '14px' } }}
                     />
                     <Button 
+                      type="button"
                       variant="contained" 
                       onClick={addBringItem}
                       sx={{ bgcolor: mode === 'dark' ? '#2A6B5D' : '#428475', minWidth: 44, borderRadius: '14px', px: 2 }}
@@ -4634,6 +4734,450 @@ const NewPrescription = () => {
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                 InputProps={{ sx: { borderRadius: '16px' } }}
               />
+            </Paper>
+
+            {/* ─── 8. Consultation Fee & Indian Billing Options ─── */}
+            <Paper 
+              className={mode === 'dark' ? 'apple-glass-card-dark' : 'apple-glass-card'} 
+              sx={{ 
+                p: { xs: 2.2, sm: 3 }, 
+                mb: 3, 
+                borderRadius: '24px !important',
+                border: '1.5px solid rgba(0, 200, 150, 0.35)',
+                background: mode === 'dark'
+                  ? 'linear-gradient(135deg, rgba(14, 59, 51, 0.92) 0%, rgba(10, 37, 32, 0.96) 100%) !important'
+                  : 'linear-gradient(135deg, rgba(240, 253, 248, 0.98) 0%, rgba(230, 249, 241, 0.95) 100%) !important'
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 900, color: mode === 'dark' ? '#FAF2F5' : '#0E3B33', display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <PaymentsIcon sx={{ color: '#00C896', fontSize: 22 }} />
+                  8. Consultation Fee & Billing (Indian OPD)
+                </Typography>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={generateBillEnabled}
+                      onChange={(e) => setGenerateBillEnabled(e.target.checked)}
+                      color="success"
+                    />
+                  }
+                  label={
+                    <Typography variant="caption" sx={{ fontWeight: 800, color: generateBillEnabled ? '#00C896' : '#94A8A3' }}>
+                      {generateBillEnabled ? '✓ Auto-Generate Bill' : 'Skip Billing'}
+                    </Typography>
+                  }
+                />
+              </Box>
+
+              {generateBillEnabled && (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+                  {/* Follow-up eligibility banner */}
+                  {billingFollowUpEligibility?.isEligible && (
+                    <Alert severity="success" sx={{ borderRadius: '16px', fontWeight: 700, bgcolor: 'rgba(0, 200, 150, 0.15)', color: mode === 'dark' ? '#89D7B7' : '#0E3B33', border: '1px solid #00C896' }}>
+                      🎯 {billingFollowUpEligibility.message} — Free Follow-up rate applied automatically.
+                    </Alert>
+                  )}
+
+                  {/* Visit Type & Fee Selection */}
+                  <Box>
+                    <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', mb: 1 }}>
+                      Consultation Visit Type & Fee
+                    </Typography>
+                    <Grid container spacing={1.5}>
+                      <Grid item xs={12} sm={4}>
+                        <Paper
+                          onClick={() => { setBillingVisitType('standard'); setBillingConsultFee(500); }}
+                          sx={{
+                            p: 1.5,
+                            borderRadius: '16px',
+                            cursor: 'pointer',
+                            border: `2px solid ${billingVisitType === 'standard' ? '#00C896' : 'rgba(255,255,255,0.1)'}`,
+                            bgcolor: billingVisitType === 'standard' ? 'rgba(0, 200, 150, 0.15)' : 'transparent',
+                            textAlign: 'center'
+                          }}
+                        >
+                          <Typography variant="caption" sx={{ fontWeight: 800, display: 'block', color: mode === 'dark' ? '#FAF2F5' : '#0E3B33' }}>
+                            🩺 First / Standard Visit
+                          </Typography>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 900, color: '#00C896', mt: 0.3 }}>
+                            ₹{billingConsultFee}
+                          </Typography>
+                        </Paper>
+                      </Grid>
+
+                      <Grid item xs={12} sm={4}>
+                        <Paper
+                          onClick={() => { setBillingVisitType('follow_up'); }}
+                          sx={{
+                            p: 1.5,
+                            borderRadius: '16px',
+                            cursor: 'pointer',
+                            border: `2px solid ${billingVisitType === 'follow_up' ? '#00C896' : 'rgba(255,255,255,0.1)'}`,
+                            bgcolor: billingVisitType === 'follow_up' ? 'rgba(0, 200, 150, 0.15)' : 'transparent',
+                            textAlign: 'center'
+                          }}
+                        >
+                          <Typography variant="caption" sx={{ fontWeight: 800, display: 'block', color: mode === 'dark' ? '#FAF2F5' : '#0E3B33' }}>
+                            🔄 Follow-up Visit (₹0)
+                          </Typography>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 900, color: '#00C896', mt: 0.3 }}>
+                            ₹{billingFollowUpFee}
+                          </Typography>
+                        </Paper>
+                      </Grid>
+
+                      <Grid item xs={12} sm={4}>
+                        <Paper
+                          onClick={() => setBillingVisitType('custom')}
+                          sx={{
+                            p: 1.5,
+                            borderRadius: '16px',
+                            cursor: 'pointer',
+                            border: `2px solid ${billingVisitType === 'custom' ? '#00C896' : 'rgba(255,255,255,0.1)'}`,
+                            bgcolor: billingVisitType === 'custom' ? 'rgba(0, 200, 150, 0.15)' : 'transparent',
+                            textAlign: 'center'
+                          }}
+                        >
+                          <Typography variant="caption" sx={{ fontWeight: 800, display: 'block', color: mode === 'dark' ? '#FAF2F5' : '#0E3B33' }}>
+                            ⚙️ Custom Fee
+                          </Typography>
+                          <TextField
+                            size="small"
+                            type="number"
+                            value={billingConsultFee}
+                            onChange={(e) => setBillingConsultFee(Number(e.target.value))}
+                            InputProps={{ sx: { height: 28, fontSize: '0.85rem', fontWeight: 800, borderRadius: '8px' } }}
+                            sx={{ mt: 0.5, width: 90 }}
+                          />
+                        </Paper>
+                      </Grid>
+                    </Grid>
+                  </Box>
+
+                  {/* In-Clinic Minor Procedures Quick-Add */}
+                  <Box>
+                    <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', mb: 1 }}>
+                      Add In-Clinic Procedures & Services
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1.5 }}>
+                      {[
+                        { name: 'Nebulization', price: 150 },
+                        { name: 'Wound Dressing / Suture Removal', price: 200 },
+                        { name: 'ECG Recording', price: 300 },
+                        { name: 'Blood Sugar Rapid Test', price: 100 },
+                        { name: 'Injection Administration', price: 50 },
+                        { name: 'Ear Syringing', price: 250 }
+                      ].map((proc, pIdx) => (
+                        <Chip
+                          key={pIdx}
+                          label={`+ ${proc.name} (₹${proc.price})`}
+                          onClick={() => {
+                            setBillingProcedures(prev => [...prev, {
+                              description: proc.name,
+                              unitPrice: proc.price,
+                              quantity: 1,
+                              hsnSacCode: '999312',
+                              itemType: 'procedure'
+                            }]);
+                          }}
+                          sx={{
+                            fontWeight: 700,
+                            borderRadius: '12px',
+                            cursor: 'pointer',
+                            bgcolor: mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+                            color: mode === 'dark' ? '#FAF2F5' : '#0E3B33',
+                            border: '1px solid rgba(0, 200, 150, 0.25)',
+                            '&:hover': { bgcolor: 'rgba(0, 200, 150, 0.2)' }
+                          }}
+                        />
+                      ))}
+                    </Box>
+
+                    {/* Added Procedures List */}
+                    {billingProcedures.length > 0 && (
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.8, mb: 1 }}>
+                        {billingProcedures.map((item, idx) => (
+                          <Box key={idx} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1, borderRadius: '10px', bgcolor: 'rgba(0, 200, 150, 0.08)', border: '1px solid rgba(0, 200, 150, 0.2)' }}>
+                            <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#0E3B33' }}>
+                              {item.description} (Qty: {item.quantity})
+                            </Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Typography variant="caption" sx={{ fontWeight: 900, color: '#00C896' }}>
+                                ₹{item.unitPrice * item.quantity}
+                              </Typography>
+                              <IconButton size="small" onClick={() => setBillingProcedures(prev => prev.filter((_, i) => i !== idx))} sx={{ color: '#EF4444' }}>
+                                <DeleteIcon sx={{ fontSize: 16 }} />
+                              </IconButton>
+                            </Box>
+                          </Box>
+                        ))}
+                      </Box>
+                    )}
+                  </Box>
+
+                  {/* GST, Discount & Payment Controls */}
+                  <Grid container spacing={2}>
+                    {/* GST Exemption Toggle */}
+                    <Grid item xs={12} sm={6}>
+                      <Paper sx={{ p: 1.5, borderRadius: '16px', bgcolor: mode === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', border: '1px solid rgba(255,255,255,0.08)' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <Box>
+                            <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#0E3B33', display: 'block' }}>
+                              Indian GST Status
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: '#94A8A3', fontSize: '0.68rem' }}>
+                              {billingGstType === 'exempt' ? 'Exempt under SAC 999312 (Bill of Supply)' : `Taxable (${billingGstRate}% CGST+SGST)`}
+                            </Typography>
+                          </Box>
+                          <Chip
+                            label={billingGstType === 'exempt' ? 'EXEMPT (0%)' : `${billingGstRate}% GST`}
+                            size="small"
+                            onClick={() => setBillingGstType(prev => prev === 'exempt' ? 'cgst_sgst' : 'exempt')}
+                            sx={{ fontWeight: 900, bgcolor: billingGstType === 'exempt' ? 'rgba(0,200,150,0.2)' : 'rgba(255,152,0,0.2)', color: billingGstType === 'exempt' ? '#00C896' : '#FF9800', cursor: 'pointer' }}
+                          />
+                        </Box>
+                      </Paper>
+                    </Grid>
+
+                    {/* Discount / Concession */}
+                    <Grid item xs={12} sm={6}>
+                      <Paper sx={{ p: 1.5, borderRadius: '16px', bgcolor: mode === 'dark' ? 'rgba(0,0,0,0.2)' : '#ffffff', border: mode === 'dark' ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.08)' }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                          <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#2A6B5D', textTransform: 'uppercase', letterSpacing: 0.5, fontSize: '0.72rem' }}>
+                            Concession / Discount
+                          </Typography>
+                          <Box sx={{ display: 'flex', bgcolor: mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)', borderRadius: '8px', p: '2px' }}>
+                            <Button
+                              type="button"
+                              size="small"
+                              onClick={() => {
+                                setBillingDiscountType('percent');
+                                const cFee = billingVisitType === 'follow_up' ? billingFollowUpFee : Number(billingConsultFee);
+                                const pTot = billingProcedures.reduce((s, p) => s + (Number(p.unitPrice) * Number(p.quantity)), 0);
+                                setBillingDiscount(Math.round(((cFee + pTot) * billingDiscountPercent) / 100));
+                              }}
+                              sx={{
+                                py: 0.2, px: 1, minWidth: 32, fontSize: '0.7rem', fontWeight: 800, borderRadius: '6px', textTransform: 'none',
+                                bgcolor: billingDiscountType === 'percent' ? 'var(--color-mint)' : 'transparent',
+                                color: billingDiscountType === 'percent' ? (mode === 'dark' ? '#0F1D1B' : '#ffffff') : (mode === 'dark' ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)'),
+                                '&:hover': { bgcolor: billingDiscountType === 'percent' ? 'var(--color-mint)' : 'transparent' }
+                              }}
+                            >
+                              % Percent
+                            </Button>
+                            <Button
+                              type="button"
+                              size="small"
+                              onClick={() => setBillingDiscountType('flat')}
+                              sx={{
+                                py: 0.2, px: 1, minWidth: 32, fontSize: '0.7rem', fontWeight: 800, borderRadius: '6px', textTransform: 'none',
+                                bgcolor: billingDiscountType === 'flat' ? 'var(--color-mint)' : 'transparent',
+                                color: billingDiscountType === 'flat' ? (mode === 'dark' ? '#0F1D1B' : '#ffffff') : (mode === 'dark' ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)'),
+                                '&:hover': { bgcolor: billingDiscountType === 'flat' ? 'var(--color-mint)' : 'transparent' }
+                              }}
+                            >
+                              ₹ Flat
+                            </Button>
+                          </Box>
+                        </Box>
+
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                          {billingDiscountType === 'percent' ? (
+                            <TextField
+                              size="small"
+                              label="Discount (%)"
+                              type="number"
+                              value={billingDiscountPercent || ''}
+                              onChange={(e) => {
+                                const pct = Math.max(0, Math.min(100, Number(e.target.value)));
+                                setBillingDiscountPercent(pct);
+                                const cFee = billingVisitType === 'follow_up' ? billingFollowUpFee : Number(billingConsultFee);
+                                const pTot = billingProcedures.reduce((s, p) => s + (Number(p.unitPrice) * Number(p.quantity)), 0);
+                                setBillingDiscount(Math.round(((cFee + pTot) * pct) / 100));
+                              }}
+                              InputProps={{ 
+                                endAdornment: <InputAdornment position="end"><Typography variant="caption" sx={{ fontWeight: 800 }}>%</Typography></InputAdornment>,
+                                sx: { borderRadius: '12px', height: 38 } 
+                              }}
+                              sx={{ flex: '1 1 120px' }}
+                            />
+                          ) : (
+                            <TextField
+                              size="small"
+                              label="Discount (₹)"
+                              type="number"
+                              value={billingDiscount || ''}
+                              onChange={(e) => setBillingDiscount(Math.max(0, Number(e.target.value)))}
+                              InputProps={{ 
+                                startAdornment: <InputAdornment position="start"><Typography variant="caption" sx={{ fontWeight: 800 }}>₹</Typography></InputAdornment>,
+                                sx: { borderRadius: '12px', height: 38 } 
+                              }}
+                              sx={{ flex: '1 1 120px' }}
+                            />
+                          )}
+
+                          <FormControl size="small" sx={{ flex: '1 1 140px' }}>
+                            <InputLabel>Reason</InputLabel>
+                            <Select
+                              value={billingConcessionReason}
+                              label="Reason"
+                              onChange={(e) => setBillingConcessionReason(e.target.value)}
+                              sx={{ borderRadius: '12px', height: 38 }}
+                            >
+                              <MenuItem value="">None</MenuItem>
+                              <MenuItem value="senior_citizen">Senior Citizen</MenuItem>
+                              <MenuItem value="courtesy">Doctor Courtesy</MenuItem>
+                              <MenuItem value="staff">Staff / Family</MenuItem>
+                              <MenuItem value="bpl">BPL / EWS Concession</MenuItem>
+                            </Select>
+                          </FormControl>
+                        </Box>
+
+                        {/* Quick Percentage Chips */}
+                        {billingDiscountType === 'percent' && (
+                          <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center' }}>
+                            {[0, 10, 20, 25, 50, 100].map((pct) => (
+                              <Chip
+                                key={pct}
+                                label={pct === 100 ? '100% Free' : `${pct}%`}
+                                size="small"
+                                clickable
+                                onClick={() => {
+                                  setBillingDiscountPercent(pct);
+                                  const cFee = billingVisitType === 'follow_up' ? billingFollowUpFee : Number(billingConsultFee);
+                                  const pTot = billingProcedures.reduce((s, p) => s + (Number(p.unitPrice) * Number(p.quantity)), 0);
+                                  setBillingDiscount(Math.round(((cFee + pTot) * pct) / 100));
+                                }}
+                                sx={{
+                                  height: 24,
+                                  fontWeight: 800,
+                                  fontSize: '0.7rem',
+                                  borderRadius: '6px',
+                                  bgcolor: billingDiscountPercent === pct 
+                                    ? (mode === 'dark' ? 'rgba(137, 215, 183, 0.3)' : 'rgba(66, 132, 117, 0.25)')
+                                    : (mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)'),
+                                  color: billingDiscountPercent === pct 
+                                    ? (mode === 'dark' ? '#89D7B7' : '#1A312C')
+                                    : (mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.65)'),
+                                  border: billingDiscountPercent === pct ? '1px solid var(--color-mint)' : '1px solid transparent'
+                                }}
+                              />
+                            ))}
+                            {billingDiscount > 0 && (
+                              <Typography variant="caption" sx={{ ml: 'auto', fontWeight: 800, color: '#10B981', fontSize: '0.72rem' }}>
+                                saves ₹{billingDiscount}
+                              </Typography>
+                            )}
+                          </Box>
+                        )}
+                      </Paper>
+                    </Grid>
+
+                    {/* Payment Mode */}
+                    <Grid item xs={12} sm={6}>
+                      <FormControl fullWidth size="small">
+                        <InputLabel>Payment Status</InputLabel>
+                        <Select
+                          value={billingPaymentStatus}
+                          label="Payment Status"
+                          onChange={(e) => setBillingPaymentStatus(e.target.value as any)}
+                          sx={{ borderRadius: '14px' }}
+                        >
+                          <MenuItem value="paid">🟢 Paid (Cash Collected in Clinic)</MenuItem>
+                          <MenuItem value="paid_upi">📱 Paid (via Clinic UPI QR)</MenuItem>
+                          <MenuItem value="unpaid">🟠 Unpaid / Bill Due (Send Payment Link)</MenuItem>
+                        </Select>
+                      </FormControl>
+                    </Grid>
+
+                    {/* Multi-Channel Patient Dispatch Toggles: WhatsApp & SMS, Email, Patient App */}
+                    <Grid item xs={12}>
+                      <Paper sx={{ p: 1.5, borderRadius: '16px', bgcolor: mode === 'dark' ? 'rgba(0,0,0,0.25)' : '#F8FAFC', border: mode === 'dark' ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.08)' }}>
+                        <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#2A6B5D', textTransform: 'uppercase', letterSpacing: 0.5, fontSize: '0.72rem', display: 'block', mb: 0.8 }}>
+                          Dispatch & Sync Channels
+                        </Typography>
+                        <Grid container spacing={1}>
+                          <Grid item xs={12} sm={4}>
+                            <FormControlLabel
+                              control={
+                                <Switch
+                                  size="small"
+                                  checked={billingSendWhatsapp}
+                                  onChange={(e) => setBillingSendWhatsapp(e.target.checked)}
+                                  color="success"
+                                />
+                              }
+                              label={
+                                <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#0E3B33', fontSize: '0.78rem' }}>
+                                  📱 WhatsApp & SMS
+                                </Typography>
+                              }
+                            />
+                          </Grid>
+                          <Grid item xs={12} sm={4}>
+                            <FormControlLabel
+                              control={
+                                <Switch
+                                  size="small"
+                                  checked={billingSendEmail}
+                                  onChange={(e) => setBillingSendEmail(e.target.checked)}
+                                  color="success"
+                                />
+                              }
+                              label={
+                                <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#0E3B33', fontSize: '0.78rem' }}>
+                                  📧 Email (PDF Invoice)
+                                </Typography>
+                              }
+                            />
+                          </Grid>
+                          <Grid item xs={12} sm={4}>
+                            <FormControlLabel
+                              control={
+                                <Switch
+                                  size="small"
+                                  checked={billingSendPatientApp}
+                                  onChange={(e) => setBillingSendPatientApp(e.target.checked)}
+                                  color="success"
+                                />
+                              }
+                              label={
+                                <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#0E3B33', fontSize: '0.78rem' }}>
+                                  📲 Patient App & Portal
+                                </Typography>
+                              }
+                            />
+                          </Grid>
+                        </Grid>
+                      </Paper>
+                    </Grid>
+                  </Grid>
+
+                  {/* Net Payable Summary Banner */}
+                  {(() => {
+                    const cFee = billingVisitType === 'follow_up' ? billingFollowUpFee : billingConsultFee;
+                    const procTotal = billingProcedures.reduce((sum, p) => sum + (p.unitPrice * p.quantity), 0);
+                    const subtotal = cFee + procTotal;
+                    const netTotal = Math.max(0, subtotal - (Number(billingDiscount) || 0));
+                    return (
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 1.5, borderRadius: '14px', bgcolor: 'rgba(0, 200, 150, 0.2)', border: '1px solid #00C896' }}>
+                        <Box>
+                          <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#0E3B33' }}>
+                            ESTIMATED BILL TOTAL:
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: '#94A8A3', display: 'block', fontSize: '0.7rem' }}>
+                            Consultation: ₹{cFee} + Procedures: ₹{procTotal} {billingDiscount > 0 ? `- Disc: ₹${billingDiscount}` : ''}
+                          </Typography>
+                        </Box>
+                        <Typography variant="h6" sx={{ fontWeight: 900, color: '#00C896' }}>
+                          ₹{netTotal} INR
+                        </Typography>
+                      </Box>
+                    );
+                  })()}
+                </Box>
+              )}
             </Paper>
           </Box>
         )}

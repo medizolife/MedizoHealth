@@ -106,22 +106,35 @@ const Register = () => {
       return;
     }
 
+    if (!isGoogleSignUp) {
+      if (password !== confirmPassword) {
+        setPasswordError('Passwords do not match');
+        return;
+      }
+
+      if (!password || password.length < 4) {
+        setPasswordError('Password must be at least 4 characters');
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     
     try {
       if (isGoogleSignUp && googleData) {
         googleCompleteRegistration(googleData.token, googleData.user);
-        return;
-      }
-      
-      if (password !== confirmPassword) {
-        setPasswordError('Passwords do not match');
-        setIsSubmitting(false);
+        navigate('/dashboard');
         return;
       }
 
-      await register({ firstName, lastName, email, password, role: role as 'doctor' | 'patient' | 'pharmacist' });
-      navigate('/login');
+      await register({
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim().toLowerCase(),
+        password,
+        role: role as 'doctor' | 'patient' | 'pharmacist'
+      });
+      navigate('/dashboard');
     } catch (err) {
       console.error('Registration failed:', err);
     } finally {
@@ -143,26 +156,10 @@ const Register = () => {
     try {
       const result = await googleLogin(credentialResponse.credential, formData.role);
       
-      if (result && result.isNewUser && result.user) {
-        const googleUser = result.user;
-        setFormData(prev => ({
-          ...prev,
-          firstName: googleUser.firstName || prev.firstName,
-          lastName: googleUser.lastName || prev.lastName,
-          email: googleUser.email || prev.email,
-        }));
-        navigate('/register', { 
-          state: { 
-            googleData: {
-              firstName: googleUser.firstName,
-              lastName: googleUser.lastName,
-              email: googleUser.email,
-              token: result.token,
-              user: googleUser
-            }
-          },
-          replace: true 
-        });
+      if (result && result.user && result.token) {
+        navigate('/dashboard');
+      } else if (result && result.isNewUser && result.user) {
+        navigate('/dashboard');
       }
     } catch (err: any) {
       console.error('Google sign-up error:', err);

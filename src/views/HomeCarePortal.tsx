@@ -33,6 +33,7 @@ export default function HomeCarePortal() {
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState('');
+  const [affiliatedNurses, setAffiliatedNurses] = useState<any[]>([]);
 
   // Request modal
   const [modalOpen, setModalOpen] = useState(false);
@@ -46,11 +47,22 @@ export default function HomeCarePortal() {
     clinicalInstructions: ''
   });
 
+  // Assign nurse modal
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState<any>(null);
+  const [selectedNurseId, setSelectedNurseId] = useState('');
+  const [assigning, setAssigning] = useState(false);
+
   const fetchData = async () => {
     setLoading(true);
     try {
       const res = await healthcareApi.getHomeCareRequests();
       if (res.success) setRequests(res.requests || []);
+
+      if (user?.role === 'doctor' || user?.role === 'admin') {
+        const nurseRes = await healthcareApi.getDoctorAffiliatedNurses();
+        if (nurseRes.success) setAffiliatedNurses(nurseRes.nurses || []);
+      }
     } catch (err) {
       console.error('Error fetching home care requests:', err);
     } finally {
@@ -61,6 +73,32 @@ export default function HomeCarePortal() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  const handleOpenAssign = (reqItem: any) => {
+    setSelectedRequest(reqItem);
+    setSelectedNurseId('');
+    setAssignModalOpen(true);
+  };
+
+  const handleAssignNurse = async () => {
+    if (!selectedRequest || !selectedNurseId) {
+      alert('Please select a nurse to assign');
+      return;
+    }
+    try {
+      setAssigning(true);
+      const res = await healthcareApi.assignNurseToRequest(selectedRequest.id, selectedNurseId);
+      if (res.success) {
+        setToast(`Nurse successfully assigned to request #${selectedRequest.requestNumber}!`);
+        setAssignModalOpen(false);
+        fetchData();
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to assign nurse');
+    } finally {
+      setAssigning(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -161,7 +199,7 @@ export default function HomeCarePortal() {
                     <strong>Preferred Slot:</strong> {r.preferredDate || 'Earliest available'} ({r.preferredTimeSlot || 'Morning'})
                   </Typography>
 
-                  {r.nurseFirstName && (
+                  {r.nurseFirstName ? (
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1.5, bgcolor: '#0B1315', borderRadius: '10px' }}>
                       <HealingIcon sx={{ color: '#00C896' }} />
                       <Box>
@@ -171,6 +209,16 @@ export default function HomeCarePortal() {
                         </Typography>
                       </Box>
                     </Box>
+                  ) : (user?.role === 'doctor' || user?.role === 'admin') && (
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={<HealingIcon />}
+                      onClick={() => handleOpenAssign(r)}
+                      sx={{ color: '#00C896', borderColor: 'rgba(0,200,150,0.4)', borderRadius: '10px', textTransform: 'none', fontWeight: 700, mt: 1 }}
+                    >
+                      Assign Nurse Practitioner
+                    </Button>
                   )}
                 </Paper>
               </Grid>
@@ -178,6 +226,48 @@ export default function HomeCarePortal() {
           )}
         </Grid>
       )}
+
+      {/* Assign Nurse Dialog */}
+      <Dialog open={assignModalOpen} onClose={() => setAssignModalOpen(false)} maxWidth="xs" fullWidth PaperProps={{ sx: { bgcolor: '#131F22', color: '#EBF5F3', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)' } }}>
+        <DialogTitle sx={{ fontWeight: 800, color: '#EBF5F3', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          Assign Nurse to Request #{selectedRequest?.requestNumber}
+        </DialogTitle>
+        <DialogContent sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <Typography variant="body2" sx={{ color: '#94A8A3' }}>
+            Select an affiliated nurse practitioner to dispatch for this home care visit:
+          </Typography>
+          <FormControl fullWidth sx={{ bgcolor: '#0B1315', borderRadius: '12px' }}>
+            <InputLabel sx={{ color: '#94A8A3' }}>Select Nurse</InputLabel>
+            <Select
+              value={selectedNurseId}
+              label="Select Nurse"
+              onChange={(e) => setSelectedNurseId(e.target.value)}
+              sx={{ color: '#EBF5F3' }}
+            >
+              {affiliatedNurses.length === 0 ? (
+                <MenuItem disabled value="">No affiliated nurses found</MenuItem>
+              ) : (
+                affiliatedNurses.map((n) => (
+                  <MenuItem key={n.id} value={n.id}>
+                    {n.firstName} {n.lastName} {n.specialization ? `(${n.specialization})` : ''}
+                  </MenuItem>
+                ))
+              )}
+            </Select>
+          </FormControl>
+        </DialogContent>
+        <DialogActions sx={{ p: 2.5, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+          <Button onClick={() => setAssignModalOpen(false)} sx={{ color: '#94A8A3' }}>Cancel</Button>
+          <Button 
+            onClick={handleAssignNurse} 
+            disabled={!selectedNurseId || assigning}
+            variant="contained" 
+            sx={{ bgcolor: '#00C896', color: '#0B1315', fontWeight: 800, '&:hover': { bgcolor: '#00A87E' } }}
+          >
+            {assigning ? 'Assigning...' : 'Confirm Assignment'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Request Visit Dialog */}
       <Dialog open={modalOpen} onClose={() => setModalOpen(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { bgcolor: '#131F22', color: '#EBF5F3', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)' } }}>

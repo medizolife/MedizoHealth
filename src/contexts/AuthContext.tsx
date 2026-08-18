@@ -158,10 +158,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       let pwd: string;
 
       if (typeof credentialsOrEmail === 'string') {
-        email = credentialsOrEmail;
+        email = credentialsOrEmail.trim().toLowerCase();
         pwd = password || '';
       } else {
-        email = credentialsOrEmail.email;
+        email = credentialsOrEmail.email.trim().toLowerCase();
         pwd = credentialsOrEmail.password;
       }
 
@@ -213,11 +213,25 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const register = async (data: RegisterData) => {
     dispatch({ type: 'AUTH_START' });
     try {
-      const response = await api.register(data);
-      dispatch({ type: 'REGISTER_SUCCESS', payload: response });
+      const cleanData = {
+        ...data,
+        firstName: data.firstName ? data.firstName.trim() : '',
+        lastName: data.lastName ? data.lastName.trim() : '',
+        email: data.email ? data.email.trim().toLowerCase() : ''
+      };
+      const response = await api.register(cleanData);
+      if (response && response.token && response.user) {
+        localStorage.setItem('token', response.token);
+        localStorage.setItem('user', JSON.stringify(response.user));
+        dispatch({ type: 'LOGIN_SUCCESS', payload: { user: response.user, token: response.token } });
+      } else {
+        dispatch({ type: 'REGISTER_SUCCESS', payload: response });
+      }
+      return response;
     } catch (error: any) {
-      const message = error.response?.data?.message || 'Registration failed';
+      const message = error.response?.data?.message || error.message || 'Registration failed';
       dispatch({ type: 'AUTH_ERROR', payload: message });
+      throw error;
     }
   };
 

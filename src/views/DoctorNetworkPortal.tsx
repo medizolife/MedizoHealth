@@ -94,6 +94,19 @@ export default function DoctorNetworkPortal() {
     }
   };
 
+  const handleDisconnect = async (targetDoctorId: string, doctorName: string) => {
+    if (!confirm(`Are you sure you want to remove ${doctorName} from your network?`)) return;
+    try {
+      const res = await healthcareApi.removeDoctorFromNetwork(targetDoctorId);
+      if (res.success) {
+        setToast(`${doctorName} removed from your network`);
+        fetchData();
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to remove doctor from network');
+    }
+  };
+
   const handleSendReferral = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!referralForm.patientId || !referralForm.referredDoctorId || !referralForm.reason) {
@@ -224,17 +237,28 @@ export default function DoctorNetworkPortal() {
                         </Typography>
                       </Box>
                     </Box>
-                    <Button
-                      size="small"
-                      variant="contained"
-                      onClick={() => {
-                        setReferralForm(prev => ({ ...prev, referredDoctorId: doc.connectedDoctorId || doc.id }));
-                        setReferralDialogOpen(true);
-                      }}
-                      sx={{ bgcolor: '#00C896', color: '#0B1315', fontWeight: 800, borderRadius: '10px', textTransform: 'none', '&:hover': { bgcolor: '#00A87E' } }}
-                    >
-                      Refer Patient
-                    </Button>
+                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        onClick={() => {
+                          setReferralForm(prev => ({ ...prev, referredDoctorId: doc.connectedDoctorId || doc.id }));
+                          setReferralDialogOpen(true);
+                        }}
+                        sx={{ bgcolor: '#00C896', color: '#0B1315', fontWeight: 800, borderRadius: '10px', textTransform: 'none', '&:hover': { bgcolor: '#00A87E' } }}
+                      >
+                        Refer Patient
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="error"
+                        onClick={() => handleDisconnect(doc.connectedDoctorId || doc.id, `Dr. ${doc.firstName} ${doc.lastName}`)}
+                        sx={{ borderRadius: '10px', textTransform: 'none', fontWeight: 700, borderColor: 'rgba(244,67,54,0.4)', color: '#FF6B6B' }}
+                      >
+                        Disconnect
+                      </Button>
+                    </Box>
                   </Box>
                   <Typography variant="body2" sx={{ color: '#94A8A3' }}>
                     {doc.clinicName && `Clinic: ${doc.clinicName} • `} {doc.clinicAddress || 'Clinic Address'}

@@ -28,6 +28,12 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  Pagination,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  InputAdornment,
   useMediaQuery,
   useTheme
 } from '@mui/material';
@@ -51,7 +57,11 @@ import {
   ChevronRight as ChevronRightIcon,
   Download as DownloadIcon,
   OpenInNew as OpenInNewIcon,
-  PictureAsPdf as PdfIcon
+  PictureAsPdf as PdfIcon,
+  Search as SearchIcon,
+  Clear as ClearIcon,
+  FilterList as FilterListIcon,
+  Sort as SortIcon
 } from '@mui/icons-material';
 import { IconButton, Tooltip } from '@mui/material';
 import { prescriptionsAPI } from '../services/api';
@@ -78,6 +88,10 @@ import {
 }
 
 interface EnhancedPatient extends Omit<Patient, 'medicalHistory'> {
+  age?: number | string;
+  dob?: string;
+  patientDOB?: string;
+  gender?: string;
   prescriptionHistory?: any[];
   totalPrescriptions?: number;
   latestPrescription?: any;
@@ -127,6 +141,22 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
   const [tabValue, setTabValue] = useState(0);
   const [todayAppointments, setTodayAppointments] = useState<FollowUpAppointment[]>([]);
   const [upcomingAppointments, setUpcomingAppointments] = useState<FollowUpAppointment[]>([]);
+  
+  // Search, Filter, Sort & Pagination states
+  const [searchTerm, setSearchTerm] = useState(searchQuery || '');
+  const [genderFilter, setGenderFilter] = useState<'all' | 'male' | 'female' | 'other'>('all');
+  const [ageGroupFilter, setAgeGroupFilter] = useState<'all' | 'kids' | 'teens' | 'adults' | 'middle' | 'seniors'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active_rx' | 'has_rx' | 'no_rx'>('all');
+  const [sortBy, setSortBy] = useState<string>('last_visit_desc');
+  const [page, setPage] = useState<number>(1);
+  const PAGE_SIZE = 6;
+
+  useEffect(() => {
+    if (searchQuery !== undefined) {
+      setSearchTerm(searchQuery);
+    }
+  }, [searchQuery]);
+
   const [medicalFormData, setMedicalFormData] = useState({
     allergies: [] as string[],
     medicalHistory: [] as string[],
@@ -231,25 +261,169 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
     }
   };
 
-  // Filter patients by search query
-  const filteredPatients = React.useMemo(() => {
-    if (!searchQuery.trim()) return patients;
-    const q = searchQuery.toLowerCase().trim();
-    const cleanDigits = q.replace(/[^\d]/g, '');
-    return patients.filter(p => {
-      const pMobile = String(p.contactNumber || (p as any).phone || (p as any).mobile || '');
-      const pMobileDigits = pMobile.replace(/[^\d]/g, '');
-      const mobileMatch = (pMobile && pMobile.toLowerCase().includes(q)) || (cleanDigits.length >= 3 && pMobileDigits.includes(cleanDigits));
+  // Age calculation helper
+  const getPatientAge = (p: EnhancedPatient): number | null => {
+    if (p.age !== undefined && p.age !== null && p.age !== '' && !isNaN(Number(p.age))) {
+      return Number(p.age);
+    }
+    const dobStr = p.dateOfBirth || (p as any).dob || (p as any).patientDOB;
+    if (dobStr) {
+      const birthDate = new Date(dobStr);
+      if (!isNaN(birthDate.getTime())) {
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+          age--;
+        }
+        return age >= 0 && age < 150 ? age : null;
+      }
+    }
+    return null;
+  };
 
-      return (
-        `${p.firstName || ''} ${p.lastName || ''}`.toLowerCase().includes(q) ||
-        (p.email || '').toLowerCase().includes(q) ||
-        mobileMatch ||
-        (p.diagnoses && p.diagnoses.some((d: string) => d.toLowerCase().includes(q))) ||
-        (p.latestPrescription?.medication && p.latestPrescription.medication.toLowerCase().includes(q))
-      );
+  // Gender & age summary badge text
+  const getPatientBio = (p: EnhancedPatient): string => {
+    const rawGender = (p.gender || (p as any).sex || '').toLowerCase().trim();
+    let genderLabel = '';
+    if (rawGender === 'male' || rawGender === 'm') genderLabel = 'Male';
+    else if (rawGender === 'female' || rawGender === 'f') genderLabel = 'Female';
+    else if (rawGender === 'other' || rawGender === 'o') genderLabel = 'Other';
+    else if (rawGender) genderLabel = p.gender || '';
+
+    const age = getPatientAge(p);
+    return [genderLabel, age !== null ? `${age} yrs` : ''].filter(Boolean).join(' • ');
+  };
+
+  // Filter and sort patients
+  const filteredAndSortedPatients = React.useMemo(() => {
+    const q = searchTerm.toLowerCase().trim();
+    const cleanDigits = q.replace(/[^\d]/g, '');
+
+    const list = patients.filter(p => {
+      // 1. Search Query Match
+      if (q) {
+        const pMobile = String(p.contactNumber || (p as any).phone || (p as any).mobile || '');
+        const pMobileDigits = pMobile.replace(/[^\d]/g, '');
+        const mobileMatch = (pMobile && pMobile.toLowerCase().includes(q)) || (cleanDigits.length >= 3 && pMobileDigits.includes(cleanDigits));
+        const nameMatch = `${p.firstName || ''} ${p.lastName || ''}`.toLowerCase().includes(q);
+        const emailMatch = (p.email || '').toLowerCase().includes(q);
+        const diagnosisMatch = (p.diagnoses && p.diagnoses.some((d: string) => d.toLowerCase().includes(q))) ||
+          (p.latestPrescription?.diagnosis && p.latestPrescription.diagnosis.toLowerCase().includes(q));
+        const medMatch = (p.allMedications && p.allMedications.some((m: any) => (typeof m === 'string' ? m : (m.name || '')).toLowerCase().includes(q))) ||
+          (p.latestPrescription?.medication && p.latestPrescription.medication.toLowerCase().includes(q));
+
+        if (!nameMatch && !emailMatch && !mobileMatch && !diagnosisMatch && !medMatch) {
+          return false;
+        }
+      }
+
+      // 2. Gender Filter
+      if (genderFilter !== 'all') {
+        const pGender = (p.gender || (p as any).sex || '').toLowerCase().trim();
+        if (genderFilter === 'male' && pGender !== 'male' && pGender !== 'm') return false;
+        if (genderFilter === 'female' && pGender !== 'female' && pGender !== 'f') return false;
+        if (genderFilter === 'other' && pGender !== 'other' && pGender !== 'o') return false;
+      }
+
+      // 3. Age Group Filter
+      if (ageGroupFilter !== 'all') {
+        const age = getPatientAge(p);
+        if (age === null) return false;
+        if (ageGroupFilter === 'kids' && (age < 0 || age > 12)) return false;
+        if (ageGroupFilter === 'teens' && (age < 13 || age > 19)) return false;
+        if (ageGroupFilter === 'adults' && (age < 20 || age > 39)) return false;
+        if (ageGroupFilter === 'middle' && (age < 40 || age > 59)) return false;
+        if (ageGroupFilter === 'seniors' && age < 60) return false;
+      }
+
+      // 4. Status Filter
+      if (statusFilter !== 'all') {
+        if (statusFilter === 'active_rx' && (!p.activePrescriptions || p.activePrescriptions === 0)) return false;
+        if (statusFilter === 'has_rx' && (!p.totalPrescriptions || p.totalPrescriptions === 0)) return false;
+        if (statusFilter === 'no_rx' && (p.totalPrescriptions && p.totalPrescriptions > 0)) return false;
+      }
+
+      return true;
     });
-  }, [patients, searchQuery]);
+
+    // 5. Sorting
+    list.sort((a, b) => {
+      switch (sortBy) {
+        case 'last_visit_desc': {
+          const tA = a.lastVisit ? new Date(a.lastVisit).getTime() : (a.lastActivity ? new Date(a.lastActivity).getTime() : 0);
+          const tB = b.lastVisit ? new Date(b.lastVisit).getTime() : (b.lastActivity ? new Date(b.lastActivity).getTime() : 0);
+          return tB - tA;
+        }
+        case 'last_visit_asc': {
+          const tA = a.lastVisit ? new Date(a.lastVisit).getTime() : (a.lastActivity ? new Date(a.lastActivity).getTime() : Infinity);
+          const tB = b.lastVisit ? new Date(b.lastVisit).getTime() : (b.lastActivity ? new Date(b.lastActivity).getTime() : Infinity);
+          return tA - tB;
+        }
+        case 'name_asc': {
+          const nameA = `${a.firstName || ''} ${a.lastName || ''}`.trim().toLowerCase();
+          const nameB = `${b.firstName || ''} ${b.lastName || ''}`.trim().toLowerCase();
+          return nameA.localeCompare(nameB);
+        }
+        case 'name_desc': {
+          const nameA = `${a.firstName || ''} ${a.lastName || ''}`.trim().toLowerCase();
+          const nameB = `${b.firstName || ''} ${b.lastName || ''}`.trim().toLowerCase();
+          return nameB.localeCompare(nameA);
+        }
+        case 'date_desc': {
+          const tA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const tB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return tB - tA;
+        }
+        case 'date_asc': {
+          const tA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const tB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return tA - tB;
+        }
+        case 'age_desc': {
+          return (getPatientAge(b) || 0) - (getPatientAge(a) || 0);
+        }
+        case 'age_asc': {
+          return (getPatientAge(a) || 0) - (getPatientAge(b) || 0);
+        }
+        case 'rx_desc': {
+          return (b.totalPrescriptions || 0) - (a.totalPrescriptions || 0);
+        }
+        default:
+          return 0;
+      }
+    });
+
+    return list;
+  }, [patients, searchTerm, genderFilter, ageGroupFilter, statusFilter, sortBy]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredAndSortedPatients.length / PAGE_SIZE));
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, genderFilter, ageGroupFilter, statusFilter, sortBy]);
+
+  const paginatedPatients = React.useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return filteredAndSortedPatients.slice(start, start + PAGE_SIZE);
+  }, [filteredAndSortedPatients, page, PAGE_SIZE]);
+
+  const hasActiveFilters = Boolean(
+    searchTerm.trim() ||
+    genderFilter !== 'all' ||
+    ageGroupFilter !== 'all' ||
+    statusFilter !== 'all' ||
+    sortBy !== 'last_visit_desc'
+  );
+
+  const handleResetFilters = () => {
+    setSearchTerm('');
+    setGenderFilter('all');
+    setAgeGroupFilter('all');
+    setStatusFilter('all');
+    setSortBy('last_visit_desc');
+    setPage(1);
+  };
 
   const handleViewMedicalDetails = async (patient: EnhancedPatient) => {
     try {
@@ -460,18 +634,237 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
         </Paper>
       )}
 
+      {/* Header */}
       {!maxPatients && (
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
           <Box>
-            <Typography variant="h4" component="h1" gutterBottom>
+            <Typography variant="h4" component="h1" sx={{ fontWeight: 800, color: isDark ? '#FAF2F5' : '#1A312C' }} gutterBottom>
               My Patients Dashboard
             </Typography>
-            <Typography variant="body1" color="text.secondary">
-              {patients.length} {patients.length === 1 ? 'patient' : 'patients'} under your care
+            <Typography variant="body1" sx={{ color: isDark ? 'rgba(255,255,255,0.7)' : '#64748b', fontWeight: 600 }}>
+              {patients.length} {patients.length === 1 ? 'patient' : 'patients'} linked under your care
             </Typography>
           </Box>
         </Box>
       )}
+
+      {/* 🔍 Search, Filter & Sort Toolbar */}
+      <Paper
+        elevation={0}
+        sx={{
+          p: 2.5,
+          mb: 3,
+          borderRadius: '20px',
+          border: isDark ? '1px solid rgba(102, 205, 170, 0.25)' : '1px solid rgba(137, 215, 183, 0.4)',
+          bgcolor: isDark ? 'rgba(20, 38, 34, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+          boxShadow: isDark ? '0 8px 32px rgba(0, 0, 0, 0.25)' : '0 8px 32px rgba(26, 49, 44, 0.04)'
+        }}
+      >
+        {/* Row 1: Search Input & Sort Dropdown */}
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} md={6}>
+            <TextField
+              fullWidth
+              size="small"
+              placeholder="Search patients by name, email, mobile, diagnosis, medication..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon sx={{ color: isDark ? '#66CDAA' : '#428475' }} />
+                  </InputAdornment>
+                ),
+                endAdornment: searchTerm ? (
+                  <InputAdornment position="end">
+                    <IconButton size="small" onClick={() => setSearchTerm('')} edge="end">
+                      <ClearIcon fontSize="small" sx={{ color: isDark ? 'rgba(255,255,255,0.7)' : '#64748b' }} />
+                    </IconButton>
+                  </InputAdornment>
+                ) : null,
+                sx: {
+                  borderRadius: '14px',
+                  bgcolor: isDark ? 'rgba(10, 20, 18, 0.6)' : 'rgba(240, 253, 250, 0.8)',
+                  color: isDark ? '#FAF2F5' : '#1A312C',
+                  '& fieldset': {
+                    borderColor: isDark ? 'rgba(102, 205, 170, 0.3)' : 'rgba(137, 215, 183, 0.5)'
+                  },
+                  '&:hover fieldset': {
+                    borderColor: isDark ? '#66CDAA' : '#1A312C'
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: isDark ? '#66CDAA' : '#1A312C'
+                  }
+                }
+              }}
+            />
+          </Grid>
+
+          {/* Sort Dropdown */}
+          <Grid item xs={12} sm={6} md={3}>
+            <FormControl fullWidth size="small">
+              <InputLabel id="patient-sort-label" sx={{ color: isDark ? 'rgba(255,255,255,0.7)' : '#64748b', fontSize: '0.85rem' }}>
+                Sort Patients By
+              </InputLabel>
+              <Select
+                labelId="patient-sort-label"
+                value={sortBy}
+                label="Sort Patients By"
+                onChange={(e) => setSortBy(e.target.value)}
+                sx={{
+                  borderRadius: '14px',
+                  bgcolor: isDark ? 'rgba(10, 20, 18, 0.6)' : 'rgba(240, 253, 250, 0.8)',
+                  color: isDark ? '#FAF2F5' : '#1A312C',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: isDark ? 'rgba(102, 205, 170, 0.3)' : 'rgba(137, 215, 183, 0.5)'
+                  }
+                }}
+              >
+                <MenuItem value="last_visit_desc">🕒 Last Visit (Newest First)</MenuItem>
+                <MenuItem value="last_visit_asc">🕒 Last Visit (Oldest First)</MenuItem>
+                <MenuItem value="name_asc">🔤 Name (A → Z)</MenuItem>
+                <MenuItem value="name_desc">🔤 Name (Z → A)</MenuItem>
+                <MenuItem value="date_desc">📅 Registration (Newest First)</MenuItem>
+                <MenuItem value="date_asc">📅 Registration (Oldest First)</MenuItem>
+                <MenuItem value="age_desc">🎂 Age (Oldest First)</MenuItem>
+                <MenuItem value="age_asc">🎂 Age (Youngest First)</MenuItem>
+                <MenuItem value="rx_desc">💊 Prescriptions (Most First)</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+
+          {/* Counter & Reset Filters */}
+          <Grid item xs={12} sm={6} md={3} sx={{ display: 'flex', justifyContent: { xs: 'flex-start', md: 'flex-end' }, alignItems: 'center', gap: 1 }}>
+            {hasActiveFilters && (
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<ClearIcon />}
+                onClick={handleResetFilters}
+                sx={{
+                  borderRadius: '12px',
+                  borderColor: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)',
+                  color: isDark ? '#FAF2F5' : '#1A312C',
+                  fontWeight: 700,
+                  textTransform: 'none',
+                  fontSize: '0.8rem'
+                }}
+              >
+                Reset Filters
+              </Button>
+            )}
+            <Chip
+              label={`${filteredAndSortedPatients.length} of ${patients.length} patients`}
+              size="small"
+              sx={{
+                bgcolor: isDark ? 'rgba(102, 205, 170, 0.2)' : 'rgba(66, 132, 117, 0.12)',
+                color: isDark ? '#66CDAA' : '#1A312C',
+                fontWeight: 800,
+                borderRadius: '10px'
+              }}
+            />
+          </Grid>
+        </Grid>
+
+        {/* Row 2: Filter Pills (Gender, Age Groups, Rx Status) */}
+        <Box sx={{ mt: 2, pt: 2, borderTop: isDark ? '1px solid rgba(102, 205, 170, 0.15)' : '1px solid rgba(137, 215, 183, 0.2)', display: 'flex', flexWrap: 'wrap', gap: 1.5, alignItems: 'center' }}>
+          {/* Gender filter */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+            <Typography variant="caption" sx={{ color: isDark ? 'rgba(255,255,255,0.6)' : '#64748b', fontWeight: 800, textTransform: 'uppercase', mr: 0.5 }}>
+              Gender:
+            </Typography>
+            {[
+              { key: 'all', label: 'All' },
+              { key: 'male', label: '👨 Male' },
+              { key: 'female', label: '👩 Female' },
+              { key: 'other', label: '⚧ Other' }
+            ].map((g) => (
+              <Chip
+                key={g.key}
+                label={g.label}
+                size="small"
+                onClick={() => setGenderFilter(g.key as any)}
+                variant={genderFilter === g.key ? 'filled' : 'outlined'}
+                sx={{
+                  borderRadius: '10px',
+                  fontWeight: 700,
+                  fontSize: '0.75rem',
+                  cursor: 'pointer',
+                  bgcolor: genderFilter === g.key ? (isDark ? '#66CDAA' : '#1A312C') : 'transparent',
+                  color: genderFilter === g.key ? (isDark ? '#123029' : '#89D7B7') : (isDark ? '#FAF2F5' : '#1A312C'),
+                  borderColor: genderFilter === g.key ? 'transparent' : (isDark ? 'rgba(102, 205, 170, 0.3)' : 'rgba(137, 215, 183, 0.4)')
+                }}
+              />
+            ))}
+          </Box>
+
+          <Divider orientation="vertical" flexItem sx={{ mx: 0.5, borderColor: isDark ? 'rgba(102, 205, 170, 0.2)' : 'rgba(137, 215, 183, 0.3)' }} />
+
+          {/* Age Group filter */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+            <Typography variant="caption" sx={{ color: isDark ? 'rgba(255,255,255,0.6)' : '#64748b', fontWeight: 800, textTransform: 'uppercase', mr: 0.5 }}>
+              Age:
+            </Typography>
+            {[
+              { key: 'all', label: 'All Ages' },
+              { key: 'kids', label: '👶 0-12' },
+              { key: 'teens', label: '🧒 13-19' },
+              { key: 'adults', label: '🧑 20-39' },
+              { key: 'middle', label: '🧔 40-59' },
+              { key: 'seniors', label: '👴 60+' }
+            ].map((a) => (
+              <Chip
+                key={a.key}
+                label={a.label}
+                size="small"
+                onClick={() => setAgeGroupFilter(a.key as any)}
+                variant={ageGroupFilter === a.key ? 'filled' : 'outlined'}
+                sx={{
+                  borderRadius: '10px',
+                  fontWeight: 700,
+                  fontSize: '0.75rem',
+                  cursor: 'pointer',
+                  bgcolor: ageGroupFilter === a.key ? (isDark ? '#66CDAA' : '#1A312C') : 'transparent',
+                  color: ageGroupFilter === a.key ? (isDark ? '#123029' : '#89D7B7') : (isDark ? '#FAF2F5' : '#1A312C'),
+                  borderColor: ageGroupFilter === a.key ? 'transparent' : (isDark ? 'rgba(102, 205, 170, 0.3)' : 'rgba(137, 215, 183, 0.4)')
+                }}
+              />
+            ))}
+          </Box>
+
+          <Divider orientation="vertical" flexItem sx={{ mx: 0.5, borderColor: isDark ? 'rgba(102, 205, 170, 0.2)' : 'rgba(137, 215, 183, 0.3)' }} />
+
+          {/* Prescriptions / Status filter */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+            <Typography variant="caption" sx={{ color: isDark ? 'rgba(255,255,255,0.6)' : '#64748b', fontWeight: 800, textTransform: 'uppercase', mr: 0.5 }}>
+              Status:
+            </Typography>
+            {[
+              { key: 'all', label: 'All' },
+              { key: 'active_rx', label: '🟢 Active Rx' },
+              { key: 'has_rx', label: '📋 Has Rx' },
+              { key: 'no_rx', label: '⚪ No Rx Yet' }
+            ].map((s) => (
+              <Chip
+                key={s.key}
+                label={s.label}
+                size="small"
+                onClick={() => setStatusFilter(s.key as any)}
+                variant={statusFilter === s.key ? 'filled' : 'outlined'}
+                sx={{
+                  borderRadius: '10px',
+                  fontWeight: 700,
+                  fontSize: '0.75rem',
+                  cursor: 'pointer',
+                  bgcolor: statusFilter === s.key ? (isDark ? '#66CDAA' : '#1A312C') : 'transparent',
+                  color: statusFilter === s.key ? (isDark ? '#123029' : '#89D7B7') : (isDark ? '#FAF2F5' : '#1A312C'),
+                  borderColor: statusFilter === s.key ? 'transparent' : (isDark ? 'rgba(102, 205, 170, 0.3)' : 'rgba(137, 215, 183, 0.4)')
+                }}
+              />
+            ))}
+          </Box>
+        </Box>
+      </Paper>
 
       {error && (
         <Alert severity="error" sx={{ mb: 3 }}>
@@ -479,18 +872,29 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
         </Alert>
       )}
 
-      {patients.length === 0 ? (
-        <Paper elevation={3} sx={{ p: 6, textAlign: 'center' }}>
+      {filteredAndSortedPatients.length === 0 ? (
+        <Paper elevation={3} sx={{ p: 6, textAlign: 'center', borderRadius: '20px', bgcolor: isDark ? 'rgba(20, 38, 34, 0.9)' : '#fff' }}>
           <PersonIcon sx={{ fontSize: 80, color: 'text.secondary', mb: 2 }} />
-          <Typography variant="h5" gutterBottom>
-            No patients yet
+          <Typography variant="h5" gutterBottom sx={{ fontWeight: 800, color: isDark ? '#FAF2F5' : '#1A312C' }}>
+            {patients.length === 0 ? 'No patients yet' : 'No patients matching your filters'}
           </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Patients will appear here after you create prescriptions for them.
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+            {patients.length === 0
+              ? 'Patients will appear here after they are linked or you create prescriptions for them.'
+              : 'Try clearing search terms or resetting filters to view all patients.'}
           </Typography>
+          {hasActiveFilters && (
+            <Button
+              variant="contained"
+              onClick={handleResetFilters}
+              sx={{ borderRadius: '12px', bgcolor: '#1A312C', color: '#89D7B7', fontWeight: 800 }}
+            >
+              Clear All Filters
+            </Button>
+          )}
         </Paper>
       ) : isDesktop ? (
-        /* 💻 Desktop Widescreen Modern List Layout */
+        /* 💻 Desktop Widescreen Modern List Layout (6 Patients Per Page) */
         <Paper 
           elevation={0} 
           sx={{ 
@@ -502,7 +906,7 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
           }}
         >
           <List disablePadding>
-            {(maxPatients ? filteredPatients.slice(0, maxPatients) : filteredPatients).map((patient, idx) => (
+            {paginatedPatients.map((patient, idx) => (
               <React.Fragment key={patient.id}>
                 {idx > 0 && <Divider sx={{ borderColor: isDark ? 'rgba(102, 205, 170, 0.15)' : 'rgba(137, 215, 183, 0.2)' }} />}
                 <ListItem
@@ -516,8 +920,8 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
                   }}
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 3 }}>
-                    {/* Column 1: Patient Name & Email */}
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '28%' }}>
+                    {/* Column 1: Patient Name, Email, Gender & Age */}
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '32%' }}>
                       <Avatar sx={{ bgcolor: isDark ? 'rgba(102, 205, 170, 0.25)' : '#1A312C', color: isDark ? '#66CDAA' : '#89D7B7', width: 44, height: 44, fontWeight: 800 }}>
                         {patient.firstName ? patient.firstName[0].toUpperCase() : 'P'}
                       </Avatar>
@@ -528,29 +932,41 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
                         <Typography variant="caption" sx={{ color: isDark ? 'rgba(255, 255, 255, 0.65)' : '#64748b', fontWeight: 600 }} noWrap display="block">
                           {patient.email}
                         </Typography>
+                        {getPatientBio(patient) && (
+                          <Typography variant="caption" sx={{ color: isDark ? '#66CDAA' : '#428475', fontWeight: 700, fontSize: '0.7rem' }} noWrap display="block">
+                            {getPatientBio(patient)}
+                          </Typography>
+                        )}
                       </Box>
                     </Box>
 
-                    {/* Column 2: Latest Treatment */}
-                    <Box sx={{ width: '32%' }}>
+                    {/* Column 2: Latest Treatment / Diagnosis */}
+                    <Box sx={{ width: '30%' }}>
                       <Typography variant="caption" sx={{ color: isDark ? 'rgba(255, 255, 255, 0.65)' : '#64748b', fontWeight: 700, display: 'block', textTransform: 'uppercase', fontSize: '0.65rem', mb: 0.3 }}>
                         Latest Treatment / Diagnosis
                       </Typography>
                       <Chip
-                        label={patient.latestPrescription?.medication || (patient.diagnoses && patient.diagnoses[0]) || 'General Checkup'}
+                        label={patient.latestPrescription?.diagnosis || patient.latestPrescription?.provisionalDiagnosis?.[0] || (patient.latestPrescription?.medications && patient.latestPrescription.medications[0]?.name) || patient.latestPrescription?.medication || (patient.diagnoses && patient.diagnoses[0]) || 'General Checkup'}
                         size="small"
                         sx={{ bgcolor: isDark ? 'rgba(102, 205, 170, 0.2)' : 'rgba(66, 132, 117, 0.12)', color: isDark ? '#66CDAA' : '#428475', fontWeight: 800 }}
                       />
                     </Box>
 
                     {/* Column 3: Patient Since / First Visit */}
-                    <Box sx={{ width: '24%' }}>
+                    <Box sx={{ width: '22%' }}>
                       <Typography variant="caption" sx={{ color: isDark ? 'rgba(255, 255, 255, 0.65)' : '#64748b', fontWeight: 700, display: 'block', textTransform: 'uppercase', fontSize: '0.65rem', mb: 0.3 }}>
-                        Patient Since / First Visit
+                        {patient.lastVisit ? 'Last Visit' : 'Patient Since'}
                       </Typography>
                       <Typography variant="body2" sx={{ fontWeight: 700, color: isDark ? '#FAF2F5' : '#1A312C' }}>
-                        {patient.createdAt ? new Date(patient.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Aug 1, 2026'}
+                        {patient.lastVisit 
+                          ? new Date(patient.lastVisit).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                          : (patient.createdAt ? new Date(patient.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Aug 1, 2026')}
                       </Typography>
+                      {patient.totalPrescriptions !== undefined && patient.totalPrescriptions > 0 && (
+                        <Typography variant="caption" sx={{ color: isDark ? 'rgba(255,255,255,0.6)' : '#64748b', fontWeight: 600, fontSize: '0.68rem', display: 'block' }}>
+                          {patient.totalPrescriptions} {patient.totalPrescriptions === 1 ? 'Prescription' : 'Prescriptions'}
+                        </Typography>
+                      )}
                     </Box>
 
                     {/* Column 4: Action */}
@@ -575,9 +991,9 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
           </List>
         </Paper>
       ) : (
-        /* 📱 Mobile Compact Cards Mode */
+        /* 📱 Mobile Compact Cards Mode (6 Patients Per Page) */
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-          {(maxPatients ? filteredPatients.slice(0, maxPatients) : filteredPatients).map((patient) => (
+          {paginatedPatients.map((patient) => (
             <Card
               key={patient.id}
               onClick={() => handleViewMedicalDetails(patient)}
@@ -609,10 +1025,11 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
                     {patient.firstName} {patient.lastName}
                   </Typography>
                   <Typography variant="caption" sx={{ color: isDark ? '#66CDAA' : '#428475', fontWeight: 700, display: 'block', mt: 0.3 }} noWrap>
-                    🩺 {patient.latestPrescription?.medication || (patient.diagnoses && patient.diagnoses[0]) || 'General Checkup'}
+                    🩺 {patient.latestPrescription?.diagnosis || patient.latestPrescription?.provisionalDiagnosis?.[0] || (patient.latestPrescription?.medications && patient.latestPrescription.medications[0]?.name) || patient.latestPrescription?.medication || (patient.diagnoses && patient.diagnoses[0]) || 'General Checkup'}
                   </Typography>
                   <Typography variant="caption" sx={{ color: isDark ? 'rgba(255, 255, 255, 0.65)' : '#64748b', fontWeight: 600, fontSize: '0.7rem', display: 'block', mt: 0.2 }}>
-                    📅 Since: {patient.createdAt ? new Date(patient.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Aug 1, 2026'}
+                    {getPatientBio(patient) ? `${getPatientBio(patient)} • ` : ''}
+                    📅 {patient.lastVisit ? `Last Visit: ${new Date(patient.lastVisit).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : `Since: ${patient.createdAt ? new Date(patient.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Aug 1, 2026'}`}
                   </Typography>
                 </Box>
               </Box>
@@ -631,21 +1048,54 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
         </Box>
       )}
 
-      {maxPatients && patients.length > maxPatients && (
-        <Box sx={{ mt: 3, textAlign: 'center', p: 2, bgcolor: 'rgba(66, 132, 117, 0.08)', borderRadius: '16px', border: '1.5px solid rgba(66, 132, 117, 0.3)' }}>
-          <Typography variant="body2" sx={{ fontWeight: 800, color: '#1A312C', mb: 1 }}>
-            Showing latest {maxPatients} of {patients.length} patients under your care.
+      {/* 📄 Pagination Controls (6 Patients Per Page) */}
+      {filteredAndSortedPatients.length > PAGE_SIZE && (
+        <Paper
+          elevation={0}
+          sx={{
+            mt: 3,
+            p: 2,
+            borderRadius: '18px',
+            border: isDark ? '1px solid rgba(102, 205, 170, 0.25)' : '1px solid rgba(137, 215, 183, 0.4)',
+            bgcolor: isDark ? 'rgba(20, 38, 34, 0.9)' : 'rgba(255, 255, 255, 0.9)',
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 2
+          }}
+        >
+          <Typography variant="body2" sx={{ fontWeight: 700, color: isDark ? 'rgba(255,255,255,0.7)' : '#64748b' }}>
+            Showing {Math.min((page - 1) * PAGE_SIZE + 1, filteredAndSortedPatients.length)}–{Math.min(page * PAGE_SIZE, filteredAndSortedPatients.length)} of {filteredAndSortedPatients.length} patients
+            {filteredAndSortedPatients.length !== patients.length ? ` (filtered from ${patients.length})` : ''}
           </Typography>
-          <Button
-            variant="contained"
-            size="small"
-            onClick={() => navigate('/patients')}
-            startIcon={<PersonIcon />}
-            sx={{ borderRadius: '12px', bgcolor: '#1A312C', color: '#89D7B7', fontWeight: 800, px: 2, py: 1 }}
-          >
-            View All {patients.length} Patients in Bottom Navigation
-          </Button>
-        </Box>
+
+          <Pagination
+            count={totalPages}
+            page={page}
+            onChange={(_, val) => {
+              setPage(val);
+            }}
+            color="primary"
+            shape="rounded"
+            showFirstButton
+            showLastButton
+            sx={{
+              '& .MuiPaginationItem-root': {
+                fontWeight: 800,
+                borderRadius: '10px',
+                color: isDark ? '#FAF2F5' : '#1A312C',
+                '&.Mui-selected': {
+                  bgcolor: isDark ? '#66CDAA' : '#1A312C',
+                  color: isDark ? '#123029' : '#89D7B7',
+                  '&:hover': {
+                    bgcolor: isDark ? '#89D7B7' : '#2C4F47'
+                  }
+                }
+              }
+            }}
+          />
+        </Paper>
       )}
 
       {/* Medical Details Dialog */}

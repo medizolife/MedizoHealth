@@ -95,7 +95,9 @@ export default function DoctorPrescriptions() {
     const total = data.length;
     const active = data.filter(p => p.status === 'active').length;
     const completed = data.filter(p => p.status === 'completed').length;
-    const uniquePatients = new Set(data.map(p => p.patientId)).size;
+    const uniquePatients = user?.role === 'patient'
+      ? new Set(data.map(p => p.doctorId).filter(Boolean)).size
+      : new Set(data.map(p => p.patientId).filter(Boolean)).size;
 
     setStats({ total, active, completed, uniquePatients });
   };
@@ -214,10 +216,10 @@ export default function DoctorPrescriptions() {
       >
         <Box>
           <Typography variant="h5" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#123029', letterSpacing: '-0.02em', mb: 0.5 }}>
-            Prescription Management 💊
+            {user?.role === 'patient' ? 'My Medical Prescriptions 💊' : 'Prescription Management 💊'}
           </Typography>
           <Typography variant="caption" sx={{ color: mode === 'dark' ? '#80E5C2' : '#2A6B5D', fontWeight: 700, letterSpacing: 0.5 }}>
-            Issued digital medical prescriptions & patient records
+            {user?.role === 'patient' ? 'Your verified digital prescriptions and medication plans' : 'Issued digital medical prescriptions & patient records'}
           </Typography>
         </Box>
 
@@ -288,7 +290,7 @@ export default function DoctorPrescriptions() {
           <Grid item xs={6} sm={3}>
             <Paper className="glass-card" sx={{ p: 2, borderRadius: '20px !important', textAlign: 'center' }}>
               <Typography variant="caption" sx={{ color: '#428475', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', mb: 0.5 }}>
-                Unique Patients
+                {user?.role === 'patient' ? 'Attending Doctors' : 'Unique Patients'}
               </Typography>
               <Typography variant="h4" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#1A312C' }}>
                 {stats.uniquePatients}

@@ -623,6 +623,8 @@ const Profile = () => {
         await updateDoctorProfile({ ...textFields, ...imageFields });
       } else if (user?.role === 'patient') {
         await updatePatientProfile(patientFormData);
+      } else {
+        await usersAPI.updateProfile(patientFormData);
       }
       
       setSuccess(true);

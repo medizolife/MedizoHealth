@@ -51,6 +51,55 @@ export const healthcareApi = {
     const response = await api.post(`/billing/${id}/payment`, paymentData);
     return response.data;
   },
+  recordPartialPayment: async (id: string, paymentData: { amount: number; paymentMode: string; upiTransactionRef?: string; receiptNumber?: string; notes?: string }) => {
+    const response = await api.post(`/billing/${id}/payments`, paymentData);
+    return response.data;
+  },
+  checkFollowupEligibility: async (patientId: string) => {
+    const response = await api.get(`/billing/check-followup/${patientId}`);
+    return response.data;
+  },
+  getDoctorRateCard: async () => {
+    const response = await api.get('/doctors/rate-card');
+    return response.data;
+  },
+  updateDoctorRateCard: async (rateCard: any) => {
+    const response = await api.put('/doctors/rate-card', rateCard);
+    return response.data;
+  },
+  getDailyCollectionReport: async (date?: string) => {
+    const response = await api.get('/billing/doctor/day-close', { params: { date } });
+    return response.data;
+  },
+  getClinicServices: async () => {
+    const response = await api.get('/billing/services');
+    return response.data;
+  },
+  createClinicService: async (serviceData: any) => {
+    const response = await api.post('/billing/services', serviceData);
+    return response.data;
+  },
+  dispatchBill: async (id: string, channels?: string) => {
+    const response = await api.post(`/billing/${id}/dispatch`, { channels: channels || 'whatsapp_sms' });
+    return response.data;
+  },
+  cancelBill: async (id: string, reason: string) => {
+    const response = await api.post(`/billing/${id}/cancel`, { reason });
+    return response.data;
+  },
+  downloadBillPdf: async (id: string, billNumber?: string) => {
+    const response = await api.get(`/billing/${id}/pdf`, { responseType: 'blob' });
+    const blob = new Blob([response.data], { type: 'application/pdf' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${billNumber || 'Medical_Bill'}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    return true;
+  },
 
   // ─── DOCTOR NETWORK & REFERRALS APIs ───
   getDoctorNetwork: async () => {
