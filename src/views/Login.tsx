@@ -214,6 +214,7 @@ const Login = () => {
         setGoogleProcessing(false);
       } else {
         start3SecondHold(() => {
+          setGoogleProcessing(false);
           navigate(redirectTarget);
         });
       }
@@ -233,12 +234,16 @@ const Login = () => {
       setRoleModalOpen(false);
       if (result && result.token) {
         start3SecondHold(() => {
+          setGoogleProcessing(false);
           navigate(redirectTarget);
         });
+      } else {
+        setGoogleProcessing(false);
       }
     } catch (err: any) {
       console.error('Role completion error:', err);
       setGoogleError(err.response?.data?.message || 'Failed to complete registration with selected role');
+      setGoogleProcessing(false);
     } finally {
       setSubmittingRole(false);
     }

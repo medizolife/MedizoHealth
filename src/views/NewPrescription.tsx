@@ -395,8 +395,17 @@ const NewPrescription = () => {
   const [billingSendPatientApp, setBillingSendPatientApp] = useState<boolean>(true);
   const [billingSendToPatient, setBillingSendToPatient] = useState<boolean>(true);
   const [billingProcedures, setBillingProcedures] = useState<Array<{ description: string; unitPrice: number; quantity: number; hsnSacCode: string; itemType: string }>>([]);
-  const [newProcName, setNewProcName] = useState('');
-  const [newProcPrice, setNewProcPrice] = useState(150);
+  const [clinicServices, setClinicServices] = useState<Array<{ id: string; name: string; price: number; code?: string; active?: boolean }>>([
+    { id: 'srv_1', name: 'Nebulization', price: 150, code: '999312', active: true },
+    { id: 'srv_2', name: 'Wound Dressing / Suture Removal', price: 200, code: '999312', active: true },
+    { id: 'srv_3', name: 'ECG Recording', price: 300, code: '999312', active: true },
+    { id: 'srv_4', name: 'Blood Sugar Rapid Test', price: 100, code: '999312', active: true },
+    { id: 'srv_5', name: 'Injection Administration', price: 50, code: '999312', active: true },
+    { id: 'srv_6', name: 'Ear Syringing', price: 250, code: '999312', active: true }
+  ]);
+  const [customProcName, setCustomProcName] = useState('');
+  const [customProcPrice, setCustomProcPrice] = useState<string>('');
+  const [showCustomProcInput, setShowCustomProcInput] = useState(false);
 
   useEffect(() => {
     // Load doctor rate card defaults
@@ -405,6 +414,9 @@ const NewPrescription = () => {
         setBillingConsultFee(res.rateCard.consultationFee ?? 500);
         setBillingFollowUpFee(res.rateCard.followUpFee ?? 0);
         setBillingGstType(res.rateCard.defaultGstType || 'exempt');
+        if (Array.isArray(res.rateCard.clinicServices) && res.rateCard.clinicServices.length > 0) {
+          setClinicServices(res.rateCard.clinicServices);
+        }
       }
     }).catch(() => {});
   }, []);
@@ -4850,27 +4862,86 @@ const NewPrescription = () => {
 
                   {/* In-Clinic Minor Procedures Quick-Add */}
                   <Box>
-                    <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', mb: 1 }}>
-                      Add In-Clinic Procedures & Services
-                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                      <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#89D7B7' : '#428475', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                        Add In-Clinic Procedures & Services
+                      </Typography>
+                      <Button
+                        size="small"
+                        onClick={() => setShowCustomProcInput(prev => !prev)}
+                        sx={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'none', color: '#00C896', p: 0 }}
+                      >
+                        {showCustomProcInput ? '✕ Close' : '+ Custom Procedure'}
+                      </Button>
+                    </Box>
+
+                    {/* Custom Procedure Quick Inline Form */}
+                    {showCustomProcInput && (
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          flexDirection: { xs: 'column', sm: 'row' },
+                          gap: 1,
+                          p: 1.2,
+                          mb: 1.5,
+                          borderRadius: '12px',
+                          bgcolor: mode === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0, 200, 150, 0.06)',
+                          border: '1px dashed rgba(0, 200, 150, 0.35)'
+                        }}
+                      >
+                        <TextField
+                          size="small"
+                          placeholder="Procedure name (e.g. Nebulization)"
+                          value={customProcName}
+                          onChange={(e) => setCustomProcName(e.target.value)}
+                          sx={{ flex: 2, '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
+                        />
+                        <TextField
+                          size="small"
+                          type="number"
+                          placeholder="Fee (₹)"
+                          value={customProcPrice}
+                          onChange={(e) => setCustomProcPrice(e.target.value)}
+                          InputProps={{
+                            startAdornment: <InputAdornment position="start"><Typography sx={{ fontWeight: 800, fontSize: '0.8rem', color: '#00C896' }}>₹</Typography></InputAdornment>
+                          }}
+                          sx={{ flex: 1, minWidth: { sm: '120px' }, '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
+                        />
+                        <Button
+                          variant="contained"
+                          disabled={!customProcName.trim()}
+                          onClick={() => {
+                            const fee = Math.max(0, parseFloat(customProcPrice) || 0);
+                            setBillingProcedures(prev => [...prev, {
+                              description: customProcName.trim(),
+                              unitPrice: fee,
+                              quantity: 1,
+                              hsnSacCode: '999312',
+                              itemType: 'procedure'
+                            }]);
+                            setCustomProcName('');
+                            setCustomProcPrice('');
+                            setShowCustomProcInput(false);
+                          }}
+                          sx={{ borderRadius: '8px', bgcolor: '#00C896', color: '#FFF', fontWeight: 800, textTransform: 'none', px: 2 }}
+                        >
+                          Add to Bill
+                        </Button>
+                      </Box>
+                    )}
+
+                    {/* Quick-Add Chips from Doctor's Rate Card */}
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1.5 }}>
-                      {[
-                        { name: 'Nebulization', price: 150 },
-                        { name: 'Wound Dressing / Suture Removal', price: 200 },
-                        { name: 'ECG Recording', price: 300 },
-                        { name: 'Blood Sugar Rapid Test', price: 100 },
-                        { name: 'Injection Administration', price: 50 },
-                        { name: 'Ear Syringing', price: 250 }
-                      ].map((proc, pIdx) => (
+                      {(clinicServices || []).filter(s => s.active !== false).map((proc, pIdx) => (
                         <Chip
-                          key={pIdx}
+                          key={proc.id || pIdx}
                           label={`+ ${proc.name} (₹${proc.price})`}
                           onClick={() => {
                             setBillingProcedures(prev => [...prev, {
                               description: proc.name,
                               unitPrice: proc.price,
                               quantity: 1,
-                              hsnSacCode: '999312',
+                              hsnSacCode: proc.code || '999312',
                               itemType: 'procedure'
                             }]);
                           }}

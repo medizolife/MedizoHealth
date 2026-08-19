@@ -3,11 +3,37 @@ import { createContext, useContext, useReducer, useEffect, useState, ReactNode }
 import { AuthContextType, AuthState, LoginCredentials, RegisterData, User } from '../types/auth';
 import * as api from '../services/api';
 
-// Initial auth state
+// Initial auth state generator
+const getInitialAuthState = (): AuthState => {
+  if (typeof window !== 'undefined') {
+    try {
+      const token = localStorage.getItem('token');
+      const storedUser = localStorage.getItem('user');
+      if (token && storedUser) {
+        const user = JSON.parse(storedUser);
+        return {
+          isAuthenticated: true,
+          user,
+          loading: false,
+          error: null
+        };
+      }
+    } catch (e) {
+      console.warn('Failed to parse cached user:', e);
+    }
+  }
+  return {
+    isAuthenticated: false,
+    user: null,
+    loading: false,
+    error: null
+  };
+};
+
 const initialState: AuthState = {
   isAuthenticated: false,
   user: null,
-  loading: true,
+  loading: false,
   error: null
 };
 
@@ -110,7 +136,7 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
-  const [state, dispatch] = useReducer(authReducer, initialState);
+  const [state, dispatch] = useReducer(authReducer, undefined, getInitialAuthState);
   const [dobVerified, setDobVerified] = useState(() => {
     if (typeof window !== 'undefined') {
       return sessionStorage.getItem('dobVerified') === 'true';
@@ -142,8 +168,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       try {
         const response = await api.authAPI.getMe();
         dispatch({ type: 'USER_LOADED', payload: response.user });
-      } catch (error) {
-        dispatch({ type: 'LOGOUT' });
+      } catch (error: any) {
+        // Only logout if the server explicitly says the token is invalid (401)
+        // For network errors or other issues, fall back to cached user
+        if (error.response?.status === 401) {
+          dispatch({ type: 'LOGOUT' });
+        } else {
+          // Network error or server down — use cached user data so the session persists
+          try {
+            const cachedUser = JSON.parse(storedUser);
+            dispatch({ type: 'USER_LOADED', payload: cachedUser });
+          } catch {
+            dispatch({ type: 'LOGOUT' });
+          }
+        }
       }
     };
     

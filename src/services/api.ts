@@ -38,16 +38,12 @@ api.interceptors.request.use(config => {
 api.interceptors.response.use(
   response => response,
   error => {
-    if (error.response?.status === 401) {
+    const requestUrl = error.config?.url || '';
+    if (error.response?.status === 401 && requestUrl.includes('/auth/me')) {
       if (typeof window !== 'undefined') {
-        const token = localStorage.getItem('token');
-        if (token) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-        }
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
       }
-    } else {
-      console.error('API Error:', error.response?.data || error.message);
     }
     return Promise.reject(error);
   }

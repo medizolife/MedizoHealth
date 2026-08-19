@@ -50,11 +50,27 @@ import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import AddIcon from '@mui/icons-material/Add';
+import MedicalServicesIcon from '@mui/icons-material/MedicalServices';
+import CloseIcon from '@mui/icons-material/Close';
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
+import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
+import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 
 import { useAuth } from '../contexts/AuthContext';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { healthcareApi } from '../services/healthcareExtensionsApi';
 import api from '../services/api';
+
+const DEFAULT_CLINIC_SERVICES = [
+  { id: 'srv_1', name: 'Nebulization', price: 150, code: '999312', active: true },
+  { id: 'srv_2', name: 'Wound Dressing / Suture Removal', price: 200, code: '999312', active: true },
+  { id: 'srv_3', name: 'ECG Recording', price: 300, code: '999312', active: true },
+  { id: 'srv_4', name: 'Blood Sugar Rapid Test', price: 100, code: '999312', active: true },
+  { id: 'srv_5', name: 'Injection Administration', price: 50, code: '999312', active: true },
+  { id: 'srv_6', name: 'Ear Syringing', price: 250, code: '999312', active: true }
+];
 
 export default function BillingPortal() {
   const { user } = useAuth();
@@ -72,11 +88,65 @@ export default function BillingPortal() {
     teleconsultFee: 400,
     clinicUpiVpa: '',
     clinicGstin: '',
-    defaultGstType: 'exempt'
+    defaultGstType: 'exempt',
+    clinicServices: DEFAULT_CLINIC_SERVICES
   });
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState('');
   const [autoSyncing, setAutoSyncing] = useState(false);
+
+  // In-Clinic Procedures Management State in Rate Card Modal
+  const [newProcName, setNewProcName] = useState('');
+  const [newProcPrice, setNewProcPrice] = useState<string>('');
+
+  const handleAddProcedure = () => {
+    if (!newProcName.trim()) return;
+    const priceNum = Math.max(0, parseFloat(newProcPrice) || 0);
+    const newService = {
+      id: `srv_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      name: newProcName.trim(),
+      price: priceNum,
+      code: '999312',
+      active: true
+    };
+    setRateCard((prev: any) => ({
+      ...prev,
+      clinicServices: [...(prev.clinicServices || []), newService]
+    }));
+    setNewProcName('');
+    setNewProcPrice('');
+  };
+
+  const handleUpdateProcedure = (id: string, field: 'name' | 'price', value: any) => {
+    setRateCard((prev: any) => ({
+      ...prev,
+      clinicServices: (prev.clinicServices || []).map((s: any) => {
+        if (s.id === id) {
+          return {
+            ...s,
+            [field]: field === 'price' ? (value === '' ? '' : Math.max(0, parseFloat(value) || 0)) : value
+          };
+        }
+        return s;
+      })
+    }));
+  };
+
+  const handleDeleteProcedure = (id: string) => {
+    setRateCard((prev: any) => ({
+      ...prev,
+      clinicServices: (prev.clinicServices || []).filter((s: any) => s.id !== id)
+    }));
+  };
+
+  const handleResetDefaultProcedures = () => {
+    if (window.confirm('Reset in-clinic procedure list to standard OPD clinic defaults?')) {
+      setRateCard((prev: any) => ({
+        ...prev,
+        clinicServices: DEFAULT_CLINIC_SERVICES
+      }));
+    }
+  };
 
   // Generate bill modal
   const [generateModalOpen, setGenerateModalOpen] = useState(false);
@@ -1241,96 +1311,359 @@ export default function BillingPortal() {
         </DialogActions>
       </Dialog>
 
-      {/* ─── MODAL: RATE CARD & CLINIC BILLING SETTINGS ─── */}
+      {/* ─── MODAL: RATE CARD & CLINIC BILLING SETTINGS (RESPONSIVE) ─── */}
       <Dialog
         open={rateCardModalOpen}
         onClose={() => setRateCardModalOpen(false)}
-        maxWidth="sm"
+        maxWidth="md"
         fullWidth
         PaperProps={{
           sx: {
-            borderRadius: '24px',
+            borderRadius: { xs: '16px', sm: '24px' },
             bgcolor: cardBg,
             color: textPrimary,
             border: cardBorder,
-            boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
+            boxShadow: '0 25px 70px rgba(0,0,0,0.35)',
+            m: { xs: 1.5, sm: 3 },
+            maxHeight: '92vh',
+            display: 'flex',
+            flexDirection: 'column'
           }
         }}
       >
-        <DialogTitle sx={{ fontWeight: 900, pb: 1, color: isDark ? '#2DD4BF' : '#0D9488', borderBottom: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(42,107,93,0.1)' }}>
-          ⚙️ Clinic Rate Card & Indian Billing Settings
+        {/* Modal Header */}
+        <DialogTitle sx={{ p: { xs: 2, sm: 2.5 }, pb: 1.5, borderBottom: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(42,107,93,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Avatar sx={{ bgcolor: 'rgba(0, 200, 150, 0.15)', color: '#00C896', width: 42, height: 42 }}>
+              <SettingsIcon />
+            </Avatar>
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 900, fontSize: { xs: '1.05rem', sm: '1.25rem' }, color: isDark ? '#2DD4BF' : '#0D9488', lineHeight: 1.2 }}>
+                Clinic Rate Card & Indian Billing Settings
+              </Typography>
+              <Typography variant="caption" sx={{ color: textSecondary, fontSize: { xs: '0.72rem', sm: '0.8rem' } }}>
+                Manage consultation rates, in-clinic procedures, and Indian payment identifiers
+              </Typography>
+            </Box>
+          </Box>
+          <IconButton onClick={() => setRateCardModalOpen(false)} size="small" sx={{ color: textSecondary }}>
+            <CloseIcon fontSize="small" />
+          </IconButton>
         </DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 3 }}>
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
+
+        {/* Modal Scrollable Body */}
+        <DialogContent sx={{ p: { xs: 2, sm: 3 }, pt: { xs: 2.5, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 3, overflowY: 'auto' }}>
+          
+          {/* SECTION 1: OPD CONSULTATION & FOLLOW-UP CHARGES */}
+          <Paper
+            elevation={0}
+            sx={{
+              p: { xs: 2, sm: 2.5 },
+              borderRadius: '18px',
+              bgcolor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(42,107,93,0.03)',
+              border: isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(42,107,93,0.1)'
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+              <LocalHospitalIcon sx={{ color: '#00C896', fontSize: 20 }} />
+              <Typography variant="subtitle2" sx={{ fontWeight: 800, color: isDark ? '#2DD4BF' : '#0D9488', textTransform: 'uppercase', letterSpacing: 0.5, fontSize: '0.82rem' }}>
+                1. OPD Consultation & Follow-up Charges
+              </Typography>
+            </Box>
+
+            <Grid container spacing={2.5}>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Standard Consultation Fee (₹)"
+                  type="number"
+                  value={rateCard.consultationFee}
+                  onChange={(e) => setRateCard({ ...rateCard, consultationFee: Number(e.target.value) })}
+                  InputProps={{
+                    startAdornment: <InputAdornment position="start"><Typography sx={{ fontWeight: 800, color: '#00C896' }}>₹</Typography></InputAdornment>,
+                    sx: { borderRadius: '14px', bgcolor: inputBg }
+                  }}
+                  helperText="Primary first-visit OPD fee"
+                />
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Follow-up Visit Fee (₹)"
+                  type="number"
+                  value={rateCard.followUpFee}
+                  onChange={(e) => setRateCard({ ...rateCard, followUpFee: Number(e.target.value) })}
+                  InputProps={{
+                    startAdornment: <InputAdornment position="start"><Typography sx={{ fontWeight: 800, color: '#00C896' }}>₹</Typography></InputAdornment>,
+                    sx: { borderRadius: '14px', bgcolor: inputBg }
+                  }}
+                  helperText="Set ₹0 for free follow-up visits"
+                />
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Follow-up Validity Period (Days)"
+                  type="number"
+                  value={rateCard.followUpDays}
+                  onChange={(e) => setRateCard({ ...rateCard, followUpDays: Number(e.target.value) })}
+                  InputProps={{ sx: { borderRadius: '14px', bgcolor: inputBg } }}
+                  helperText="Auto-suggests follow-up rate if patient visits within these days"
+                />
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Teleconsultation Fee (₹)"
+                  type="number"
+                  value={rateCard.teleconsultFee}
+                  onChange={(e) => setRateCard({ ...rateCard, teleconsultFee: Number(e.target.value) })}
+                  InputProps={{
+                    startAdornment: <InputAdornment position="start"><Typography sx={{ fontWeight: 800, color: '#00C896' }}>₹</Typography></InputAdornment>,
+                    sx: { borderRadius: '14px', bgcolor: inputBg }
+                  }}
+                  helperText="Online / video consultation charge"
+                />
+              </Grid>
+            </Grid>
+          </Paper>
+
+          {/* SECTION 2: IN-CLINIC PROCEDURES & SERVICES (EDITABLE) */}
+          <Paper
+            elevation={0}
+            sx={{
+              p: { xs: 2, sm: 2.5 },
+              borderRadius: '18px',
+              bgcolor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(42,107,93,0.03)',
+              border: isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(42,107,93,0.1)'
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1, mb: 1.5 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <MedicalServicesIcon sx={{ color: '#00C896', fontSize: 20 }} />
+                <Typography variant="subtitle2" sx={{ fontWeight: 800, color: isDark ? '#2DD4BF' : '#0D9488', textTransform: 'uppercase', letterSpacing: 0.5, fontSize: '0.82rem' }}>
+                  2. In-Clinic Procedures & Services (Rate Card)
+                </Typography>
+                <Chip
+                  label={`${(rateCard.clinicServices || []).length} Procedures`}
+                  size="small"
+                  sx={{ fontWeight: 800, height: 22, fontSize: '0.7rem', bgcolor: 'rgba(0, 200, 150, 0.15)', color: '#00C896' }}
+                />
+              </Box>
+
+              <Button
+                size="small"
+                startIcon={<RestartAltIcon fontSize="small" />}
+                onClick={handleResetDefaultProcedures}
+                sx={{ textTransform: 'none', fontSize: '0.75rem', fontWeight: 700, color: textSecondary, '&:hover': { color: '#00C896' } }}
+              >
+                Reset OPD Defaults
+              </Button>
+            </Box>
+
+            <Typography variant="body2" sx={{ color: textSecondary, fontSize: { xs: '0.78rem', sm: '0.83rem' }, mb: 2 }}>
+              Add, edit names, or customize prices for minor clinic procedures. These will appear as 1-click quick add buttons in your prescriptions and billing portal.
+            </Typography>
+
+            {/* Inline Add Procedure Bar */}
+            <Box
+              sx={{
+                p: 1.5,
+                mb: 2,
+                borderRadius: '14px',
+                bgcolor: isDark ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.85)',
+                border: '1px dashed rgba(0, 200, 150, 0.4)',
+                display: 'flex',
+                flexDirection: { xs: 'column', sm: 'row' },
+                gap: 1.5,
+                alignItems: { xs: 'stretch', sm: 'center' }
+              }}
+            >
               <TextField
-                fullWidth
-                label="Standard Consultation Fee (₹)"
+                size="small"
+                placeholder="Procedure / Service Name (e.g. Nebulization, Dressing)"
+                value={newProcName}
+                onChange={(e) => setNewProcName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleAddProcedure(); }}
+                sx={{ flex: 2, '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: inputBg } }}
+              />
+              <TextField
+                size="small"
                 type="number"
-                value={rateCard.consultationFee}
-                onChange={(e) => setRateCard({ ...rateCard, consultationFee: Number(e.target.value) })}
-                InputProps={{ sx: { borderRadius: '14px', bgcolor: inputBg } }}
+                placeholder="Fee (₹)"
+                value={newProcPrice}
+                onChange={(e) => setNewProcPrice(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleAddProcedure(); }}
+                InputProps={{
+                  startAdornment: <InputAdornment position="start"><Typography sx={{ fontWeight: 800, fontSize: '0.85rem', color: '#00C896' }}>₹</Typography></InputAdornment>
+                }}
+                sx={{ flex: 1, minWidth: { sm: '130px' }, '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: inputBg } }}
               />
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                disabled={!newProcName.trim()}
+                onClick={handleAddProcedure}
+                sx={{
+                  borderRadius: '10px',
+                  bgcolor: '#00C896',
+                  color: '#FFFFFF',
+                  fontWeight: 800,
+                  px: 2.5,
+                  py: 0.9,
+                  whiteSpace: 'nowrap',
+                  '&:hover': { bgcolor: '#00A87E' }
+                }}
+              >
+                Add Procedure
+              </Button>
+            </Box>
+
+            {/* List of Procedures (Responsive Cards / Rows) */}
+            <Stack spacing={1} sx={{ maxHeight: '280px', overflowY: 'auto', pr: 0.5 }}>
+              {(rateCard.clinicServices || []).map((srv: any, idx: number) => (
+                <Box
+                  key={srv.id || idx}
+                  sx={{
+                    display: 'flex',
+                    flexDirection: { xs: 'column', sm: 'row' },
+                    alignItems: { xs: 'stretch', sm: 'center' },
+                    gap: 1.5,
+                    p: 1.2,
+                    px: 1.8,
+                    borderRadius: '12px',
+                    bgcolor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.95)',
+                    border: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(42,107,93,0.12)',
+                    transition: 'all 0.15s ease-in-out',
+                    '&:hover': {
+                      borderColor: 'rgba(0, 200, 150, 0.4)',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+                    }
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 2 }}>
+                    <Typography sx={{ fontWeight: 800, color: textSecondary, fontSize: '0.78rem', minWidth: '22px' }}>
+                      #{idx + 1}
+                    </Typography>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      value={srv.name}
+                      onChange={(e) => handleUpdateProcedure(srv.id, 'name', e.target.value)}
+                      placeholder="Procedure Name"
+                      variant="standard"
+                      InputProps={{
+                        disableUnderline: false,
+                        sx: { fontWeight: 700, fontSize: '0.88rem', color: textPrimary }
+                      }}
+                    />
+                  </Box>
+
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, justifyContent: 'flex-end', minWidth: { sm: '180px' } }}>
+                    <TextField
+                      size="small"
+                      type="number"
+                      value={srv.price === 0 ? '0' : srv.price}
+                      onChange={(e) => handleUpdateProcedure(srv.id, 'price', e.target.value)}
+                      InputProps={{
+                        startAdornment: <InputAdornment position="start"><Typography sx={{ fontWeight: 800, fontSize: '0.8rem', color: '#00C896' }}>₹</Typography></InputAdornment>,
+                        sx: { borderRadius: '8px', height: '34px', fontSize: '0.88rem', fontWeight: 800, width: '100px', bgcolor: inputBg }
+                      }}
+                    />
+
+                    <Tooltip title="Remove procedure">
+                      <IconButton
+                        size="small"
+                        onClick={() => handleDeleteProcedure(srv.id)}
+                        sx={{ color: '#EF4444', p: 0.8, '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.12)' } }}
+                      >
+                        <DeleteOutlineIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                </Box>
+              ))}
+
+              {(rateCard.clinicServices || []).length === 0 && (
+                <Box sx={{ textAlign: 'center', py: 3, color: textSecondary }}>
+                  <Typography variant="body2" sx={{ fontStyle: 'italic' }}>
+                    No custom procedures added yet. Click &quot;Reset OPD Defaults&quot; above to restore standard clinic items.
+                  </Typography>
+                </Box>
+              )}
+            </Stack>
+          </Paper>
+
+          {/* SECTION 3: UPI QR & GSTIN SETTINGS */}
+          <Paper
+            elevation={0}
+            sx={{
+              p: { xs: 2, sm: 2.5 },
+              borderRadius: '18px',
+              bgcolor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(42,107,93,0.03)',
+              border: isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(42,107,93,0.1)'
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+              <QrCodeScannerIcon sx={{ color: '#00C896', fontSize: 20 }} />
+              <Typography variant="subtitle2" sx={{ fontWeight: 800, color: isDark ? '#2DD4BF' : '#0D9488', textTransform: 'uppercase', letterSpacing: 0.5, fontSize: '0.82rem' }}>
+                3. Instant UPI QR & GSTIN (Optional)
+              </Typography>
+            </Box>
+
+            <Grid container spacing={2.5}>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Clinic UPI VPA / ID for Dynamic QR"
+                  placeholder="e.g. dr.sharma@okhdfcbank or clinic@icici"
+                  value={rateCard.clinicUpiVpa || ''}
+                  onChange={(e) => setRateCard({ ...rateCard, clinicUpiVpa: e.target.value })}
+                  helperText="Encoded in dynamic NPCI QR codes on invoices for instant patient UPI scan"
+                  InputProps={{
+                    startAdornment: <InputAdornment position="start"><QrCode2Icon sx={{ color: '#00C896', fontSize: 20 }} /></InputAdornment>,
+                    sx: { borderRadius: '14px', bgcolor: inputBg }
+                  }}
+                />
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Doctor / Clinic 15-Digit GSTIN (Optional)"
+                  placeholder="e.g. 07AAAAA0000A1Z5"
+                  value={rateCard.clinicGstin || ''}
+                  onChange={(e) => setRateCard({ ...rateCard, clinicGstin: e.target.value })}
+                  helperText="Printed on official Tax Invoices when GST registration applies"
+                  InputProps={{ sx: { borderRadius: '14px', bgcolor: inputBg } }}
+                />
+              </Grid>
             </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Follow-up Fee (₹)"
-                type="number"
-                value={rateCard.followUpFee}
-                onChange={(e) => setRateCard({ ...rateCard, followUpFee: Number(e.target.value) })}
-                InputProps={{ sx: { borderRadius: '14px', bgcolor: inputBg } }}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Follow-up Validity (Days)"
-                type="number"
-                value={rateCard.followUpDays}
-                onChange={(e) => setRateCard({ ...rateCard, followUpDays: Number(e.target.value) })}
-                helperText="Auto-suggests follow-up rate within these days"
-                InputProps={{ sx: { borderRadius: '14px', bgcolor: inputBg } }}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Teleconsultation Fee (₹)"
-                type="number"
-                value={rateCard.teleconsultFee}
-                onChange={(e) => setRateCard({ ...rateCard, teleconsultFee: Number(e.target.value) })}
-                InputProps={{ sx: { borderRadius: '14px', bgcolor: inputBg } }}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Clinic UPI VPA / ID for Instant QR"
-                placeholder="e.g. dr.ahmad@okhdfcbank or clinic@icici"
-                value={rateCard.clinicUpiVpa}
-                onChange={(e) => setRateCard({ ...rateCard, clinicUpiVpa: e.target.value })}
-                helperText="This UPI ID will be encoded in dynamic NPCI QR codes on invoices"
-                InputProps={{ sx: { borderRadius: '14px', bgcolor: inputBg } }}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Doctor / Clinic 15-Digit GSTIN (Optional)"
-                placeholder="e.g. 07AAAAA0000A1Z5"
-                value={rateCard.clinicGstin}
-                onChange={(e) => setRateCard({ ...rateCard, clinicGstin: e.target.value })}
-                helperText="Printed on official Tax Invoices when GST is applicable"
-                InputProps={{ sx: { borderRadius: '14px', bgcolor: inputBg } }}
-              />
-            </Grid>
-          </Grid>
+          </Paper>
+
         </DialogContent>
-        <DialogActions sx={{ p: 2.5, gap: 1, borderTop: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(42,107,93,0.1)' }}>
-          <Button onClick={() => setRateCardModalOpen(false)} sx={{ borderRadius: '12px', color: textSecondary }}>
+
+        {/* Modal Actions */}
+        <DialogActions
+          sx={{
+            p: { xs: 2, sm: 2.5 },
+            px: { xs: 2, sm: 3 },
+            gap: 1.5,
+            borderTop: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(42,107,93,0.1)',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap'
+          }}
+        >
+          <Button
+            onClick={() => setRateCardModalOpen(false)}
+            sx={{ borderRadius: '12px', color: textSecondary, fontWeight: 700, px: 2.5 }}
+          >
             Cancel
           </Button>
+
           <Button
             variant="contained"
             disabled={rateCardSaving}
@@ -1340,10 +1673,15 @@ export default function BillingPortal() {
               background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)',
               color: '#FFFFFF',
               fontWeight: 800,
-              px: 3
+              px: { xs: 3, sm: 4 },
+              py: 1,
+              boxShadow: '0 4px 14px rgba(0, 200, 150, 0.35)',
+              '&:hover': {
+                background: 'linear-gradient(135deg, #047857 0%, #059669 100%)'
+              }
             }}
           >
-            {rateCardSaving ? 'Saving...' : 'Save Settings'}
+            {rateCardSaving ? <CircularProgress size={22} sx={{ color: '#FFFFFF' }} /> : '✨ Save Rate Card & Settings'}
           </Button>
         </DialogActions>
       </Dialog>

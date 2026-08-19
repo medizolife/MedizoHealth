@@ -7,6 +7,19 @@ const nextConfig = {
   },
   reactStrictMode: true,
   transpilePackages: ['@mui/material', '@mui/icons-material', '@mui/system'],
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin-allow-popups',
+          },
+        ],
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig;

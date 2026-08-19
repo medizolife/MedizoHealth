@@ -1756,13 +1756,16 @@ export default function Header() {
 
                     const res = await authAPI.updateEmail(googleEmail);
                     setEmailUpdateMsg({ type: 'success', text: `✅ Email updated to ${googleEmail} via Google!` });
+                    if (res.token) {
+                      localStorage.setItem('token', res.token);
+                    }
                     if (res.user) {
                       localStorage.setItem('user', JSON.stringify(res.user));
                     }
                     setTimeout(() => {
                       setAddEmailDialogOpen(false);
                       window.location.reload();
-                    }, 1500);
+                    }, 1200);
                   } catch (err: any) {
                     setEmailUpdateMsg({ type: 'error', text: err.response?.data?.message || err.message || 'Failed to update email with Google' });
                   } finally {
