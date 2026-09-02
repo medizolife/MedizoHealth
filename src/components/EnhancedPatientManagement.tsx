@@ -735,9 +735,9 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
         </Paper>
       )}
 
-      {/* Header */}
+      {/* Header (Desktop only - mobile already has top Patient Management banner) */}
       {!maxPatients && (
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+        <Box sx={{ display: { xs: 'none', md: 'flex' }, justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Box>
             <Typography variant="h4" component="h1" sx={{ fontWeight: 800, color: isDark ? '#FAF2F5' : '#1A312C' }} gutterBottom>
               My Patients Dashboard
@@ -753,27 +753,29 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
       <Paper
         elevation={0}
         sx={{
-          p: 2.5,
-          mb: 3,
-          borderRadius: '20px',
+          p: { xs: 1.5, sm: 2.2 },
+          mb: { xs: 2, sm: 2.5 },
+          borderRadius: { xs: '16px', sm: '20px' },
           border: isDark ? '1px solid rgba(102, 205, 170, 0.25)' : '1px solid rgba(137, 215, 183, 0.4)',
           bgcolor: isDark ? 'rgba(20, 38, 34, 0.95)' : 'rgba(255, 255, 255, 0.95)',
-          boxShadow: isDark ? '0 8px 32px rgba(0, 0, 0, 0.25)' : '0 8px 32px rgba(26, 49, 44, 0.04)'
+          boxShadow: isDark ? '0 8px 32px rgba(0, 0, 0, 0.25)' : '0 8px 32px rgba(26, 49, 44, 0.04)',
+          width: '100%',
+          boxSizing: 'border-box'
         }}
       >
         {/* Row 1: Search Input & Sort Dropdown */}
-        <Grid container spacing={2} alignItems="center">
+        <Grid container spacing={{ xs: 1.5, sm: 2 }} alignItems="center">
           <Grid item xs={12} md={6}>
             <TextField
               fullWidth
               size="small"
-              placeholder="Search patients by name, email, mobile, diagnosis, medication..."
+              placeholder="Search by name, email, mobile, diagnosis, medication..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <SearchIcon sx={{ color: isDark ? '#66CDAA' : '#428475' }} />
+                    <SearchIcon sx={{ color: isDark ? '#66CDAA' : '#428475', fontSize: { xs: 18, sm: 20 } }} />
                   </InputAdornment>
                 ),
                 endAdornment: searchTerm ? (
@@ -784,7 +786,8 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
                   </InputAdornment>
                 ) : null,
                 sx: {
-                  borderRadius: '14px',
+                  borderRadius: '12px',
+                  fontSize: { xs: '0.82rem', sm: '0.9rem' },
                   bgcolor: isDark ? 'rgba(10, 20, 18, 0.6)' : 'rgba(240, 253, 250, 0.8)',
                   color: isDark ? '#FAF2F5' : '#1A312C',
                   '& fieldset': {
@@ -804,7 +807,7 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
           {/* Sort Dropdown */}
           <Grid item xs={12} sm={6} md={3}>
             <FormControl fullWidth size="small">
-              <InputLabel id="patient-sort-label" sx={{ color: isDark ? 'rgba(255,255,255,0.7)' : '#64748b', fontSize: '0.85rem' }}>
+              <InputLabel id="patient-sort-label" sx={{ color: isDark ? 'rgba(255,255,255,0.7)' : '#64748b', fontSize: '0.8rem' }}>
                 Sort Patients By
               </InputLabel>
               <Select
@@ -813,7 +816,8 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
                 label="Sort Patients By"
                 onChange={(e) => setSortBy(e.target.value)}
                 sx={{
-                  borderRadius: '14px',
+                  borderRadius: '12px',
+                  fontSize: { xs: '0.8rem', sm: '0.85rem' },
                   bgcolor: isDark ? 'rgba(10, 20, 18, 0.6)' : 'rgba(240, 253, 250, 0.8)',
                   color: isDark ? '#FAF2F5' : '#1A312C',
                   '& .MuiOutlinedInput-notchedOutline': {
@@ -835,43 +839,56 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
           </Grid>
 
           {/* Counter & Reset Filters */}
-          <Grid item xs={12} sm={6} md={3} sx={{ display: 'flex', justifyContent: { xs: 'flex-start', md: 'flex-end' }, alignItems: 'center', gap: 1 }}>
-            {hasActiveFilters && (
-              <Button
-                size="small"
-                variant="outlined"
-                startIcon={<ClearIcon />}
-                onClick={handleResetFilters}
-                sx={{
-                  borderRadius: '12px',
-                  borderColor: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)',
-                  color: isDark ? '#FAF2F5' : '#1A312C',
-                  fontWeight: 700,
-                  textTransform: 'none',
-                  fontSize: '0.8rem'
-                }}
-              >
-                Reset Filters
-              </Button>
-            )}
+          <Grid item xs={12} sm={6} md={3} sx={{ display: 'flex', justifyContent: { xs: 'space-between', md: 'flex-end' }, alignItems: 'center', gap: 1 }}>
             <Chip
               label={`${filteredAndSortedPatients.length} of ${patients.length} patients`}
               size="small"
               sx={{
                 bgcolor: isDark ? 'rgba(102, 205, 170, 0.2)' : 'rgba(66, 132, 117, 0.12)',
                 color: isDark ? '#66CDAA' : '#1A312C',
-                fontWeight: 800,
-                borderRadius: '10px'
+                fontWeight: 700,
+                fontSize: '0.72rem',
+                borderRadius: '8px',
+                height: 26
               }}
             />
+            {hasActiveFilters && (
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<ClearIcon sx={{ fontSize: 13 }} />}
+                onClick={handleResetFilters}
+                sx={{
+                  borderRadius: '10px',
+                  borderColor: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)',
+                  color: isDark ? '#FAF2F5' : '#1A312C',
+                  fontWeight: 600,
+                  textTransform: 'none',
+                  fontSize: '0.72rem',
+                  py: 0.3,
+                  px: 1
+                }}
+              >
+                Reset
+              </Button>
+            )}
           </Grid>
         </Grid>
 
-        {/* Row 2: Filter Pills (Gender, Age Groups, Rx Status) */}
-        <Box sx={{ mt: 2, pt: 2, borderTop: isDark ? '1px solid rgba(102, 205, 170, 0.15)' : '1px solid rgba(137, 215, 183, 0.2)', display: 'flex', flexWrap: 'wrap', gap: 1.5, alignItems: 'center' }}>
-          {/* Gender filter */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
-            <Typography variant="caption" sx={{ color: isDark ? 'rgba(255,255,255,0.6)' : '#64748b', fontWeight: 800, textTransform: 'uppercase', mr: 0.5 }}>
+        {/* Row 2: Filter Pills (Gender, Age Groups, Rx Status) with Mobile-Optimized Horizontal Scroll */}
+        <Box
+          sx={{
+            mt: 1.5,
+            pt: 1.5,
+            borderTop: isDark ? '1px solid rgba(102, 205, 170, 0.15)' : '1px solid rgba(137, 215, 183, 0.2)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 1
+          }}
+        >
+          {/* Gender row */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6, overflowX: 'auto', WebkitOverflowScrolling: 'touch', py: 0.2, '&::-webkit-scrollbar': { display: 'none' } }}>
+            <Typography variant="caption" sx={{ color: isDark ? 'rgba(255,255,255,0.6)' : '#64748b', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.66rem', flexShrink: 0, minWidth: 50 }}>
               Gender:
             </Typography>
             {[
@@ -887,10 +904,12 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
                 onClick={() => setGenderFilter(g.key as any)}
                 variant={genderFilter === g.key ? 'filled' : 'outlined'}
                 sx={{
-                  borderRadius: '10px',
-                  fontWeight: 700,
-                  fontSize: '0.75rem',
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  fontSize: '0.7rem',
+                  height: 26,
                   cursor: 'pointer',
+                  flexShrink: 0,
                   bgcolor: genderFilter === g.key ? (isDark ? '#66CDAA' : '#1A312C') : 'transparent',
                   color: genderFilter === g.key ? (isDark ? '#123029' : '#89D7B7') : (isDark ? '#FAF2F5' : '#1A312C'),
                   borderColor: genderFilter === g.key ? 'transparent' : (isDark ? 'rgba(102, 205, 170, 0.3)' : 'rgba(137, 215, 183, 0.4)')
@@ -899,11 +918,9 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
             ))}
           </Box>
 
-          <Divider orientation="vertical" flexItem sx={{ mx: 0.5, borderColor: isDark ? 'rgba(102, 205, 170, 0.2)' : 'rgba(137, 215, 183, 0.3)' }} />
-
-          {/* Age Group filter */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
-            <Typography variant="caption" sx={{ color: isDark ? 'rgba(255,255,255,0.6)' : '#64748b', fontWeight: 800, textTransform: 'uppercase', mr: 0.5 }}>
+          {/* Age row */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6, overflowX: 'auto', WebkitOverflowScrolling: 'touch', py: 0.2, '&::-webkit-scrollbar': { display: 'none' } }}>
+            <Typography variant="caption" sx={{ color: isDark ? 'rgba(255,255,255,0.6)' : '#64748b', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.66rem', flexShrink: 0, minWidth: 50 }}>
               Age:
             </Typography>
             {[
@@ -921,10 +938,12 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
                 onClick={() => setAgeGroupFilter(a.key as any)}
                 variant={ageGroupFilter === a.key ? 'filled' : 'outlined'}
                 sx={{
-                  borderRadius: '10px',
-                  fontWeight: 700,
-                  fontSize: '0.75rem',
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  fontSize: '0.7rem',
+                  height: 26,
                   cursor: 'pointer',
+                  flexShrink: 0,
                   bgcolor: ageGroupFilter === a.key ? (isDark ? '#66CDAA' : '#1A312C') : 'transparent',
                   color: ageGroupFilter === a.key ? (isDark ? '#123029' : '#89D7B7') : (isDark ? '#FAF2F5' : '#1A312C'),
                   borderColor: ageGroupFilter === a.key ? 'transparent' : (isDark ? 'rgba(102, 205, 170, 0.3)' : 'rgba(137, 215, 183, 0.4)')
@@ -933,18 +952,16 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
             ))}
           </Box>
 
-          <Divider orientation="vertical" flexItem sx={{ mx: 0.5, borderColor: isDark ? 'rgba(102, 205, 170, 0.2)' : 'rgba(137, 215, 183, 0.3)' }} />
-
-          {/* Prescriptions / Status filter */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
-            <Typography variant="caption" sx={{ color: isDark ? 'rgba(255,255,255,0.6)' : '#64748b', fontWeight: 800, textTransform: 'uppercase', mr: 0.5 }}>
+          {/* Status row */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6, overflowX: 'auto', WebkitOverflowScrolling: 'touch', py: 0.2, '&::-webkit-scrollbar': { display: 'none' } }}>
+            <Typography variant="caption" sx={{ color: isDark ? 'rgba(255,255,255,0.6)' : '#64748b', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.66rem', flexShrink: 0, minWidth: 50 }}>
               Status:
             </Typography>
             {[
               { key: 'all', label: 'All' },
               { key: 'active_rx', label: '🟢 Active Rx' },
               { key: 'has_rx', label: '📋 Has Rx' },
-              { key: 'no_rx', label: '⚪ No Rx Yet' }
+              { key: 'no_rx', label: '⚪ No Rx' }
             ].map((s) => (
               <Chip
                 key={s.key}
@@ -953,10 +970,12 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
                 onClick={() => setStatusFilter(s.key as any)}
                 variant={statusFilter === s.key ? 'filled' : 'outlined'}
                 sx={{
-                  borderRadius: '10px',
-                  fontWeight: 700,
-                  fontSize: '0.75rem',
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  fontSize: '0.7rem',
+                  height: 26,
                   cursor: 'pointer',
+                  flexShrink: 0,
                   bgcolor: statusFilter === s.key ? (isDark ? '#66CDAA' : '#1A312C') : 'transparent',
                   color: statusFilter === s.key ? (isDark ? '#123029' : '#89D7B7') : (isDark ? '#FAF2F5' : '#1A312C'),
                   borderColor: statusFilter === s.key ? 'transparent' : (isDark ? 'rgba(102, 205, 170, 0.3)' : 'rgba(137, 215, 183, 0.4)')
@@ -974,12 +993,12 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
       )}
 
       {filteredAndSortedPatients.length === 0 ? (
-        <Paper elevation={3} sx={{ p: 6, textAlign: 'center', borderRadius: '20px', bgcolor: isDark ? 'rgba(20, 38, 34, 0.9)' : '#fff' }}>
-          <PersonIcon sx={{ fontSize: 80, color: 'text.secondary', mb: 2 }} />
-          <Typography variant="h5" gutterBottom sx={{ fontWeight: 800, color: isDark ? '#FAF2F5' : '#1A312C' }}>
+        <Paper elevation={3} sx={{ p: 4, textAlign: 'center', borderRadius: '18px', bgcolor: isDark ? 'rgba(20, 38, 34, 0.9)' : '#fff' }}>
+          <PersonIcon sx={{ fontSize: 60, color: 'text.secondary', mb: 1.5 }} />
+          <Typography variant="h6" gutterBottom sx={{ fontWeight: 700, color: isDark ? '#FAF2F5' : '#1A312C' }}>
             {patients.length === 0 ? 'No patients yet' : 'No patients matching your filters'}
           </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2, fontSize: '0.8rem' }}>
             {patients.length === 0
               ? 'Patients will appear here after they are linked or you create prescriptions for them.'
               : 'Try clearing search terms or resetting filters to view all patients.'}
@@ -987,8 +1006,9 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
           {hasActiveFilters && (
             <Button
               variant="contained"
+              size="small"
               onClick={handleResetFilters}
-              sx={{ borderRadius: '12px', bgcolor: '#1A312C', color: '#89D7B7', fontWeight: 800 }}
+              sx={{ borderRadius: '10px', bgcolor: '#1A312C', color: '#89D7B7', fontWeight: 700, textTransform: 'none' }}
             >
               Clear All Filters
             </Button>
@@ -1110,44 +1130,46 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
         </Paper>
       ) : (
         /* 📱 Mobile Compact Cards Mode (6 Patients Per Page) */
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.2, width: '100%' }}>
           {paginatedPatients.map((patient) => (
             <Card
               key={patient.id}
               onClick={() => handleViewMedicalDetails(patient)}
               className="touch-active"
               sx={{
-                p: 2,
-                borderRadius: '18px',
-                bgcolor: isDark ? 'rgba(20, 38, 34, 0.94)' : 'rgba(255, 255, 255, 0.9)',
-                border: isDark ? '1px solid rgba(102, 205, 170, 0.3)' : '1px solid rgba(137, 215, 183, 0.4)',
-                boxShadow: isDark ? '0 4px 16px rgba(0, 0, 0, 0.3)' : '0 4px 16px rgba(26, 49, 44, 0.04)',
+                p: { xs: 1.5, sm: 1.8 },
+                borderRadius: { xs: '14px', sm: '18px' },
+                bgcolor: isDark ? 'rgba(20, 38, 34, 0.94)' : 'rgba(255, 255, 255, 0.95)',
+                border: isDark ? '1px solid rgba(102, 205, 170, 0.25)' : '1px solid rgba(137, 215, 183, 0.4)',
+                boxShadow: isDark ? '0 3px 12px rgba(0, 0, 0, 0.2)' : '0 3px 12px rgba(26, 49, 44, 0.04)',
                 display: 'flex',
                 alignItems: 'center',
-                justify: 'space-between',
+                justifyContent: 'space-between',
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
+                width: '100%',
+                boxSizing: 'border-box',
                 '&:hover': {
                   bgcolor: isDark ? 'rgba(102, 205, 170, 0.15)' : 'rgba(255, 244, 225, 0.95)',
-                  transform: 'translateY(-2px)'
+                  transform: 'translateY(-1px)'
                 }
               }}
             >
               {/* Left Info Block */}
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1, minWidth: 0, mr: 1 }}>
-                <Avatar sx={{ bgcolor: isDark ? 'rgba(102, 205, 170, 0.25)' : 'rgba(66, 132, 117, 0.15)', color: isDark ? '#66CDAA' : '#428475', width: 44, height: 44, fontWeight: 800, flexShrink: 0 }}>
-                  {patient.firstName ? patient.firstName[0].toUpperCase() : <PersonIcon />}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2, flex: 1, minWidth: 0, mr: 1 }}>
+                <Avatar sx={{ bgcolor: isDark ? 'rgba(102, 205, 170, 0.2)' : 'rgba(66, 132, 117, 0.12)', color: isDark ? '#66CDAA' : '#428475', width: 38, height: 38, fontWeight: 700, fontSize: '0.88rem', flexShrink: 0 }}>
+                  {patient.firstName ? patient.firstName[0].toUpperCase() : <PersonIcon sx={{ fontSize: 18 }} />}
                 </Avatar>
                 <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 800, color: isDark ? '#FAF2F5' : '#1A312C', lineHeight: 1.2 }} noWrap>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700, color: isDark ? '#FAF2F5' : '#1A312C', lineHeight: 1.2, fontSize: '0.92rem' }} noWrap>
                     {patient.firstName} {patient.lastName}
                   </Typography>
-                  <Typography variant="caption" sx={{ color: isDark ? '#66CDAA' : '#428475', fontWeight: 700, display: 'block', mt: 0.3 }} noWrap>
+                  <Typography variant="caption" sx={{ color: isDark ? '#66CDAA' : '#428475', fontWeight: 600, display: 'block', mt: 0.2, fontSize: '0.72rem' }} noWrap>
                     🩺 {patient.latestPrescription?.diagnosis || patient.latestPrescription?.provisionalDiagnosis?.[0] || (patient.latestPrescription?.medications && patient.latestPrescription.medications[0]?.name) || patient.latestPrescription?.medication || (patient.diagnoses && patient.diagnoses[0]) || 'General Checkup'}
                   </Typography>
-                  <Typography variant="caption" sx={{ color: isDark ? 'rgba(255, 255, 255, 0.65)' : '#64748b', fontWeight: 600, fontSize: '0.7rem', display: 'block', mt: 0.2 }}>
+                  <Typography variant="caption" sx={{ color: isDark ? 'rgba(255, 255, 255, 0.65)' : '#64748b', fontWeight: 500, fontSize: '0.68rem', display: 'block', mt: 0.15 }} noWrap>
                     {getPatientBio(patient) ? `${getPatientBio(patient)} • ` : ''}
-                    📅 {patient.lastVisit ? `Last Visit: ${new Date(patient.lastVisit).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : `Since: ${patient.createdAt ? new Date(patient.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Aug 1, 2026'}`}
+                    {patient.lastVisit ? `Last Visit: ${new Date(patient.lastVisit).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : `Since: ${patient.createdAt ? new Date(patient.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '2026'}`}
                   </Typography>
                 </Box>
               </Box>
@@ -1161,20 +1183,20 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
                     sx={{
                       color: isDark ? '#66CDAA' : '#1A312C',
                       bgcolor: isDark ? 'rgba(102, 205, 170, 0.12)' : 'rgba(26, 49, 44, 0.08)',
-                      p: 0.6,
-                      borderRadius: '10px',
+                      p: 0.5,
+                      borderRadius: '8px',
                       '&:hover': { bgcolor: isDark ? 'rgba(102, 205, 170, 0.25)' : 'rgba(26, 49, 44, 0.15)' }
                     }}
                   >
-                    <EditIcon sx={{ fontSize: 16 }} />
+                    <EditIcon sx={{ fontSize: 15 }} />
                   </IconButton>
                 </Tooltip>
                 <Chip 
                   label="Details" 
                   size="small" 
-                  sx={{ bgcolor: isDark ? '#66CDAA' : '#1A312C', color: isDark ? '#123029' : '#89D7B7', fontWeight: 800, fontSize: '0.68rem', cursor: 'pointer', height: 24 }} 
+                  sx={{ bgcolor: isDark ? '#66CDAA' : '#1A312C', color: isDark ? '#123029' : '#89D7B7', fontWeight: 700, fontSize: '0.65rem', cursor: 'pointer', height: 22, borderRadius: '6px' }} 
                 />
-                <ChevronRightIcon sx={{ color: isDark ? '#66CDAA' : '#428475', fontSize: 20 }} />
+                <ChevronRightIcon sx={{ color: isDark ? '#66CDAA' : '#428475', fontSize: 18 }} />
               </Box>
             </Card>
           ))}
