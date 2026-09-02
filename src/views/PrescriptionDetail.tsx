@@ -123,7 +123,7 @@ const PrescriptionDetail = () => {
   const [reportFilter, setReportFilter] = useState('ALL');
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const origin = typeof window !== 'undefined' && window.location.origin ? window.location.origin : 'https://medizoprod.medizolife.workers.dev';
+  const origin = typeof window !== 'undefined' && window.location.origin ? window.location.origin : 'https://medizo.life';
   const verificationQrPayload = id ? `${origin}/dashboard?rxId=${encodeURIComponent(id)}` : `${origin}/dashboard`;
   
   useEffect(() => {
