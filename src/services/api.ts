@@ -240,11 +240,15 @@ export const digilockerAPI = {
       return false;
     }
   },
+  startAuth: async () => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://m.medizo.life';
+    const response = await api.post('/digilocker/start-auth', { client_url: origin });
+    return response.data?.authUrl;
+  },
   getAuthorizeUrl: () => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') || '' : '';
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://m.medizo.life';
     const baseUrl = getApiBaseUrl();
-    return `${baseUrl}/digilocker/authorize?token=${encodeURIComponent(token)}&client_url=${encodeURIComponent(origin)}`;
+    return `${baseUrl}/digilocker/authorize?client_url=${encodeURIComponent(origin)}`;
   },
 };
 

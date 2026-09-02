@@ -59,7 +59,7 @@ import {
 import { updateDoctorProfile, uploadProfileImage, uploadClinicLogo, uploadSignature, uploadStamp } from '../services/doctors';
 import { updatePatientProfile } from '../services/patients';
 import { Doctor, Patient } from '../types/auth';
-import { usersAPI, digilockerAPI } from '../services/api';
+import { usersAPI, digilockerAPI, getApiBaseUrl } from '../services/api';
 import WallpaperCarouselHero from '../components/WallpaperCarouselHero';
 import { FamilyProfile, CreateFamilyProfileData, RELATIONSHIP_LABELS, RELATIONSHIP_ICONS } from '../types/familyProfile';
 import { getFamilyProfiles, createFamilyProfile, updateFamilyProfile, deleteFamilyProfile } from '../services/familyProfiles';
@@ -641,7 +641,7 @@ const Profile = () => {
   const getImageUrl = (path: string) => {
     if (!path) return '';
     if (path.startsWith('http') || path.startsWith('data:image/')) return path;
-    const apiUrl = (process.env.NEXT_PUBLIC_API_URL || process.env.REACT_APP_API_URL || 'http://localhost:5000').replace(/\/api\/?$/, '');
+    const apiUrl = getApiBaseUrl().replace(/\/api\/?$/, '');
     return `${apiUrl}${path}`;
   };
 

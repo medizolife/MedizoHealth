@@ -67,7 +67,16 @@ export const DigiLockerWarmupModal: React.FC<DigiLockerWarmupModalProps> = ({ op
       if (!isMounted) return;
       setProgress(100);
       setStatusText('Connecting to DigiLocker now...');
-      setTimeout(() => {
+      setTimeout(async () => {
+        try {
+          const authUrl = await digilockerAPI.startAuth();
+          if (authUrl) {
+            window.location.href = authUrl;
+            return;
+          }
+        } catch (e) {
+          console.warn('Direct startAuth notice, falling back to standard redirect:', e);
+        }
         window.location.href = digilockerAPI.getAuthorizeUrl();
       }, 400);
     }, 3200);

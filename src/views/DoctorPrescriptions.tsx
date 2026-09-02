@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Container,
   Typography,
@@ -65,23 +65,17 @@ export default function DoctorPrescriptions() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [stats, setStats] = useState<Stats | null>(null);
   const [historyModalPrescription, setHistoryModalPrescription] = useState<Prescription | null>(null);
 
   useEffect(() => {
     fetchPrescriptions(hasInitialCache);
     const unsub = subscribeToCache<Prescription[]>('prescriptions_list', (data) => {
       if (Array.isArray(data)) {
-        let list = data;
-        if (statusFilter !== 'all') {
-          list = list.filter(p => p.status === statusFilter);
-        }
-        setPrescriptions(list);
-        calculateStats(list);
+        setPrescriptions(data);
       }
     });
     return () => unsub();
-  }, [statusFilter]);
+  }, []);
 
   const fetchPrescriptions = async (isBackgroundRefresh = false) => {
     try {
@@ -89,14 +83,8 @@ export default function DoctorPrescriptions() {
       setError(null);
       
       const data = await getPrescriptions(isBackgroundRefresh);
-      let prescriptionList: Prescription[] = Array.isArray(data) ? data : [];
-      
-      if (statusFilter !== 'all') {
-        prescriptionList = prescriptionList.filter(p => p.status === statusFilter);
-      }
-      
+      const prescriptionList: Prescription[] = Array.isArray(data) ? data : [];
       setPrescriptions(prescriptionList);
-      calculateStats(prescriptionList);
     } catch (err: any) {
       console.error('Error fetching prescriptions:', err);
       if (!isBackgroundRefresh && !hasInitialCache) {
@@ -107,16 +95,17 @@ export default function DoctorPrescriptions() {
     }
   };
 
-  const calculateStats = (data: Prescription[]) => {
-    const total = data.length;
-    const active = data.filter(p => p.status === 'active').length;
-    const completed = data.filter(p => p.status === 'completed').length;
+  // Instant zero-latency stats calculation from all prescriptions
+  const stats = useMemo<Stats>(() => {
+    const total = prescriptions.length;
+    const active = prescriptions.filter(p => p.status === 'active').length;
+    const completed = prescriptions.filter(p => p.status === 'completed').length;
     const uniquePatients = user?.role === 'patient'
-      ? new Set(data.map(p => p.doctorId).filter(Boolean)).size
-      : new Set(data.map(p => p.patientId).filter(Boolean)).size;
+      ? new Set(prescriptions.map(p => p.doctorId).filter(Boolean)).size
+      : new Set(prescriptions.map(p => p.patientId).filter(Boolean)).size;
 
-    setStats({ total, active, completed, uniquePatients });
-  };
+    return { total, active, completed, uniquePatients };
+  }, [prescriptions, user?.role]);
 
   const handleDownloadPDF = async (prescriptionId: string) => {
     try {
@@ -148,30 +137,38 @@ export default function DoctorPrescriptions() {
     }
   };
 
-  const filteredPrescriptions = prescriptions.filter(p => {
-    if (!searchQuery || !searchQuery.trim()) return true;
+  // Instant zero-latency filter by tab and search
+  const filteredPrescriptions = useMemo(() => {
+    let list = prescriptions;
+    if (statusFilter !== 'all') {
+      list = list.filter(p => p.status === statusFilter);
+    }
+    if (!searchQuery || !searchQuery.trim()) return list;
+
     const query = searchQuery.toLowerCase().trim();
     const cleanDigits = query.replace(/[^\d]/g, '');
 
-    const patientName = (p.patientName || '').toLowerCase();
-    const patientEmail = ((p as any).patientEmail || '').toLowerCase();
-    const patientMobile = String(p.patientMobile || (p as any).patientPhone || (p as any).contactNumber || (p as any).mobile || '').toLowerCase();
-    const mobileDigits = patientMobile.replace(/[^\d]/g, '');
-    const mobileMatch = patientMobile.includes(query) || (cleanDigits.length >= 3 && mobileDigits.includes(cleanDigits));
+    return list.filter(p => {
+      const patientName = (p.patientName || '').toLowerCase();
+      const patientEmail = ((p as any).patientEmail || '').toLowerCase();
+      const patientMobile = String(p.patientMobile || (p as any).patientPhone || (p as any).contactNumber || (p as any).mobile || '').toLowerCase();
+      const mobileDigits = patientMobile.replace(/[^\d]/g, '');
+      const mobileMatch = patientMobile.includes(query) || (cleanDigits.length >= 3 && mobileDigits.includes(cleanDigits));
 
-    const diagnosis = ((p as any).diagnosis || (Array.isArray(p.provisionalDiagnosis) ? p.provisionalDiagnosis.join(' ') : '')).toLowerCase();
-    const notes = (p.notes || '').toLowerCase();
-    const medMatch = Array.isArray(p.medications) && p.medications.some(m => (m?.name || '').toLowerCase().includes(query));
-    
-    return (
-      patientName.includes(query) ||
-      patientEmail.includes(query) ||
-      mobileMatch ||
-      diagnosis.includes(query) ||
-      notes.includes(query) ||
-      medMatch
-    );
-  });
+      const diagnosis = ((p as any).diagnosis || (Array.isArray(p.provisionalDiagnosis) ? p.provisionalDiagnosis.join(' ') : '')).toLowerCase();
+      const notes = (p.notes || '').toLowerCase();
+      const medMatch = Array.isArray(p.medications) && p.medications.some(m => (m?.name || '').toLowerCase().includes(query));
+      
+      return (
+        patientName.includes(query) ||
+        patientEmail.includes(query) ||
+        mobileMatch ||
+        diagnosis.includes(query) ||
+        notes.includes(query) ||
+        medMatch
+      );
+    });
+  }, [prescriptions, statusFilter, searchQuery]);
 
   const getStatusChip = (status: string) => {
     switch (status) {

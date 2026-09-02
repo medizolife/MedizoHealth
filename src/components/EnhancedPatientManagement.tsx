@@ -63,7 +63,20 @@ import {
   FilterList as FilterListIcon,
   Sort as SortIcon,
   EditCalendar as EditCalendarIcon,
-  Done as DoneIcon
+  Done as DoneIcon,
+  Close as CloseIcon,
+  CheckCircle as CheckCircleIcon,
+  VerifiedUser as VerifiedUserIcon,
+  Shield as ShieldIcon,
+  Medication as MedicationIcon,
+  MedicalServices as MedicalServicesIcon,
+  HealthAndSafety as HealthAndSafetyIcon,
+  Add as AddIcon,
+  InfoOutlined as InfoOutlinedIcon,
+  Call as CallIcon,
+  People as PeopleIcon,
+  LocationOn as LocationOnIcon,
+  ReceiptLong as ReceiptLongIcon
 } from '@mui/icons-material';
 import { IconButton, Tooltip } from '@mui/material';
 import { prescriptionsAPI } from '../services/api';
@@ -1224,100 +1237,687 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
         onClose={() => setMedicalDetailsOpen(false)} 
         maxWidth="lg" 
         fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: { xs: '20px', sm: '28px' },
+            bgcolor: isDark ? '#0e1f1c' : '#ffffff',
+            backgroundImage: 'none',
+            overflow: 'hidden',
+            border: isDark ? '1px solid rgba(137, 215, 183, 0.2)' : '1px solid rgba(19, 79, 77, 0.1)',
+            boxShadow: isDark 
+              ? '0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 30px rgba(137, 215, 183, 0.08)' 
+              : '0 25px 60px -15px rgba(19, 79, 77, 0.2), 0 10px 30px rgba(19, 79, 77, 0.06)'
+          }
+        }}
       >
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
-          <Typography variant="h6" sx={{ fontWeight: 800 }}>
-            Medical Details - {selectedPatient?.firstName} {selectedPatient?.lastName}
-          </Typography>
-          <Button
-            size="small"
-            variant="outlined"
-            startIcon={<EditIcon sx={{ fontSize: 14 }} />}
-            onClick={(e) => handleOpenEditProfile(e, selectedPatient)}
-            sx={{
-              borderRadius: '12px',
-              fontWeight: 800,
-              fontSize: '0.75rem',
-              borderColor: isDark ? '#89D7B7' : '#134F4D',
-              color: isDark ? '#89D7B7' : '#134F4D',
-              textTransform: 'none'
-            }}
-          >
-            Edit Profile
-          </Button>
-        </DialogTitle>
-        <DialogContent>
+        {/* Patient Profile Header Banner */}
+        <Box 
+          sx={{ 
+            p: { xs: 2.5, sm: 3 },
+            pb: 1.5,
+            background: isDark 
+              ? 'linear-gradient(135deg, rgba(19, 79, 77, 0.4) 0%, rgba(14, 31, 28, 0.95) 100%)' 
+              : 'linear-gradient(135deg, rgba(137, 215, 183, 0.22) 0%, rgba(248, 250, 252, 0.9) 100%)',
+            borderBottom: isDark ? '1px solid rgba(137, 215, 183, 0.15)' : '1px solid rgba(19, 79, 77, 0.08)'
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: { xs: 'flex-start', sm: 'center' }, justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Avatar
+                sx={{
+                  width: { xs: 52, sm: 60 },
+                  height: { xs: 52, sm: 60 },
+                  fontWeight: 900,
+                  fontSize: { xs: '1.2rem', sm: '1.4rem' },
+                  bgcolor: isDark ? '#89D7B7' : '#134F4D',
+                  color: isDark ? '#0e1f1c' : '#ffffff',
+                  boxShadow: isDark ? '0 4px 14px rgba(137, 215, 183, 0.3)' : '0 4px 14px rgba(19, 79, 77, 0.25)',
+                  border: isDark ? '2px solid rgba(137, 215, 183, 0.5)' : '2px solid #ffffff'
+                }}
+              >
+                {selectedPatient?.firstName?.[0] || 'P'}{selectedPatient?.lastName?.[0] || ''}
+              </Avatar>
+
+              <Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                  <Typography variant="h5" sx={{ fontWeight: 900, color: isDark ? '#FAF2F5' : '#0f172a', letterSpacing: '-0.02em' }}>
+                    {selectedPatient?.firstName} {selectedPatient?.lastName}
+                  </Typography>
+                  {selectedPatient?.id && (
+                    <Chip
+                      label={`#${String(selectedPatient.id).substring(0, 6).toUpperCase()}`}
+                      size="small"
+                      sx={{
+                        fontWeight: 800,
+                        fontSize: '0.68rem',
+                        height: 22,
+                        bgcolor: isDark ? 'rgba(137, 215, 183, 0.12)' : 'rgba(19, 79, 77, 0.08)',
+                        color: isDark ? '#89D7B7' : '#134F4D',
+                        borderRadius: '6px'
+                      }}
+                    />
+                  )}
+                  {(medicalDetails?.bloodType || selectedPatient?.bloodType) && (
+                    <Chip
+                      icon={<BloodIcon sx={{ fontSize: '13px !important', color: isDark ? '#ff7b7b' : '#dc2626' }} />}
+                      label={medicalDetails?.bloodType || selectedPatient?.bloodType}
+                      size="small"
+                      sx={{
+                        fontWeight: 800,
+                        fontSize: '0.7rem',
+                        height: 22,
+                        bgcolor: isDark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)',
+                        color: isDark ? '#ff9b9b' : '#dc2626',
+                        borderColor: isDark ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.2)',
+                        borderRadius: '6px'
+                      }}
+                    />
+                  )}
+                </Box>
+
+                {/* Patient Bio & Details row */}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2 }, flexWrap: 'wrap', mt: 0.6 }}>
+                  {selectedPatient && getPatientBio(selectedPatient) && (
+                    <Typography variant="body2" sx={{ fontWeight: 700, color: isDark ? '#89D7B7' : '#134F4D', fontSize: '0.82rem' }}>
+                      {getPatientBio(selectedPatient)}
+                    </Typography>
+                  )}
+                  {selectedPatient?.email && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: isDark ? '#94a3b8' : '#64748b' }}>
+                      <EmailIcon sx={{ fontSize: 14 }} />
+                      <Typography variant="caption" sx={{ fontWeight: 600 }}>{selectedPatient.email}</Typography>
+                    </Box>
+                  )}
+                  {(selectedPatient?.contactNumber || (selectedPatient as any)?.phone) && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: isDark ? '#94a3b8' : '#64748b' }}>
+                      <PhoneIcon sx={{ fontSize: 14 }} />
+                      <Typography variant="caption" sx={{ fontWeight: 600 }}>{selectedPatient?.contactNumber || (selectedPatient as any)?.phone}</Typography>
+                    </Box>
+                  )}
+                </Box>
+              </Box>
+            </Box>
+
+            {/* Top Action Group */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<EditIcon sx={{ fontSize: 14 }} />}
+                onClick={(e) => handleOpenEditProfile(e, selectedPatient)}
+                sx={{
+                  borderRadius: '12px',
+                  fontWeight: 800,
+                  fontSize: '0.78rem',
+                  textTransform: 'none',
+                  borderColor: isDark ? 'rgba(137, 215, 183, 0.4)' : 'rgba(19, 79, 77, 0.3)',
+                  color: isDark ? '#89D7B7' : '#134F4D',
+                  bgcolor: isDark ? 'rgba(137, 215, 183, 0.08)' : 'rgba(19, 79, 77, 0.04)',
+                  '&:hover': {
+                    bgcolor: isDark ? 'rgba(137, 215, 183, 0.16)' : 'rgba(19, 79, 77, 0.08)',
+                    borderColor: isDark ? '#89D7B7' : '#134F4D'
+                  }
+                }}
+              >
+                Edit Profile
+              </Button>
+              <Tooltip title="Close">
+                <IconButton 
+                  onClick={() => setMedicalDetailsOpen(false)}
+                  sx={{
+                    color: isDark ? '#94a3b8' : '#64748b',
+                    bgcolor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)',
+                    '&:hover': {
+                      bgcolor: isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)',
+                      color: '#ef4444'
+                    }
+                  }}
+                >
+                  <CloseIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          </Box>
+
+          {/* Navigation Tabs */}
+          <Box sx={{ mt: 2.5 }}>
+            <Tabs 
+              value={tabValue} 
+              onChange={(_, value) => setTabValue(value)}
+              sx={{
+                minHeight: 42,
+                '& .MuiTabs-indicator': {
+                  height: 3,
+                  borderRadius: '3px 3px 0 0',
+                  bgcolor: isDark ? '#89D7B7' : '#134F4D'
+                },
+                '& .MuiTab-root': {
+                  minHeight: 42,
+                  py: 1,
+                  px: { xs: 1.5, sm: 2.5 },
+                  fontWeight: 800,
+                  fontSize: '0.85rem',
+                  textTransform: 'none',
+                  color: isDark ? '#94a3b8' : '#64748b',
+                  '&.Mui-selected': {
+                    color: isDark ? '#89D7B7' : '#134F4D'
+                  }
+                }
+              }}
+            >
+              <Tab 
+                icon={<AssignmentIcon sx={{ fontSize: 18 }} />} 
+                iconPosition="start" 
+                label="Clinical Overview" 
+              />
+              <Tab 
+                icon={<HistoryIcon sx={{ fontSize: 18 }} />} 
+                iconPosition="start" 
+                label={
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
+                    <span>Prescription History</span>
+                    {medicalDetails?.prescriptionHistory && medicalDetails.prescriptionHistory.length > 0 && (
+                      <Chip 
+                        label={medicalDetails.prescriptionHistory.length} 
+                        size="small" 
+                        sx={{ 
+                          height: 18, 
+                          fontSize: '0.68rem', 
+                          fontWeight: 800, 
+                          bgcolor: tabValue === 1 ? (isDark ? '#89D7B7' : '#134F4D') : (isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0'), 
+                          color: tabValue === 1 ? (isDark ? '#0e1f1c' : '#ffffff') : 'inherit' 
+                        }} 
+                      />
+                    )}
+                  </Box>
+                } 
+              />
+              <Tab 
+                icon={<HealthAndSafetyIcon sx={{ fontSize: 18 }} />} 
+                iconPosition="start" 
+                label="Medical & Emergency Info" 
+              />
+            </Tabs>
+          </Box>
+        </Box>
+
+        {/* Content Body */}
+        <DialogContent sx={{ p: { xs: 2, sm: 3 }, bgcolor: isDark ? '#0e1f1c' : '#f8fafc' }}>
           {medicalDetailsLoading ? (
-            <Box display="flex" justifyContent="center" p={4}>
-              <CircularProgress />
+            <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" py={8} gap={2}>
+              <CircularProgress size={40} sx={{ color: isDark ? '#89D7B7' : '#134F4D' }} />
+              <Typography variant="body2" sx={{ fontWeight: 700, color: isDark ? '#89D7B7' : '#134F4D' }}>
+                Loading patient clinical details...
+              </Typography>
             </Box>
           ) : medicalDetails && (
             <Box>
-              <Tabs value={tabValue} onChange={(_, value) => setTabValue(value)} sx={{ mb: 2 }}>
-                <Tab label="Overview" />
-                <Tab label="Prescription History" />
-                <Tab label="Medical Information" />
-              </Tabs>
-
+              {/* TAB 0: CLINICAL OVERVIEW */}
               {tabValue === 0 && (
-                <Grid container spacing={2}>
-                  <Grid item xs={12} md={6}>
-                    <Card>
-                      <CardContent>
-                        <Typography variant="h6" gutterBottom>
-                          <AssignmentIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-                          Treatment Summary
-                        </Typography>
-                        <Typography variant="body2" paragraph>
-                          Total Prescriptions: <strong>{medicalDetails.totalPrescriptions}</strong>
-                        </Typography>
-                        <Typography variant="body2" paragraph>
-                          Active Prescriptions: <strong>{medicalDetails.activePrescriptions}</strong>
-                        </Typography>
-                        <Typography variant="body2" paragraph>
-                          Completed: <strong>{medicalDetails.completedPrescriptions}</strong>
-                        </Typography>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <Card>
-                      <CardContent>
-                        <Typography variant="h6" gutterBottom>
-                          <WarningIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-                          Medical Alerts
-                        </Typography>
-                        {medicalDetails.allergies && medicalDetails.allergies.length > 0 ? (
-                          medicalDetails.allergies.map((allergy: string, index: number) => (
-                            <Chip 
-                              key={`allergy-view-${allergy}-${index}`} 
-                              label={allergy} 
-                              color="warning" 
-                              size="small" 
-                              sx={{ mr: 1, mb: 1 }}
-                            />
-                          ))
-                        ) : (
-                          <Typography variant="body2" color="text.secondary">
-                            No known allergies
+                <Box>
+                  {/* Top 4 KPI Summary Cards */}
+                  <Grid container spacing={2} sx={{ mb: 3 }}>
+                    <Grid item xs={6} sm={3}>
+                      <Paper
+                        elevation={0}
+                        sx={{
+                          p: 2,
+                          borderRadius: '18px',
+                          bgcolor: isDark ? 'rgba(20, 38, 34, 0.7)' : '#ffffff',
+                          border: isDark ? '1px solid rgba(137, 215, 183, 0.18)' : '1px solid rgba(19, 79, 77, 0.1)',
+                          boxShadow: isDark ? 'none' : '0 2px 10px rgba(0,0,0,0.03)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1.5
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            width: 44,
+                            height: 44,
+                            borderRadius: '14px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            bgcolor: isDark ? 'rgba(137, 215, 183, 0.15)' : 'rgba(19, 79, 77, 0.08)',
+                            color: isDark ? '#89D7B7' : '#134F4D'
+                          }}
+                        >
+                          <AssignmentIcon />
+                        </Box>
+                        <Box>
+                          <Typography variant="h5" sx={{ fontWeight: 900, lineHeight: 1.1, color: isDark ? '#FAF2F5' : '#0f172a' }}>
+                            {medicalDetails.totalPrescriptions ?? (medicalDetails.prescriptionHistory?.length || 0)}
                           </Typography>
-                        )}
-                      </CardContent>
-                    </Card>
+                          <Typography variant="caption" sx={{ fontWeight: 700, color: isDark ? '#94a3b8' : '#64748b' }}>
+                            Total Prescriptions
+                          </Typography>
+                        </Box>
+                      </Paper>
+                    </Grid>
+
+                    <Grid item xs={6} sm={3}>
+                      <Paper
+                        elevation={0}
+                        sx={{
+                          p: 2,
+                          borderRadius: '18px',
+                          bgcolor: isDark ? 'rgba(20, 38, 34, 0.7)' : '#ffffff',
+                          border: isDark ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid rgba(16, 185, 129, 0.2)',
+                          boxShadow: isDark ? 'none' : '0 2px 10px rgba(0,0,0,0.03)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1.5
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            width: 44,
+                            height: 44,
+                            borderRadius: '14px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            bgcolor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)',
+                            color: '#10b981'
+                          }}
+                        >
+                          <PharmacyIcon />
+                        </Box>
+                        <Box>
+                          <Typography variant="h5" sx={{ fontWeight: 900, lineHeight: 1.1, color: '#10b981' }}>
+                            {medicalDetails.activePrescriptions ?? (medicalDetails.prescriptionHistory?.filter((p: any) => p.status === 'active')?.length || 0)}
+                          </Typography>
+                          <Typography variant="caption" sx={{ fontWeight: 700, color: isDark ? '#94a3b8' : '#64748b' }}>
+                            Active Courses
+                          </Typography>
+                        </Box>
+                      </Paper>
+                    </Grid>
+
+                    <Grid item xs={6} sm={3}>
+                      <Paper
+                        elevation={0}
+                        sx={{
+                          p: 2,
+                          borderRadius: '18px',
+                          bgcolor: isDark ? 'rgba(20, 38, 34, 0.7)' : '#ffffff',
+                          border: isDark ? '1px solid rgba(99, 102, 241, 0.25)' : '1px solid rgba(99, 102, 241, 0.15)',
+                          boxShadow: isDark ? 'none' : '0 2px 10px rgba(0,0,0,0.03)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1.5
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            width: 44,
+                            height: 44,
+                            borderRadius: '14px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            bgcolor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.1)',
+                            color: isDark ? '#a5b4fc' : '#4f46e5'
+                          }}
+                        >
+                          <DoneIcon />
+                        </Box>
+                        <Box>
+                          <Typography variant="h5" sx={{ fontWeight: 900, lineHeight: 1.1, color: isDark ? '#a5b4fc' : '#4f46e5' }}>
+                            {medicalDetails.completedPrescriptions ?? (medicalDetails.prescriptionHistory?.filter((p: any) => p.status === 'completed')?.length || 0)}
+                          </Typography>
+                          <Typography variant="caption" sx={{ fontWeight: 700, color: isDark ? '#94a3b8' : '#64748b' }}>
+                            Completed
+                          </Typography>
+                        </Box>
+                      </Paper>
+                    </Grid>
+
+                    <Grid item xs={6} sm={3}>
+                      <Paper
+                        elevation={0}
+                        sx={{
+                          p: 2,
+                          borderRadius: '18px',
+                          bgcolor: isDark ? 'rgba(20, 38, 34, 0.7)' : '#ffffff',
+                          border: isDark ? '1px solid rgba(245, 158, 11, 0.25)' : '1px solid rgba(245, 158, 11, 0.2)',
+                          boxShadow: isDark ? 'none' : '0 2px 10px rgba(0,0,0,0.03)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1.5
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            width: 44,
+                            height: 44,
+                            borderRadius: '14px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            bgcolor: isDark ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.1)',
+                            color: isDark ? '#fbbf24' : '#d97706'
+                          }}
+                        >
+                          <TodayIcon />
+                        </Box>
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography noWrap variant="subtitle1" sx={{ fontWeight: 900, lineHeight: 1.1, color: isDark ? '#fbbf24' : '#d97706' }}>
+                            {medicalDetails.lastVisit ? new Date(medicalDetails.lastVisit).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'None'}
+                          </Typography>
+                          <Typography variant="caption" sx={{ fontWeight: 700, color: isDark ? '#94a3b8' : '#64748b', display: 'block' }}>
+                            Last Visit
+                          </Typography>
+                        </Box>
+                      </Paper>
+                    </Grid>
                   </Grid>
-                </Grid>
+
+                  {/* 2 Column Main Detail Grid */}
+                  <Grid container spacing={2.5}>
+                    {/* Left: Clinical Summary & Medication Profile */}
+                    <Grid item xs={12} md={7}>
+                      <Paper
+                        elevation={0}
+                        sx={{
+                          p: 2.5,
+                          borderRadius: '20px',
+                          bgcolor: isDark ? 'rgba(20, 38, 34, 0.7)' : '#ffffff',
+                          border: isDark ? '1px solid rgba(137, 215, 183, 0.2)' : '1px solid rgba(0, 0, 0, 0.08)',
+                          boxShadow: isDark ? 'none' : '0 4px 20px -2px rgba(0,0,0,0.04)',
+                          height: '100%',
+                          display: 'flex',
+                          flexDirection: 'column'
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Box sx={{ p: 0.8, borderRadius: '10px', bgcolor: isDark ? 'rgba(137, 215, 183, 0.15)' : 'rgba(19, 79, 77, 0.08)', color: isDark ? '#89D7B7' : '#134F4D' }}>
+                              <MedicalServicesIcon sx={{ fontSize: 20 }} />
+                            </Box>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: isDark ? '#FAF2F5' : '#0f172a' }}>
+                              Treatment & Diagnostic Profile
+                            </Typography>
+                          </Box>
+                          {medicalDetails.prescriptionHistory && medicalDetails.prescriptionHistory.length > 0 && (
+                            <Button
+                              size="small"
+                              variant="text"
+                              onClick={() => setTabValue(1)}
+                              sx={{ fontWeight: 800, fontSize: '0.75rem', color: isDark ? '#89D7B7' : '#134F4D', textTransform: 'none' }}
+                            >
+                              View History ({medicalDetails.prescriptionHistory.length}) →
+                            </Button>
+                          )}
+                        </Box>
+
+                        {/* Diagnoses / Clinical Indications */}
+                        <Box sx={{ mb: 2.5 }}>
+                          <Typography variant="caption" sx={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: isDark ? '#89D7B7' : '#64748b', display: 'block', mb: 1 }}>
+                            🩺 Clinical Diagnoses Recorded
+                          </Typography>
+                          {medicalDetails.diagnoses && medicalDetails.diagnoses.length > 0 ? (
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
+                              {medicalDetails.diagnoses.map((d: string, idx: number) => (
+                                <Chip
+                                  key={`diag-${idx}`}
+                                  label={d}
+                                  size="small"
+                                  sx={{
+                                    fontWeight: 700,
+                                    fontSize: '0.78rem',
+                                    bgcolor: isDark ? 'rgba(137, 215, 183, 0.12)' : 'rgba(19, 79, 77, 0.08)',
+                                    color: isDark ? '#89D7B7' : '#134F4D',
+                                    border: isDark ? '1px solid rgba(137, 215, 183, 0.25)' : '1px solid rgba(19, 79, 77, 0.15)',
+                                    borderRadius: '8px'
+                                  }}
+                                />
+                              ))}
+                            </Box>
+                          ) : (
+                            <Typography variant="body2" sx={{ color: isDark ? '#94a3b8' : '#94a3b8', fontStyle: 'italic', fontSize: '0.85rem' }}>
+                              No specific diagnoses tagged in recent prescriptions.
+                            </Typography>
+                          )}
+                        </Box>
+
+                        <Divider sx={{ my: 1.5, borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }} />
+
+                        {/* Medications Prescribed */}
+                        <Box sx={{ flex: 1 }}>
+                          <Typography variant="caption" sx={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: isDark ? '#89D7B7' : '#64748b', display: 'block', mb: 1 }}>
+                            💊 Frequently Prescribed Medications
+                          </Typography>
+                          {medicalDetails.medicationFrequency && medicalDetails.medicationFrequency.length > 0 ? (
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                              {medicalDetails.medicationFrequency.map((med: any, idx: number) => (
+                                <Box
+                                  key={`med-freq-${idx}`}
+                                  sx={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 1,
+                                    px: 1.5,
+                                    py: 0.8,
+                                    borderRadius: '10px',
+                                    bgcolor: isDark ? 'rgba(255,255,255,0.04)' : '#f8fafc',
+                                    border: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #e2e8f0'
+                                  }}
+                                >
+                                  <MedicationIcon sx={{ fontSize: 16, color: isDark ? '#89D7B7' : '#134F4D' }} />
+                                  <Typography variant="body2" sx={{ fontWeight: 800, color: isDark ? '#FAF2F5' : '#0f172a', textTransform: 'capitalize', fontSize: '0.82rem' }}>
+                                    {med.name}
+                                  </Typography>
+                                  {med.count > 1 && (
+                                    <Chip
+                                      label={`${med.count}x`}
+                                      size="small"
+                                      sx={{
+                                        height: 18,
+                                        fontSize: '0.65rem',
+                                        fontWeight: 900,
+                                        bgcolor: isDark ? 'rgba(137, 215, 183, 0.2)' : 'rgba(19, 79, 77, 0.12)',
+                                        color: isDark ? '#89D7B7' : '#134F4D'
+                                      }}
+                                    />
+                                  )}
+                                </Box>
+                              ))}
+                            </Box>
+                          ) : (
+                            <Typography variant="body2" sx={{ color: isDark ? '#94a3b8' : '#94a3b8', fontStyle: 'italic', fontSize: '0.85rem' }}>
+                              No medications recorded in prescription logs.
+                            </Typography>
+                          )}
+                        </Box>
+
+                        {/* Consultation timeline footer inside card */}
+                        {(medicalDetails.firstVisit || medicalDetails.lastVisit) && (
+                          <Box sx={{ mt: 2.5, pt: 1.5, borderTop: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,0,0,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+                            {medicalDetails.firstVisit && (
+                              <Typography variant="caption" sx={{ color: isDark ? '#94a3b8' : '#64748b', fontWeight: 600 }}>
+                                First visit: <strong>{new Date(medicalDetails.firstVisit).toLocaleDateString()}</strong>
+                              </Typography>
+                            )}
+                            {medicalDetails.lastVisit && (
+                              <Typography variant="caption" sx={{ color: isDark ? '#89D7B7' : '#134F4D', fontWeight: 700 }}>
+                                Last active: <strong>{new Date(medicalDetails.lastVisit).toLocaleDateString()}</strong>
+                              </Typography>
+                            )}
+                          </Box>
+                        )}
+                      </Paper>
+                    </Grid>
+
+                    {/* Right: Medical Alerts & Critical Health Profile */}
+                    <Grid item xs={12} md={5}>
+                      <Stack spacing={2.5}>
+                        {/* Allergies / Medical Alerts Card */}
+                        <Paper
+                          elevation={0}
+                          sx={{
+                            p: 2.5,
+                            borderRadius: '20px',
+                            bgcolor: isDark ? 'rgba(20, 38, 34, 0.7)' : '#ffffff',
+                            border: isDark ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid rgba(245, 158, 11, 0.25)',
+                            boxShadow: isDark ? 'none' : '0 4px 20px -2px rgba(0,0,0,0.04)'
+                          }}
+                        >
+                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Box sx={{ p: 0.8, borderRadius: '10px', bgcolor: isDark ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>
+                                <WarningIcon sx={{ fontSize: 20 }} />
+                              </Box>
+                              <Typography variant="subtitle1" sx={{ fontWeight: 800, color: isDark ? '#FAF2F5' : '#0f172a' }}>
+                                Medical Alerts & Allergies
+                              </Typography>
+                            </Box>
+                          </Box>
+
+                          {medicalDetails.allergies && medicalDetails.allergies.length > 0 ? (
+                            <Box>
+                              <Alert severity="warning" sx={{ mb: 1.5, borderRadius: '12px', fontWeight: 700, fontSize: '0.8rem', py: 0.5 }}>
+                                Patient has recorded drug / food sensitivities!
+                              </Alert>
+                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
+                                {medicalDetails.allergies.map((allergy: string, index: number) => (
+                                  <Chip
+                                    key={`allergy-view-${allergy}-${index}`}
+                                    label={allergy}
+                                    color="warning"
+                                    size="small"
+                                    sx={{ fontWeight: 800, borderRadius: '8px' }}
+                                  />
+                                ))}
+                              </Box>
+                            </Box>
+                          ) : (
+                            <Box
+                              sx={{
+                                p: 2,
+                                borderRadius: '14px',
+                                bgcolor: isDark ? 'rgba(16, 185, 129, 0.08)' : 'rgba(16, 185, 129, 0.06)',
+                                border: isDark ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid rgba(16, 185, 129, 0.15)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 1.5
+                              }}
+                            >
+                              <Box sx={{ p: 1, borderRadius: '50%', bgcolor: isDark ? 'rgba(16, 185, 129, 0.2)' : 'rgba(16, 185, 129, 0.15)', color: '#10b981', display: 'flex' }}>
+                                <ShieldIcon sx={{ fontSize: 22 }} />
+                              </Box>
+                              <Box>
+                                <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#10b981', lineHeight: 1.2 }}>
+                                  No Known Allergies (NKDA)
+                                </Typography>
+                                <Typography variant="caption" sx={{ color: isDark ? '#94a3b8' : '#64748b', fontWeight: 600 }}>
+                                  No adverse drug or environmental reactions recorded.
+                                </Typography>
+                              </Box>
+                            </Box>
+                          )}
+                        </Paper>
+
+                        {/* Emergency & Health Info Card */}
+                        <Paper
+                          elevation={0}
+                          sx={{
+                            p: 2.5,
+                            borderRadius: '20px',
+                            bgcolor: isDark ? 'rgba(20, 38, 34, 0.7)' : '#ffffff',
+                            border: isDark ? '1px solid rgba(137, 215, 183, 0.2)' : '1px solid rgba(0, 0, 0, 0.08)',
+                            boxShadow: isDark ? 'none' : '0 4px 20px -2px rgba(0,0,0,0.04)'
+                          }}
+                        >
+                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Box sx={{ p: 0.8, borderRadius: '10px', bgcolor: isDark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.08)', color: '#ef4444' }}>
+                                <EmergencyIcon sx={{ fontSize: 20 }} />
+                              </Box>
+                              <Typography variant="subtitle1" sx={{ fontWeight: 800, color: isDark ? '#FAF2F5' : '#0f172a' }}>
+                                Emergency & Health Info
+                              </Typography>
+                            </Box>
+                          </Box>
+
+                          <Stack spacing={1.5}>
+                            {/* Blood Group */}
+                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1.2, borderRadius: '10px', bgcolor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc' }}>
+                              <Typography variant="body2" sx={{ fontWeight: 700, color: isDark ? '#94a3b8' : '#64748b' }}>
+                                Blood Group:
+                              </Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 900, color: isDark ? '#FAF2F5' : '#0f172a' }}>
+                                {medicalDetails.bloodType || selectedPatient?.bloodType || 'Not specified'}
+                              </Typography>
+                            </Box>
+
+                            {/* Emergency Contact */}
+                            <Box sx={{ p: 1.2, borderRadius: '10px', bgcolor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc' }}>
+                              <Typography variant="caption" sx={{ fontWeight: 800, color: isDark ? '#89D7B7' : '#134F4D', display: 'block', mb: 0.5 }}>
+                                Emergency Contact:
+                              </Typography>
+                              {medicalDetails.emergencyContact && (medicalDetails.emergencyContact.name || medicalDetails.emergencyContact.phone) ? (
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 0.5 }}>
+                                  <Box>
+                                    <Typography variant="body2" sx={{ fontWeight: 800, color: isDark ? '#FAF2F5' : '#0f172a' }}>
+                                      {medicalDetails.emergencyContact.name || 'Contact Person'}
+                                    </Typography>
+                                    {medicalDetails.emergencyContact.relationship && (
+                                      <Typography variant="caption" sx={{ color: isDark ? '#94a3b8' : '#64748b', fontWeight: 600 }}>
+                                        Relationship: {medicalDetails.emergencyContact.relationship}
+                                      </Typography>
+                                    )}
+                                  </Box>
+                                  {medicalDetails.emergencyContact.phone && (
+                                    <Button
+                                      size="small"
+                                      variant="outlined"
+                                      startIcon={<CallIcon sx={{ fontSize: 13 }} />}
+                                      href={`tel:${medicalDetails.emergencyContact.phone}`}
+                                      sx={{
+                                        fontWeight: 800,
+                                        fontSize: '0.72rem',
+                                        borderRadius: '8px',
+                                        borderColor: isDark ? '#89D7B7' : '#134F4D',
+                                        color: isDark ? '#89D7B7' : '#134F4D',
+                                        textTransform: 'none',
+                                        py: 0.3
+                                      }}
+                                    >
+                                      {medicalDetails.emergencyContact.phone}
+                                    </Button>
+                                  )}
+                                </Box>
+                              ) : (
+                                <Typography variant="caption" sx={{ color: isDark ? '#94a3b8' : '#94a3b8', fontStyle: 'italic' }}>
+                                  No emergency contact registered yet.
+                                </Typography>
+                              )}
+                            </Box>
+                          </Stack>
+                        </Paper>
+                      </Stack>
+                    </Grid>
+                  </Grid>
+                </Box>
               )}
 
+              {/* TAB 1: PRESCRIPTION HISTORY */}
               {tabValue === 1 && (
                 <Box>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
-                    <Typography variant="h6" sx={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <HistoryIcon sx={{ color: isDark ? '#89D7B7' : '#134F4D' }} />
-                      Prescription History
-                    </Typography>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5, flexWrap: 'wrap', gap: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Box sx={{ p: 0.8, borderRadius: '10px', bgcolor: isDark ? 'rgba(137, 215, 183, 0.15)' : 'rgba(19, 79, 77, 0.08)', color: isDark ? '#89D7B7' : '#134F4D' }}>
+                        <HistoryIcon sx={{ fontSize: 20 }} />
+                      </Box>
+                      <Typography variant="h6" sx={{ fontWeight: 800, color: isDark ? '#FAF2F5' : '#0f172a' }}>
+                        Prescription History
+                      </Typography>
+                    </Box>
                     {medicalDetails.prescriptionHistory && medicalDetails.prescriptionHistory.length > 0 && (
                       <Chip 
-                        label={`${medicalDetails.prescriptionHistory.length} Total`} 
+                        label={`${medicalDetails.prescriptionHistory.length} Total Records`} 
                         size="small" 
                         sx={{ fontWeight: 800, bgcolor: isDark ? 'rgba(137, 215, 183, 0.15)' : 'rgba(19, 79, 77, 0.08)', color: isDark ? '#89D7B7' : '#134F4D' }} 
                       />
@@ -1326,7 +1926,7 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
 
                   {medicalDetails.prescriptionHistory && medicalDetails.prescriptionHistory.length > 0 ? (
                     medicalDetails.prescriptionHistory.map((prescription: any) => {
-                      const rxId = prescription.id || '';
+                      const rxId = prescription.id || prescription._id || '';
                       const rxTitle = prescription.diagnosis || (prescription.medications && prescription.medications[0]?.name) || prescription.medication || 'Prescription Document';
                       const formattedDate = formatDateTime ? formatDateTime(prescription.createdAt) : new Date(prescription.createdAt || Date.now()).toLocaleString();
                       const isDownloadingThis = downloadingPdfId === rxId;
@@ -1339,7 +1939,7 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
                             borderRadius: '16px !important',
                             overflow: 'hidden',
                             boxShadow: 'none',
-                            bgcolor: isDark ? 'rgba(20, 38, 34, 0.6)' : '#ffffff',
+                            bgcolor: isDark ? 'rgba(20, 38, 34, 0.7)' : '#ffffff',
                             border: isDark ? '1px solid rgba(137, 215, 183, 0.2)' : '1px solid rgba(0, 0, 0, 0.08)',
                             '&:before': { display: 'none' }
                           }}
@@ -1400,7 +2000,6 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
                                 {prescription.medications && prescription.medications.length > 0 ? (
                                   <List dense disablePadding>
                                     {prescription.medications.map((med: any, medIndex: number) => {
-                                      // Clean formatting to prevent 'undefined' string outputs
                                       const parts: string[] = [];
                                       if (med.dosage && med.dosage !== 'undefined') parts.push(med.dosage);
                                       if (med.frequency && med.frequency !== 'undefined') parts.push(med.frequency);
@@ -1534,96 +2133,303 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
                       );
                     })
                   ) : (
-                    <Box sx={{ p: 4, textAlign: 'center', borderRadius: '16px', bgcolor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc', border: '1px dashed #cbd5e1' }}>
-                      <HistoryIcon sx={{ fontSize: 40, color: 'text.secondary', mb: 1, opacity: 0.5 }} />
-                      <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 700 }}>
-                        No prescription history available for this patient.
+                    <Box sx={{ p: 5, textAlign: 'center', borderRadius: '20px', bgcolor: isDark ? 'rgba(255,255,255,0.02)' : '#f8fafc', border: isDark ? '1px dashed rgba(137, 215, 183, 0.2)' : '1px dashed #cbd5e1' }}>
+                      <HistoryIcon sx={{ fontSize: 44, color: isDark ? '#89D7B7' : '#134F4D', mb: 1.5, opacity: 0.6 }} />
+                      <Typography variant="subtitle1" sx={{ fontWeight: 800, color: isDark ? '#FAF2F5' : '#0f172a', mb: 0.5 }}>
+                        No Prescription History Available
                       </Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        No prescriptions have been issued to this patient yet.
+                      </Typography>
+                      <Button
+                        variant="contained"
+                        size="small"
+                        startIcon={<PharmacyIcon />}
+                        onClick={() => {
+                          setMedicalDetailsOpen(false);
+                          navigate(`/prescriptions/new?patientId=${selectedPatient?.id || ''}`);
+                        }}
+                        sx={{
+                          borderRadius: '12px',
+                          fontWeight: 800,
+                          textTransform: 'none',
+                          bgcolor: isDark ? '#89D7B7' : '#134F4D',
+                          color: isDark ? '#0e1f1c' : '#ffffff'
+                        }}
+                      >
+                        Create First Prescription
+                      </Button>
                     </Box>
                   )}
                 </Box>
               )}
 
+              {/* TAB 2: MEDICAL & EMERGENCY INFORMATION */}
               {tabValue === 2 && (
-                <Grid container spacing={2}>
+                <Grid container spacing={2.5}>
+                  {/* General Medical Profile */}
                   <Grid item xs={12} md={6}>
-                    <Card>
-                      <CardContent>
-                        <Typography variant="h6" gutterBottom>
-                          <BloodIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-                          Medical Information
-                        </Typography>
-                        <Typography variant="body2" paragraph>
-                          Blood Type: <strong>{medicalDetails.bloodType || 'Not specified'}</strong>
-                        </Typography>
-                        <Typography variant="subtitle2" gutterBottom>
-                          Medical History:
-                        </Typography>
-                        {medicalDetails.medicalHistory && medicalDetails.medicalHistory.length > 0 ? (
-                          <List dense>
-                            {medicalDetails.medicalHistory.map((history: string, index: number) => (
-                              <ListItem key={`history-view-${history}-${index}`}>
-                                <ListItemText primary={history} />
-                              </ListItem>
-                            ))}
-                          </List>
-                        ) : (
-                          <Typography variant="body2" color="text.secondary">
-                            No medical history recorded
-                          </Typography>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <Card>
-                      <CardContent>
-                        <Typography variant="h6" gutterBottom>
-                          <EmergencyIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-                          Emergency Contact
-                        </Typography>
-                        {medicalDetails.emergencyContact ? (
-                          <Box>
-                            <Typography variant="body2">
-                              Name: <strong>{medicalDetails.emergencyContact.name}</strong>
-                            </Typography>
-                            <Typography variant="body2">
-                              Phone: <strong>{medicalDetails.emergencyContact.phone}</strong>
-                            </Typography>
-                            <Typography variant="body2">
-                              Relationship: <strong>{medicalDetails.emergencyContact.relationship}</strong>
-                            </Typography>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: 2.5,
+                        borderRadius: '20px',
+                        bgcolor: isDark ? 'rgba(20, 38, 34, 0.7)' : '#ffffff',
+                        border: isDark ? '1px solid rgba(137, 215, 183, 0.2)' : '1px solid rgba(0, 0, 0, 0.08)',
+                        height: '100%'
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Box sx={{ p: 0.8, borderRadius: '10px', bgcolor: isDark ? 'rgba(137, 215, 183, 0.15)' : 'rgba(19, 79, 77, 0.08)', color: isDark ? '#89D7B7' : '#134F4D' }}>
+                            <BloodIcon sx={{ fontSize: 20 }} />
                           </Box>
-                        ) : (
-                          <Typography variant="body2" color="text.secondary">
-                            No emergency contact specified
+                          <Typography variant="subtitle1" sx={{ fontWeight: 800, color: isDark ? '#FAF2F5' : '#0f172a' }}>
+                            Medical & Vitals Profile
                           </Typography>
-                        )}
-                      </CardContent>
-                    </Card>
+                        </Box>
+                      </Box>
+
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1.5, borderRadius: '12px', bgcolor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc', mb: 2 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 700, color: isDark ? '#94a3b8' : '#64748b' }}>
+                          Blood Type:
+                        </Typography>
+                        <Chip
+                          label={medicalDetails.bloodType || selectedPatient?.bloodType || 'Not specified'}
+                          size="small"
+                          sx={{
+                            fontWeight: 900,
+                            bgcolor: isDark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)',
+                            color: isDark ? '#ff9b9b' : '#dc2626'
+                          }}
+                        />
+                      </Box>
+
+                      <Typography variant="subtitle2" sx={{ fontWeight: 800, color: isDark ? '#89D7B7' : '#134F4D', mb: 1 }}>
+                        Medical History:
+                      </Typography>
+                      {medicalDetails.medicalHistory && medicalDetails.medicalHistory.length > 0 ? (
+                        <List dense disablePadding>
+                          {medicalDetails.medicalHistory.map((history: string, index: number) => (
+                            <ListItem 
+                              key={`history-view-${history}-${index}`}
+                              sx={{
+                                px: 1.5,
+                                py: 0.8,
+                                mb: 0.8,
+                                borderRadius: '10px',
+                                bgcolor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc',
+                                border: isDark ? '1px solid rgba(255,255,255,0.05)' : '1px solid #e2e8f0'
+                              }}
+                            >
+                              <ListItemText 
+                                primary={
+                                  <Typography variant="body2" sx={{ fontWeight: 700, color: isDark ? '#FAF2F5' : '#0f172a' }}>
+                                    • {history}
+                                  </Typography>
+                                } 
+                              />
+                            </ListItem>
+                          ))}
+                        </List>
+                      ) : (
+                        <Typography variant="body2" sx={{ color: isDark ? '#94a3b8' : '#94a3b8', fontStyle: 'italic', fontSize: '0.85rem' }}>
+                          No past medical history or pre-existing conditions recorded.
+                        </Typography>
+                      )}
+
+                      {/* Insurance info if available */}
+                      {medicalDetails.insurance && (
+                        <Box sx={{ mt: 2.5, pt: 1.5, borderTop: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,0,0,0.06)' }}>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 800, color: isDark ? '#89D7B7' : '#134F4D', mb: 1 }}>
+                            Insurance Details:
+                          </Typography>
+                          <Typography variant="body2" sx={{ color: isDark ? '#FAF2F5' : '#0f172a', fontWeight: 600 }}>
+                            Provider: {medicalDetails.insurance.provider || 'Not specified'}
+                          </Typography>
+                          {medicalDetails.insurance.policyNumber && (
+                            <Typography variant="caption" sx={{ color: isDark ? '#94a3b8' : '#64748b', display: 'block' }}>
+                              Policy #: {medicalDetails.insurance.policyNumber}
+                            </Typography>
+                          )}
+                        </Box>
+                      )}
+                    </Paper>
+                  </Grid>
+
+                  {/* Emergency Contact & Family */}
+                  <Grid item xs={12} md={6}>
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: 2.5,
+                        borderRadius: '20px',
+                        bgcolor: isDark ? 'rgba(20, 38, 34, 0.7)' : '#ffffff',
+                        border: isDark ? '1px solid rgba(137, 215, 183, 0.2)' : '1px solid rgba(0, 0, 0, 0.08)',
+                        height: '100%'
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Box sx={{ p: 0.8, borderRadius: '10px', bgcolor: isDark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.08)', color: '#ef4444' }}>
+                            <EmergencyIcon sx={{ fontSize: 20 }} />
+                          </Box>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 800, color: isDark ? '#FAF2F5' : '#0f172a' }}>
+                            Emergency Contact & Family
+                          </Typography>
+                        </Box>
+                      </Box>
+
+                      {medicalDetails.emergencyContact && (medicalDetails.emergencyContact.name || medicalDetails.emergencyContact.phone) ? (
+                        <Box sx={{ p: 2, borderRadius: '14px', bgcolor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc', border: isDark ? '1px solid rgba(255,255,255,0.05)' : '1px solid #e2e8f0', mb: 2 }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 800, color: isDark ? '#FAF2F5' : '#0f172a' }}>
+                              {medicalDetails.emergencyContact.name || 'Emergency Contact'}
+                            </Typography>
+                            {medicalDetails.emergencyContact.relationship && (
+                              <Chip 
+                                label={medicalDetails.emergencyContact.relationship} 
+                                size="small" 
+                                sx={{ fontWeight: 800, fontSize: '0.68rem', bgcolor: isDark ? 'rgba(137, 215, 183, 0.15)' : 'rgba(19, 79, 77, 0.08)', color: isDark ? '#89D7B7' : '#134F4D' }} 
+                              />
+                            )}
+                          </Box>
+                          {medicalDetails.emergencyContact.phone && (
+                            <Button
+                              variant="outlined"
+                              size="small"
+                              startIcon={<CallIcon sx={{ fontSize: 14 }} />}
+                              href={`tel:${medicalDetails.emergencyContact.phone}`}
+                              sx={{
+                                fontWeight: 800,
+                                fontSize: '0.78rem',
+                                borderRadius: '10px',
+                                borderColor: isDark ? '#89D7B7' : '#134F4D',
+                                color: isDark ? '#89D7B7' : '#134F4D',
+                                textTransform: 'none'
+                              }}
+                            >
+                              Call {medicalDetails.emergencyContact.phone}
+                            </Button>
+                          )}
+                        </Box>
+                      ) : (
+                        <Typography variant="body2" sx={{ color: isDark ? '#94a3b8' : '#94a3b8', fontStyle: 'italic', fontSize: '0.85rem', mb: 2 }}>
+                          No emergency contact specified.
+                        </Typography>
+                      )}
+
+                      {/* Family Profiles if linked */}
+                      {medicalDetails.familyProfiles && medicalDetails.familyProfiles.length > 0 && (
+                        <Box sx={{ mt: 2.5, pt: 1.5, borderTop: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,0,0,0.06)' }}>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 800, color: isDark ? '#89D7B7' : '#134F4D', mb: 1, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <PeopleIcon sx={{ fontSize: 18 }} /> Linked Family Profiles ({medicalDetails.familyProfiles.length})
+                          </Typography>
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
+                            {medicalDetails.familyProfiles.map((fam: any, idx: number) => (
+                              <Chip
+                                key={`fam-${idx}`}
+                                label={`${fam.fullName || fam.name || 'Member'} (${fam.relationship || 'Family'})`}
+                                size="small"
+                                sx={{
+                                  fontWeight: 700,
+                                  fontSize: '0.75rem',
+                                  bgcolor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9',
+                                  color: isDark ? '#FAF2F5' : '#334155'
+                                }}
+                              />
+                            ))}
+                          </Box>
+                        </Box>
+                      )}
+                    </Paper>
                   </Grid>
                 </Grid>
               )}
             </Box>
           )}
         </DialogContent>
-        <DialogActions sx={{ p: 2, display: 'flex', justifyContent: 'space-between' }}>
+
+        {/* Dialog Actions Footer */}
+        <DialogActions 
+          sx={{ 
+            p: { xs: 2, sm: 2.5 }, 
+            bgcolor: isDark ? '#0c1a18' : '#ffffff',
+            borderTop: isDark ? '1px solid rgba(137, 215, 183, 0.15)' : '1px solid rgba(19, 79, 77, 0.08)',
+            display: 'flex', 
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 1.5
+          }}
+        >
           <Button
-            variant="outlined"
+            variant="contained"
             size="small"
-            startIcon={<EditIcon sx={{ fontSize: 15 }} />}
-            onClick={(e) => handleOpenEditProfile(e, selectedPatient)}
+            startIcon={<PharmacyIcon sx={{ fontSize: 16 }} />}
+            onClick={() => {
+              setMedicalDetailsOpen(false);
+              navigate(`/prescriptions/new?patientId=${selectedPatient?.id || ''}`);
+            }}
             sx={{
-              borderRadius: '12px',
+              borderRadius: '14px',
               fontWeight: 800,
+              fontSize: '0.82rem',
               textTransform: 'none',
-              borderColor: isDark ? '#89D7B7' : '#134F4D',
-              color: isDark ? '#89D7B7' : '#134F4D'
+              px: 2.2,
+              py: 0.9,
+              bgcolor: isDark ? '#89D7B7' : '#134F4D',
+              color: isDark ? '#0e1f1c' : '#ffffff',
+              boxShadow: isDark ? '0 4px 14px rgba(137, 215, 183, 0.3)' : '0 4px 14px rgba(19, 79, 77, 0.25)',
+              '&:hover': {
+                bgcolor: isDark ? '#6ec7a3' : '#0e3b3a'
+              }
             }}
           >
-            Edit Patient Profile
+            + Create New Prescription
           </Button>
-          <Button onClick={() => setMedicalDetailsOpen(false)} sx={{ fontWeight: 700, textTransform: 'none' }}>Close</Button>
+
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<EditIcon sx={{ fontSize: 14 }} />}
+              onClick={() => selectedPatient && handleEditMedicalInfo(selectedPatient)}
+              sx={{
+                borderRadius: '12px',
+                fontWeight: 800,
+                fontSize: '0.8rem',
+                textTransform: 'none',
+                borderColor: isDark ? 'rgba(137, 215, 183, 0.4)' : 'rgba(19, 79, 77, 0.3)',
+                color: isDark ? '#89D7B7' : '#134F4D',
+                bgcolor: isDark ? 'rgba(137, 215, 183, 0.06)' : 'rgba(19, 79, 77, 0.04)',
+                '&:hover': {
+                  borderColor: isDark ? '#89D7B7' : '#134F4D',
+                  bgcolor: isDark ? 'rgba(137, 215, 183, 0.12)' : 'rgba(19, 79, 77, 0.08)'
+                }
+              }}
+            >
+              Edit Medical Info
+            </Button>
+            <Button 
+              variant="contained"
+              size="small"
+              onClick={() => setMedicalDetailsOpen(false)} 
+              sx={{ 
+                borderRadius: '12px',
+                fontWeight: 800, 
+                fontSize: '0.8rem',
+                textTransform: 'none',
+                bgcolor: isDark ? 'rgba(255,255,255,0.08)' : '#f1f5f9',
+                color: isDark ? '#FAF2F5' : '#334155',
+                '&:hover': {
+                  bgcolor: isDark ? 'rgba(255,255,255,0.14)' : '#e2e8f0'
+                }
+              }}
+            >
+              Close
+            </Button>
+          </Box>
         </DialogActions>
       </Dialog>
 
@@ -1633,98 +2439,154 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
         onClose={() => setEditMedicalOpen(false)} 
         maxWidth="md" 
         fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '24px',
+            bgcolor: isDark ? '#0e1f1c' : '#ffffff',
+            backgroundImage: 'none',
+            border: isDark ? '1px solid rgba(137, 215, 183, 0.2)' : '1px solid rgba(19, 79, 77, 0.1)'
+          }
+        }}
       >
-        <DialogTitle>
-          Edit Medical Information - {selectedPatient?.firstName} {selectedPatient?.lastName}
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pb: 1 }}>
+          <Box sx={{ p: 0.8, borderRadius: '10px', bgcolor: isDark ? 'rgba(137, 215, 183, 0.15)' : 'rgba(19, 79, 77, 0.08)', color: isDark ? '#89D7B7' : '#134F4D' }}>
+            <EditIcon sx={{ fontSize: 20 }} />
+          </Box>
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: 800, color: isDark ? '#FAF2F5' : '#0f172a' }}>
+              Edit Medical Information
+            </Typography>
+            <Typography variant="caption" sx={{ color: isDark ? '#89D7B7' : '#64748b', fontWeight: 600 }}>
+              {selectedPatient?.firstName} {selectedPatient?.lastName}
+            </Typography>
+          </Box>
         </DialogTitle>
-        <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
+        <DialogContent sx={{ pt: 2 }}>
+          <Grid container spacing={2.5} sx={{ mt: 0.5 }}>
             <Grid item xs={12}>
-              <Typography variant="subtitle2" gutterBottom>
-                Allergies:
+              <Typography variant="subtitle2" sx={{ fontWeight: 800, color: isDark ? '#89D7B7' : '#134F4D', mb: 1 }}>
+                Allergies & Adverse Reactions:
               </Typography>
-              <Box display="flex" flexWrap="wrap" gap={1} mb={2}>
+              <Box display="flex" flexWrap="wrap" gap={1} mb={1}>
                 {medicalFormData.allergies.map((allergy, index) => (
                   <Chip
                     key={`form-allergy-${allergy}-${index}`}
                     label={allergy}
                     color="warning"
                     onDelete={() => handleRemoveAllergy(index)}
+                    sx={{ fontWeight: 700 }}
                   />
                 ))}
-                <Button size="small" onClick={handleAddAllergy}>
+                <Button 
+                  size="small" 
+                  variant="outlined"
+                  startIcon={<AddIcon sx={{ fontSize: 14 }} />}
+                  onClick={handleAddAllergy}
+                  sx={{ borderRadius: '10px', fontWeight: 800, textTransform: 'none', fontSize: '0.75rem' }}
+                >
                   Add Allergy
                 </Button>
               </Box>
             </Grid>
             <Grid item xs={12}>
-              <Typography variant="subtitle2" gutterBottom>
-                Medical History:
+              <Typography variant="subtitle2" sx={{ fontWeight: 800, color: isDark ? '#89D7B7' : '#134F4D', mb: 1 }}>
+                Medical History & Pre-existing Conditions:
               </Typography>
-              <Box display="flex" flexDirection="column" gap={1} mb={2}>
+              <Box display="flex" flexWrap="wrap" gap={1} mb={1}>
                 {medicalFormData.medicalHistory.map((history, index) => (
                   <Chip
                     key={`form-history-${history}-${index}`}
                     label={history}
                     onDelete={() => handleRemoveMedicalHistory(index)}
+                    sx={{ fontWeight: 700 }}
                   />
                 ))}
-                <Button size="small" onClick={handleAddMedicalHistory}>
-                  Add Medical History
+                <Button 
+                  size="small" 
+                  variant="outlined"
+                  startIcon={<AddIcon sx={{ fontSize: 14 }} />}
+                  onClick={handleAddMedicalHistory}
+                  sx={{ borderRadius: '10px', fontWeight: 800, textTransform: 'none', fontSize: '0.75rem' }}
+                >
+                  Add Condition / History
                 </Button>
               </Box>
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                label="Blood Type"
+                size="small"
+                label="Blood Type (e.g. O+, A+, B-)"
                 value={medicalFormData.bloodType}
                 onChange={(e) => setMedicalFormData(prev => ({ ...prev, bloodType: e.target.value }))}
+                InputProps={{ sx: { borderRadius: '12px' } }}
               />
             </Grid>
             <Grid item xs={12}>
-              <Typography variant="subtitle2" gutterBottom>
-                Emergency Contact:
+              <Divider sx={{ my: 1, borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }} />
+              <Typography variant="subtitle2" sx={{ fontWeight: 800, color: isDark ? '#89D7B7' : '#134F4D', mb: 1 }}>
+                Emergency Contact Details:
               </Typography>
             </Grid>
             <Grid item xs={12} sm={4}>
               <TextField
                 fullWidth
-                label="Name"
+                size="small"
+                label="Contact Name"
                 value={medicalFormData.emergencyContact.name}
                 onChange={(e) => setMedicalFormData(prev => ({ 
                   ...prev, 
                   emergencyContact: { ...prev.emergencyContact, name: e.target.value }
                 }))}
+                InputProps={{ sx: { borderRadius: '12px' } }}
               />
             </Grid>
             <Grid item xs={12} sm={4}>
               <TextField
                 fullWidth
-                label="Phone"
+                size="small"
+                label="Contact Phone"
                 value={medicalFormData.emergencyContact.phone}
                 onChange={(e) => setMedicalFormData(prev => ({ 
                   ...prev, 
                   emergencyContact: { ...prev.emergencyContact, phone: e.target.value }
                 }))}
+                InputProps={{ sx: { borderRadius: '12px' } }}
               />
             </Grid>
             <Grid item xs={12} sm={4}>
               <TextField
                 fullWidth
-                label="Relationship"
+                size="small"
+                label="Relationship (e.g. Spouse, Parent)"
                 value={medicalFormData.emergencyContact.relationship}
                 onChange={(e) => setMedicalFormData(prev => ({ 
                   ...prev, 
                   emergencyContact: { ...prev.emergencyContact, relationship: e.target.value }
                 }))}
+                InputProps={{ sx: { borderRadius: '12px' } }}
               />
             </Grid>
           </Grid>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEditMedicalOpen(false)}>Cancel</Button>
-          <Button onClick={handleSaveMedicalInfo} variant="contained">
+        <DialogActions sx={{ p: 2.5, borderTop: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.06)' }}>
+          <Button onClick={() => setEditMedicalOpen(false)} sx={{ fontWeight: 700, textTransform: 'none' }}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleSaveMedicalInfo} 
+            variant="contained"
+            sx={{
+              borderRadius: '12px',
+              fontWeight: 800,
+              textTransform: 'none',
+              bgcolor: isDark ? '#89D7B7' : '#134F4D',
+              color: isDark ? '#0e1f1c' : '#ffffff',
+              '&:hover': {
+                bgcolor: isDark ? '#6ec7a3' : '#0e3b3a'
+              }
+            }}
+          >
             Save Medical Information
           </Button>
         </DialogActions>

@@ -120,6 +120,7 @@ import {
   Check as CheckIcon
 } from '@mui/icons-material';
 import api from '../services/api';
+import { getPatientById } from '../services/patients';
 import { useThemeContext } from '../contexts/ThemeContext';
 import DigiLockerWarmupModal from '../components/DigiLockerWarmupModal';
 import EditPatientProfileModal from '../components/EditPatientProfileModal';
@@ -1897,81 +1898,6 @@ const NewPrescription = () => {
                       </Box>
                     }
                   />
-                </Grid>
-
-                {/* Prescription Issued Date & Time Selector */}
-                <Grid item xs={12}>
-                  <Paper
-                    elevation={0}
-                    sx={{
-                      p: { xs: 1.8, sm: 2 },
-                      borderRadius: '18px',
-                      border: mode === 'dark' ? '1.5px solid rgba(16, 185, 129, 0.25)' : '1.5px solid rgba(16, 185, 129, 0.2)',
-                      bgcolor: mode === 'dark' ? 'rgba(15, 23, 42, 0.6)' : 'rgba(240, 253, 250, 0.7)',
-                      display: 'flex',
-                      flexDirection: { xs: 'column', md: 'row' },
-                      alignItems: { xs: 'flex-start', md: 'center' },
-                      justifyContent: 'space-between',
-                      gap: 1.5
-                    }}
-                  >
-                    <Box>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.3 }}>
-                        <EventIcon sx={{ color: mode === 'dark' ? '#34D399' : '#059669', fontSize: 20 }} />
-                        <Typography variant="subtitle2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#0f172a' }}>
-                          Prescription Issued Date & Time
-                        </Typography>
-                      </Box>
-                      <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600, display: 'block' }}>
-                        Set the official consultation & issue date recorded on this prescription
-                      </Typography>
-                    </Box>
-
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', width: { xs: '100%', md: 'auto' } }}>
-                      <Box sx={{ display: 'flex', gap: 0.8, flexWrap: 'wrap' }}>
-                        <Chip
-                          label="Now / Today"
-                          size="small"
-                          onClick={() => {
-                            const now = new Date();
-                            const pad = (n: number) => String(n).padStart(2, '0');
-                            setPrescriptionDate(`${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`);
-                          }}
-                          clickable
-                          variant="outlined"
-                          sx={{ fontWeight: 700, borderRadius: '8px', fontSize: '0.72rem' }}
-                        />
-                        <Chip
-                          label="Yesterday"
-                          size="small"
-                          onClick={() => {
-                            const d = new Date();
-                            d.setDate(d.getDate() - 1);
-                            const pad = (n: number) => String(n).padStart(2, '0');
-                            setPrescriptionDate(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`);
-                          }}
-                          clickable
-                          variant="outlined"
-                          sx={{ fontWeight: 700, borderRadius: '8px', fontSize: '0.72rem' }}
-                        />
-                      </Box>
-
-                      <TextField
-                        type="datetime-local"
-                        size="small"
-                        value={prescriptionDate}
-                        onChange={(e) => setPrescriptionDate(e.target.value)}
-                        sx={{
-                          width: { xs: '100%', sm: 230 },
-                          '& .MuiOutlinedInput-root': {
-                            borderRadius: '12px',
-                            fontWeight: 700,
-                            bgcolor: mode === 'dark' ? 'rgba(30, 41, 59, 0.8)' : '#ffffff'
-                          }
-                        }}
-                      />
-                    </Box>
-                  </Paper>
                 </Grid>
 
                 {/* Family Profiles Bar */}
@@ -6348,40 +6274,47 @@ const NewPrescription = () => {
                     variant="contained"
                     fullWidth
                     disabled={lookingUpPatient || !patientIdToLookup.trim()}
-                    onClick={() => {
+                    onClick={async () => {
+                      const query = patientIdToLookup.trim();
+                      if (!query) return;
                       setLookingUpPatient(true);
                       setLookupError('');
-                      setTimeout(() => {
-                        const query = patientIdToLookup.trim().toLowerCase();
+                      try {
+                        const qLower = query.toLowerCase();
                         const cleanDigits = query.replace(/[^\d]/g, '');
-                        const match = patients.find(p => {
+                        let match = patients.find(p => {
                           const pMobile = String((p as any)?.contactNumber || (p as any)?.phone || (p as any)?.mobile || '');
                           const pMobileDigits = pMobile.replace(/[^\d]/g, '');
-                          const mobileMatch = pMobile.toLowerCase().includes(query) || (cleanDigits.length >= 3 && pMobileDigits.includes(cleanDigits));
+                          const mobileMatch = (pMobile && pMobile.toLowerCase().includes(qLower)) || (cleanDigits.length >= 3 && pMobileDigits.includes(cleanDigits));
 
                           return (
-                            (p?.id || '').toLowerCase().includes(query) || 
-                            (p?.email || '').toLowerCase().includes(query) || 
+                            (p?.id || '').toLowerCase() === qLower || 
+                            (p?.email || '').toLowerCase() === qLower || 
                             mobileMatch ||
-                            `${p?.firstName || ''} ${p?.lastName || ''}`.toLowerCase().includes(query)
+                            `${p?.firstName || ''} ${p?.lastName || ''}`.toLowerCase().includes(qLower)
                           );
                         });
+
+                        if (!match) {
+                          try {
+                            const fetched = await getPatientById(query, true);
+                            if (fetched && fetched.id) {
+                              match = fetched;
+                            }
+                          } catch (e) {}
+                        }
+
                         if (match) {
                           setFoundPatient(match);
                         } else {
-                          // Create fallback record if demo
-                          const mockMatch: Patient = {
-                            id: patientIdToLookup.trim(),
-                            firstName: 'Patient (' + patientIdToLookup.trim() + ')',
-                            lastName: '',
-                            email: patientIdToLookup.trim().includes('@') ? patientIdToLookup.trim() : `${patientIdToLookup.trim()}@medizo.com`,
-                            role: 'patient',
-                            createdAt: new Date().toISOString()
-                          };
-                          setFoundPatient(mockMatch);
+                          setLookupError('No patient record found matching this search. Please check the details or use "+ Create New Patient".');
+                          setFoundPatient(null);
                         }
+                      } catch (err: any) {
+                        setLookupError(err?.message || 'Failed to lookup patient');
+                      } finally {
                         setLookingUpPatient(false);
-                      }, 500);
+                      }
                     }}
                     sx={{ 
                       height: 40, 
