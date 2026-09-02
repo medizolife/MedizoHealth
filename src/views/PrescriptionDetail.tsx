@@ -290,7 +290,11 @@ const PrescriptionDetail = () => {
     }
     if (rx.vitalSigns && Object.keys(rx.vitalSigns).some(k => (rx.vitalSigns as any)[k])) {
       const v = rx.vitalSigns as any;
-      text += `\n\n📊 Vital Signs:\nBP: ${v.bloodPressure || 'N/A'} | Pulse: ${v.pulse ? v.pulse + ' bpm' : 'N/A'} | Temp: ${v.temperature ? v.temperature + ' °F' : 'N/A'} | SpO2: ${v.spo2 ? v.spo2 + '%' : 'N/A'}`;
+      const bpStr = v.bloodPressure ? String(v.bloodPressure).replace(/\s*mmHg/gi, '').trim() + ' mmHg' : 'N/A';
+      const pulseStr = v.pulse ? String(v.pulse).replace(/\s*bpm/gi, '').trim() + ' bpm' : 'N/A';
+      const tempStr = v.temperature ? String(v.temperature).replace(/\s*°?\s*[FC]/gi, '').trim() + ' °F' : 'N/A';
+      const spo2Str = v.spo2 ? String(v.spo2).replace(/\s*%/g, '').trim() + '%' : 'N/A';
+      text += `\n\n📊 Vital Signs:\nBP: ${bpStr} | Pulse: ${pulseStr} | Temp: ${tempStr} | SpO2: ${spo2Str}`;
     }
     if (rx.followUpDate) {
       text += `\n\n📅 Follow-Up Date: ${new Date(rx.followUpDate).toLocaleDateString()}`;
@@ -1344,31 +1348,41 @@ const PrescriptionDetail = () => {
                   {(prescription as any).vitalSigns.bloodPressure && (
                     <Grid item xs={6}>
                       <Typography variant="caption" color="text.secondary">Blood Pressure</Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 700 }}>{(prescription as any).vitalSigns.bloodPressure}</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                        {String((prescription as any).vitalSigns.bloodPressure).replace(/\s*mmHg/gi, '').trim()} mmHg
+                      </Typography>
                     </Grid>
                   )}
                   {(prescription as any).vitalSigns.pulse && (
                     <Grid item xs={6}>
                       <Typography variant="caption" color="text.secondary">Pulse</Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 700 }}>{(prescription as any).vitalSigns.pulse} bpm</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                        {String((prescription as any).vitalSigns.pulse).replace(/\s*bpm/gi, '').trim()} bpm
+                      </Typography>
                     </Grid>
                   )}
                   {(prescription as any).vitalSigns.temperature && (
                     <Grid item xs={6}>
                       <Typography variant="caption" color="text.secondary">Temperature</Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 700 }}>{(prescription as any).vitalSigns.temperature} °F</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                        {String((prescription as any).vitalSigns.temperature).replace(/\s*°?\s*[FC]/gi, '').trim()} °F
+                      </Typography>
                     </Grid>
                   )}
                   {(prescription as any).vitalSigns.weight && (
                     <Grid item xs={6}>
                       <Typography variant="caption" color="text.secondary">Weight</Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 700 }}>{(prescription as any).vitalSigns.weight} kg</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                        {String((prescription as any).vitalSigns.weight).replace(/\s*kg/gi, '').trim()} kg
+                      </Typography>
                     </Grid>
                   )}
                   {(prescription as any).vitalSigns.spo2 && (
                     <Grid item xs={6}>
                       <Typography variant="caption" color="text.secondary">SpO₂</Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 700 }}>{(prescription as any).vitalSigns.spo2}%</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                        {String((prescription as any).vitalSigns.spo2).replace(/\s*%/g, '').trim()}%
+                      </Typography>
                     </Grid>
                   )}
                 </Grid>
