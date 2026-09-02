@@ -260,11 +260,15 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
     if (medicalDetails && selectedPatient && (selectedPatient.id === updated.id || (selectedPatient as any)._id === updated.id)) {
       setMedicalDetails((prev: any) => {
         if (!prev) return prev;
+        const updatedAge = updated.dateOfBirth
+          ? String(Math.floor((Date.now() - new Date(updated.dateOfBirth).getTime()) / (365.25 * 86400000)))
+          : (updated.age || '');
         const updatedHistory = Array.isArray(prev.prescriptionHistory)
           ? prev.prescriptionHistory.map((rx: any) => ({
               ...rx,
               patientGender: updated.gender || rx.patientGender,
-              patientName: `${updated.firstName || ''} ${updated.lastName || ''}`.trim() || rx.patientName
+              patientName: `${updated.firstName || ''} ${updated.lastName || ''}`.trim() || rx.patientName,
+              patientAge: updatedAge || rx.patientAge
             }))
           : prev.prescriptionHistory;
         return {
