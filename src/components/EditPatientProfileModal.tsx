@@ -257,56 +257,84 @@ export const EditPatientProfileModal: React.FC<EditPatientProfileModalProps> = (
       onClose={() => !loading && onClose()}
       maxWidth="md"
       fullWidth
+      scroll="paper"
       PaperProps={{
         sx: {
-          borderRadius: '24px',
-          bgcolor: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.98)',
+          borderRadius: { xs: '16px', sm: '24px' },
+          bgcolor: isDark ? 'rgba(15, 23, 42, 0.96)' : 'rgba(255, 255, 255, 0.98)',
           backdropFilter: 'blur(20px)',
           border: isDark ? '1.5px solid rgba(16, 185, 129, 0.25)' : '1.5px solid rgba(16, 185, 129, 0.15)',
           boxShadow: isDark ? '0 20px 50px rgba(0,0,0,0.5)' : '0 20px 50px rgba(16, 185, 129, 0.12)',
+          display: 'flex',
+          flexDirection: 'column',
+          maxHeight: { xs: 'calc(100dvh - 24px)', sm: '88vh' },
+          m: { xs: 1, sm: 2 },
           overflow: 'hidden'
         }
       }}
     >
       <DialogTitle
         sx={{
-          p: 2.5,
+          p: { xs: 1.8, sm: 2.5 },
+          flexShrink: 0,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          borderBottom: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.06)'
+          borderBottom: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.06)',
+          bgcolor: isDark ? 'rgba(15, 23, 42, 0.98)' : 'rgba(255, 255, 255, 0.98)',
+          zIndex: 5
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 1.5 }, minWidth: 0 }}>
           <Box
             sx={{
-              p: 1.2,
+              p: { xs: 0.8, sm: 1.2 },
               borderRadius: '14px',
               bgcolor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)',
               color: isDark ? '#34D399' : '#059669',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              flexShrink: 0
             }}
           >
-            <PersonIcon sx={{ fontSize: 24 }} />
+            <PersonIcon sx={{ fontSize: { xs: 20, sm: 24 } }} />
           </Box>
-          <Box>
-            <Typography variant="h6" sx={{ fontWeight: 900, color: isDark ? '#FAF2F5' : '#0F172A', lineHeight: 1.2 }}>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography variant="h6" sx={{ fontWeight: 900, color: isDark ? '#FAF2F5' : '#0F172A', lineHeight: 1.2, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
               Edit Patient Profile
             </Typography>
-            <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600 }}>
-              {isFamilyProfile ? 'Family Member Profile' : 'Primary Patient Account'} • Manage demographics, contact & medical data
+            <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {isFamilyProfile ? 'Family Member Profile' : 'Primary Patient Account'} • Manage demographics & clinical data
             </Typography>
           </Box>
         </Box>
-        <IconButton onClick={onClose} disabled={loading} size="small">
-          <CloseIcon />
+        <IconButton onClick={onClose} disabled={loading} size="small" sx={{ flexShrink: 0, ml: 1 }}>
+          <CloseIcon fontSize="small" />
         </IconButton>
       </DialogTitle>
 
-      <form onSubmit={handleSubmit}>
-        <DialogContent sx={{ p: { xs: 2, sm: 3 }, maxHeight: '72vh', overflowY: 'auto' }}>
+      <form
+        onSubmit={handleSubmit}
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          flex: '1 1 auto',
+          minHeight: 0,
+          overflow: 'hidden'
+        }}
+      >
+        <DialogContent
+          dividers
+          sx={{
+            p: { xs: 2, sm: 3 },
+            flex: '1 1 auto',
+            minHeight: 0,
+            overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch',
+            borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'
+          }}
+        >
           {error && (
             <Alert severity="error" sx={{ mb: 2.5, borderRadius: '14px', fontWeight: 600 }}>
               {error}
@@ -338,7 +366,7 @@ export const EditPatientProfileModal: React.FC<EditPatientProfileModalProps> = (
             <Grid container spacing={2}>
               <Grid item xs={12} sm={6}>
                 <TextField
-                  label="First Name *"
+                  label="First Name"
                   fullWidth
                   size="small"
                   value={formData.firstName}
@@ -350,7 +378,7 @@ export const EditPatientProfileModal: React.FC<EditPatientProfileModalProps> = (
 
               <Grid item xs={12} sm={6}>
                 <TextField
-                  label="Last Name *"
+                  label="Last Name"
                   fullWidth
                   size="small"
                   value={formData.lastName}
@@ -515,7 +543,7 @@ export const EditPatientProfileModal: React.FC<EditPatientProfileModalProps> = (
               </Grid>
 
               {/* Blood Group */}
-              <Grid item xs={12} sm={3}>
+              <Grid item xs={12} sm={6} md={3}>
                 <FormControl fullWidth size="small">
                   <InputLabel id="blood-type-label">Blood Group</InputLabel>
                   <Select
@@ -538,7 +566,7 @@ export const EditPatientProfileModal: React.FC<EditPatientProfileModalProps> = (
               </Grid>
 
               {/* Emergency Contact Name */}
-              <Grid item xs={12} sm={3}>
+              <Grid item xs={12} sm={6} md={3}>
                 <TextField
                   label="Emergency Contact Name"
                   fullWidth
@@ -550,7 +578,7 @@ export const EditPatientProfileModal: React.FC<EditPatientProfileModalProps> = (
               </Grid>
 
               {/* Emergency Contact Relationship */}
-              <Grid item xs={12} sm={3}>
+              <Grid item xs={12} sm={6} md={3}>
                 <TextField
                   label="Relationship"
                   fullWidth
@@ -563,7 +591,7 @@ export const EditPatientProfileModal: React.FC<EditPatientProfileModalProps> = (
               </Grid>
 
               {/* Emergency Contact Phone */}
-              <Grid item xs={12} sm={3}>
+              <Grid item xs={12} sm={6} md={3}>
                 <TextField
                   label="Emergency Contact Phone"
                   fullWidth
@@ -626,18 +654,22 @@ export const EditPatientProfileModal: React.FC<EditPatientProfileModalProps> = (
 
         <DialogActions
           sx={{
-            p: 2.5,
+            p: { xs: 1.8, sm: 2.5 },
+            flexShrink: 0,
+            bgcolor: isDark ? 'rgba(15, 23, 42, 0.98)' : 'rgba(255, 255, 255, 0.98)',
             borderTop: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.06)',
             display: 'flex',
             justifyContent: 'space-between',
-            alignItems: 'center'
+            alignItems: 'center',
+            gap: 1.5,
+            zIndex: 10
           }}
         >
           <Button
             onClick={onClose}
             disabled={loading}
             variant="text"
-            sx={{ fontWeight: 700, textTransform: 'none', color: '#64748b' }}
+            sx={{ fontWeight: 700, textTransform: 'none', color: '#64748b', minHeight: 42 }}
           >
             Cancel
           </Button>
@@ -651,8 +683,10 @@ export const EditPatientProfileModal: React.FC<EditPatientProfileModalProps> = (
               borderRadius: '14px',
               fontWeight: 800,
               textTransform: 'none',
-              px: 3,
-              py: 1,
+              px: { xs: 2.5, sm: 3.5 },
+              py: 1.2,
+              minHeight: 44,
+              fontSize: { xs: '0.85rem', sm: '0.95rem' },
               background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)',
               color: '#ffffff',
               boxShadow: '0 4px 14px rgba(16, 185, 129, 0.35)',
