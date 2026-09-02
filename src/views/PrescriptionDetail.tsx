@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { getPrescriptionById } from '../services/prescriptions';
 import { prescriptionsAPI, getApiBaseUrl } from '../services/api';
 import { getPatientById } from '../services/patients';
-import { getCachedData, findInCachedList } from '../services/apiCache';
+import { getCachedData, setCachedData, findInCachedList } from '../services/apiCache';
 import { Prescription, TestReport } from '../types/prescription';
 import { Patient } from '../types/auth';
 import { 
@@ -62,9 +62,13 @@ import {
   MonitorHeart as MonitorHeartIcon,
   Description as DescriptionIcon,
   Event as EventIcon,
-  History as HistoryIcon
+  History as HistoryIcon,
+  Autorenew as AutorenewIcon,
+  EditCalendar as EditCalendarIcon,
+  Edit as EditIcon
 } from '@mui/icons-material';
 import DispenseHistoryModal from '../components/DispenseHistoryModal';
+import EditPatientProfileModal from '../components/EditPatientProfileModal';
 
 const PrescriptionDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -81,6 +85,24 @@ const PrescriptionDetail = () => {
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [copied, setCopied] = useState(false);
   const [dispenseHistoryOpen, setDispenseHistoryOpen] = useState(false);
+
+  // Prescription Issue Date change dialog state
+  const [dateModalOpen, setDateModalOpen] = useState(false);
+  const [newIssueDate, setNewIssueDate] = useState('');
+  const [dateSaving, setDateSaving] = useState(false);
+  const [dateSuccess, setDateSuccess] = useState<string | null>(null);
+  const [dateError, setDateError] = useState<string | null>(null);
+
+  // Edit Patient Profile modal state
+  const [editPatientModalOpen, setEditPatientModalOpen] = useState(false);
+
+  const handlePatientProfileUpdated = (updated: any) => {
+    setPatient(prev => prev ? ({ ...prev, ...updated }) : updated);
+    setPrescription(prev => prev ? ({
+      ...prev,
+      patientName: `${updated.firstName || ''} ${updated.lastName || ''}`.trim() || (prev as any).patientName
+    }) : prev);
+  };
 
   // Test Reports states
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
@@ -145,6 +167,55 @@ const PrescriptionDetail = () => {
     
     fetchPrescriptionDetails();
   }, [id]);
+
+  const handleOpenDateDialog = () => {
+    const currentDt = prescription?.createdAt ? new Date(prescription.createdAt) : new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const formatted = `${currentDt.getFullYear()}-${pad(currentDt.getMonth() + 1)}-${pad(currentDt.getDate())}T${pad(currentDt.getHours())}:${pad(currentDt.getMinutes())}`;
+    setNewIssueDate(formatted);
+    setDateError(null);
+    setDateSuccess(null);
+    setDateModalOpen(true);
+  };
+
+  const handleSetPresetDate = (daysAgo: number, timeStr = 'now') => {
+    const d = new Date();
+    d.setDate(d.getDate() - daysAgo);
+    if (timeStr !== 'now') {
+      const [h, m] = timeStr.split(':');
+      d.setHours(parseInt(h, 10), parseInt(m, 10), 0, 0);
+    }
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const formatted = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    setNewIssueDate(formatted);
+  };
+
+  const handleSaveIssueDate = async () => {
+    if (!prescription?.id || !newIssueDate) return;
+    try {
+      setDateSaving(true);
+      setDateError(null);
+      const isoDate = new Date(newIssueDate).toISOString();
+      await prescriptionsAPI.updatePrescription(prescription.id, {
+        createdAt: isoDate,
+        issuedDate: isoDate,
+        prescriptionDate: isoDate
+      });
+      const updatedRx = { ...prescription, createdAt: isoDate };
+      setPrescription(updatedRx);
+      setCachedData(`prescription_${prescription.id}`, updatedRx);
+      setDateSuccess('Prescription issued date updated successfully!');
+      setTimeout(() => {
+        setDateModalOpen(false);
+        setDateSuccess(null);
+      }, 1200);
+    } catch (err: any) {
+      console.error('Failed to update prescription date:', err);
+      setDateError(err.response?.data?.message || err.message || 'Failed to update prescription date');
+    } finally {
+      setDateSaving(false);
+    }
+  };
   
   const handleShare = async () => {
     if (!id) return;
@@ -803,6 +874,46 @@ const PrescriptionDetail = () => {
             >
               Share Link
             </Button>
+            {isDoctor && (
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<EditCalendarIcon />}
+                onClick={handleOpenDateDialog}
+                sx={{
+                  borderColor: 'rgba(19, 79, 77, 0.4)',
+                  color: '#134F4D',
+                  fontWeight: 800,
+                  borderRadius: '12px',
+                  px: 2,
+                  py: 0.8,
+                  bgcolor: 'rgba(19, 79, 77, 0.04)',
+                  '&:hover': { bgcolor: 'rgba(19, 79, 77, 0.1)', borderColor: '#134F4D' }
+                }}
+              >
+                Change Date
+              </Button>
+            )}
+            {isDoctor && (
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={<AutorenewIcon />}
+                onClick={() => navigate(`/prescriptions/new?trailRxId=${prescription.id}&patientId=${prescription.patientId || ''}`)}
+                sx={{
+                  background: 'linear-gradient(135deg, #00C896 0%, #009E77 100%)',
+                  color: '#0B1315',
+                  fontWeight: 900,
+                  borderRadius: '12px',
+                  px: 2.2,
+                  py: 0.8,
+                  boxShadow: '0 4px 14px rgba(0, 200, 150, 0.35)',
+                  '&:hover': { background: 'linear-gradient(135deg, #00b084 0%, #008f6c 100%)' }
+                }}
+              >
+                Continue Treatment Trail
+              </Button>
+            )}
             <Button
               variant="contained"
               size="small"
@@ -1305,9 +1416,53 @@ const PrescriptionDetail = () => {
                   <Typography variant="body2" sx={{ fontWeight: 700 }}>
                     {patient ? `${patient.firstName} ${patient.lastName}` : ((prescription as any).patientName || 'Registered Patient')}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary" display="block">
-                    Issued: {new Date(prescription.createdAt || Date.now()).toLocaleDateString()}
-                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 0.5, mt: 0.2 }}>
+                    <Typography variant="caption" color="text.secondary">
+                      Issued: {new Date(prescription.createdAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </Typography>
+                    {isDoctor && (
+                      <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                        <Tooltip title="Edit Patient Profile">
+                          <Chip
+                            icon={<EditIcon sx={{ fontSize: '13px !important', color: '#134F4D !important' }} />}
+                            label="Edit Profile"
+                            size="small"
+                            onClick={() => setEditPatientModalOpen(true)}
+                            className="no-print"
+                            sx={{
+                              height: 20,
+                              fontSize: '0.65rem',
+                              fontWeight: 800,
+                              cursor: 'pointer',
+                              bgcolor: 'rgba(19, 79, 77, 0.08)',
+                              color: '#134F4D',
+                              border: '1px solid rgba(19, 79, 77, 0.2)',
+                              '&:hover': { bgcolor: 'rgba(19, 79, 77, 0.16)' }
+                            }}
+                          />
+                        </Tooltip>
+                        <Tooltip title="Change Issued Date">
+                          <Chip
+                            icon={<EditCalendarIcon sx={{ fontSize: '13px !important', color: '#134F4D !important' }} />}
+                            label="Change Date"
+                            size="small"
+                            onClick={handleOpenDateDialog}
+                            className="no-print"
+                            sx={{
+                              height: 20,
+                              fontSize: '0.65rem',
+                              fontWeight: 800,
+                              cursor: 'pointer',
+                              bgcolor: 'rgba(19, 79, 77, 0.08)',
+                              color: '#134F4D',
+                              border: '1px solid rgba(19, 79, 77, 0.2)',
+                              '&:hover': { bgcolor: 'rgba(19, 79, 77, 0.16)' }
+                            }}
+                          />
+                        </Tooltip>
+                      </Box>
+                    )}
+                  </Box>
                 </Paper>
               </Grid>
             </Grid>
@@ -2283,6 +2438,145 @@ const PrescriptionDetail = () => {
         open={dispenseHistoryOpen}
         onClose={() => setDispenseHistoryOpen(false)}
         prescription={prescription}
+      />
+
+      {/* Change Prescription Issued Date Modal */}
+      <Dialog
+        open={dateModalOpen}
+        onClose={() => !dateSaving && setDateModalOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: '24px', p: 1 } }}
+      >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ p: 1, borderRadius: '12px', bgcolor: 'rgba(19, 79, 77, 0.1)', color: '#134F4D' }}>
+              <EditCalendarIcon sx={{ fontSize: 22 }} />
+            </Box>
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 800, color: '#134F4D', lineHeight: 1.2 }}>
+                Change Prescription Issued Date
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Token #{prescription.id?.substring(0, 8).toUpperCase()}
+              </Typography>
+            </Box>
+          </Box>
+          <IconButton onClick={() => setDateModalOpen(false)} disabled={dateSaving} size="small">
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 1.5 }}>
+          <Alert severity="info" sx={{ mb: 2.5, borderRadius: '14px', fontSize: '0.8rem', bgcolor: 'rgba(19, 79, 77, 0.06)', color: '#134F4D', border: '1px solid rgba(19, 79, 77, 0.2)' }}>
+            Updating the prescription issued date modifies the official digital clinical timestamp, QR verification details, and all generated PDF documents.
+          </Alert>
+
+          {dateError && (
+            <Alert severity="error" sx={{ mb: 2, borderRadius: '12px' }}>
+              {dateError}
+            </Alert>
+          )}
+
+          {dateSuccess && (
+            <Alert severity="success" sx={{ mb: 2, borderRadius: '12px', bgcolor: 'rgba(16, 185, 129, 0.15)', color: '#047857' }}>
+              {dateSuccess}
+            </Alert>
+          )}
+
+          <Typography variant="caption" sx={{ fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', mb: 1 }}>
+            ⚡ Quick Date Presets
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2.5 }}>
+            <Chip
+              label="Today (Current Time)"
+              onClick={() => handleSetPresetDate(0, 'now')}
+              clickable
+              variant="outlined"
+              sx={{ fontWeight: 700, borderRadius: '10px' }}
+            />
+            <Chip
+              label="Today (Morning 9:00 AM)"
+              onClick={() => handleSetPresetDate(0, '09:00')}
+              clickable
+              variant="outlined"
+              sx={{ fontWeight: 700, borderRadius: '10px' }}
+            />
+            <Chip
+              label="Yesterday"
+              onClick={() => handleSetPresetDate(1, 'now')}
+              clickable
+              variant="outlined"
+              sx={{ fontWeight: 700, borderRadius: '10px' }}
+            />
+            <Chip
+              label="2 Days Ago"
+              onClick={() => handleSetPresetDate(2, 'now')}
+              clickable
+              variant="outlined"
+              sx={{ fontWeight: 700, borderRadius: '10px' }}
+            />
+          </Box>
+
+          <TextField
+            label="Prescription Issued Date & Time"
+            type="datetime-local"
+            value={newIssueDate}
+            onChange={(e) => setNewIssueDate(e.target.value)}
+            fullWidth
+            InputLabelProps={{ shrink: true }}
+            helperText="Select the exact date & time when consultation took place / prescription was issued."
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '14px',
+                fontWeight: 700
+              }
+            }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 2.5, pt: 1 }}>
+          <Button
+            onClick={() => setDateModalOpen(false)}
+            disabled={dateSaving}
+            variant="text"
+            sx={{ fontWeight: 700, textTransform: 'none', color: '#64748b' }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSaveIssueDate}
+            disabled={dateSaving || !newIssueDate}
+            variant="contained"
+            startIcon={dateSaving ? <CircularProgress size={16} color="inherit" /> : <DoneIcon />}
+            sx={{
+              bgcolor: '#134F4D',
+              color: '#ffffff',
+              fontWeight: 800,
+              textTransform: 'none',
+              borderRadius: '12px',
+              px: 3,
+              py: 0.9,
+              boxShadow: '0 4px 14px rgba(19, 79, 77, 0.25)',
+              '&:hover': { bgcolor: '#0e3b3a' }
+            }}
+          >
+            {dateSaving ? 'Saving Date...' : 'Update Issued Date'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Edit Patient Profile Modal */}
+      <EditPatientProfileModal
+        open={editPatientModalOpen}
+        onClose={() => setEditPatientModalOpen(false)}
+        patient={patient || {
+          id: prescription.patientId,
+          firstName: (prescription as any).patientName?.split(' ')[0] || '',
+          lastName: (prescription as any).patientName?.split(' ').slice(1).join(' ') || '',
+          gender: (prescription as any).patientGender || '',
+          dateOfBirth: (prescription as any).patientDOB || '',
+          phone: (prescription as any).patientPhone || ''
+        }}
+        onPatientUpdated={handlePatientProfileUpdated}
       />
     </Container>
   );

@@ -2,6 +2,7 @@
 import { createContext, useContext, useReducer, useEffect, useState, ReactNode } from 'react';
 import { AuthContextType, AuthState, LoginCredentials, RegisterData, User } from '../types/auth';
 import * as api from '../services/api';
+import { prefetchAllData } from '../services/dataPrefetch';
 
 // Initial auth state generator
 const getInitialAuthState = (): AuthState => {
@@ -168,6 +169,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       try {
         const response = await api.authAPI.getMe();
         dispatch({ type: 'USER_LOADED', payload: response.user });
+        // Prefetch all tab data in the background for instant tab switching
+        prefetchAllData(response.user.role).catch(() => {});
       } catch (error: any) {
         // Only logout if the server explicitly says the token is invalid (401)
         // For network errors or other issues, fall back to cached user
@@ -207,6 +210,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
       dispatch({ type: 'LOGIN_SUCCESS', payload: data });
+      prefetchAllData(data.user.role).catch(() => {});
       return data;
     } catch (error: any) {
       const message = error.response?.data?.message || error.message || 'Login failed';
@@ -223,6 +227,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
       dispatch({ type: 'LOGIN_SUCCESS', payload: data });
+      prefetchAllData(data.user.role).catch(() => {});
       return data;
     } catch (error: any) {
       const message = error.response?.data?.message || error.message || 'Mobile login failed';
@@ -239,6 +244,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
       dispatch({ type: 'LOGIN_SUCCESS', payload: data });
+      prefetchAllData(data.user.role).catch(() => {});
       return data;
     } catch (error: any) {
       const message = error.response?.data?.message || error.message || 'OTP verification failed';
@@ -286,6 +292,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
         dispatch({ type: 'LOGIN_SUCCESS', payload: { user: data.user, token: data.token } });
+        prefetchAllData(data.user.role).catch(() => {});
       }
       return { isNewUser: data.isNewUser, user: data.user, token: data.token };
     } catch (error: any) {
@@ -300,6 +307,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(user));
     dispatch({ type: 'LOGIN_SUCCESS', payload: { user, token } });
+    prefetchAllData(user.role).catch(() => {});
   };
 
   // Logout function

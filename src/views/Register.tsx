@@ -217,7 +217,14 @@ const Register = () => {
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
                   <Box
                     component="img"
-                    src="/LOGO.png"
+                    src="/logo.png"
+                    onError={(e: any) => {
+                      const target = e.currentTarget;
+                      if (!target.dataset.fallback) {
+                        target.dataset.fallback = '1';
+                        target.src = '/LOGO.png';
+                      }
+                    }}
                     alt="Medizo Logo"
                     sx={{ 
                       width: 48, 
@@ -308,7 +315,14 @@ const Register = () => {
         <Box sx={{ textAlign: 'center', mb: 2.5 }}>
           <Box
             component="img"
-            src="/LOGO.png"
+            src="/logo.png"
+            onError={(e: any) => {
+              const target = e.currentTarget;
+              if (!target.dataset.fallback) {
+                target.dataset.fallback = '1';
+                target.src = '/LOGO.png';
+              }
+            }}
             alt="Medizo Logo"
             sx={{ 
               width: 52, 

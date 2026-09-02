@@ -1452,19 +1452,49 @@ const Profile = () => {
                       >
                         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 1 }}>
                           <Typography variant="subtitle2" sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1, color: mode === 'dark' ? '#FAF2F5' : '#0F4C3A' }}>
-                            <GpsFixedIcon color="primary" /> Exact Clinic GPS Location (50m Precision)
+                            <GpsFixedIcon color="primary" /> Practice & Clinic Location (For 15km Nearby Discovery)
                           </Typography>
                           
-                          {doctorFormData.clinicLocationAccuracy !== undefined && (
-                            <Chip 
-                              icon={doctorFormData.clinicLocationAccuracy <= 50 ? <CheckCircleIcon /> : <WarningIcon />}
-                              label={doctorFormData.clinicLocationAccuracy <= 50 ? `${doctorFormData.clinicLocationAccuracy}m Accuracy (Target Met ≤50m)` : `${doctorFormData.clinicLocationAccuracy}m Accuracy (Above 50m)`}
-                              color={doctorFormData.clinicLocationAccuracy <= 50 ? "success" : "warning"}
-                              size="small"
-                              sx={{ fontWeight: 600 }}
-                            />
-                          )}
+                          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                            {doctorFormData.clinicLatitude !== undefined && doctorFormData.clinicLongitude !== undefined ? (
+                              <Chip 
+                                icon={<CheckCircleIcon />}
+                                label="Nearby Discovery Active (15km)"
+                                color="success"
+                                size="small"
+                                sx={{ fontWeight: 700 }}
+                              />
+                            ) : (
+                              <Chip 
+                                icon={<WarningIcon />}
+                                label="Location Not Set — Hidden from Nearby Search"
+                                color="warning"
+                                size="small"
+                                sx={{ fontWeight: 700 }}
+                              />
+                            )}
+                            {doctorFormData.clinicLocationAccuracy !== undefined && (
+                              <Chip 
+                                icon={doctorFormData.clinicLocationAccuracy <= 50 ? <CheckCircleIcon /> : <WarningIcon />}
+                                label={doctorFormData.clinicLocationAccuracy <= 50 ? `${doctorFormData.clinicLocationAccuracy}m Accuracy (≤50m)` : `${doctorFormData.clinicLocationAccuracy}m Accuracy`}
+                                color={doctorFormData.clinicLocationAccuracy <= 50 ? "success" : "default"}
+                                size="small"
+                                sx={{ fontWeight: 600 }}
+                              />
+                            )}
+                          </Box>
                         </Box>
+
+                        {/* Discovery Explanatory Callout */}
+                        {doctorFormData.clinicLatitude === undefined || doctorFormData.clinicLongitude === undefined ? (
+                          <Alert severity="info" sx={{ mb: 2, borderRadius: 2 }}>
+                            📍 <strong>Be Discovered by Nearby Colleagues:</strong> Add your practice GPS pin so other doctors, nurses, pharmacists, and diagnostic labs within a <strong>15 km radius</strong> can find and refer patients to you. Click <strong>"Detect Exact GPS Location"</strong> below.
+                          </Alert>
+                        ) : (
+                          <Alert severity="success" sx={{ mb: 2, borderRadius: 2 }}>
+                            ✨ <strong>Nearby Discovery Enabled:</strong> Your practice is currently discoverable by colleagues within 15 km of ({doctorFormData.clinicLatitude}, {doctorFormData.clinicLongitude}).
+                          </Alert>
+                        )}
 
                         {locationNotice && (
                           <Alert severity={doctorFormData.clinicLocationAccuracy && doctorFormData.clinicLocationAccuracy <= 50 ? "success" : "info"} sx={{ mb: 2 }}>

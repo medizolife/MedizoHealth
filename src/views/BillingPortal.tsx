@@ -62,6 +62,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useThemeContext } from '../contexts/ThemeContext';
 import { healthcareApi } from '../services/healthcareExtensionsApi';
 import api from '../services/api';
+import { getCachedData } from '../services/apiCache';
 
 const DEFAULT_CLINIC_SERVICES = [
   { id: 'srv_1', name: 'Nebulization', price: 150, code: '999312', active: true },
@@ -186,22 +187,24 @@ export default function BillingPortal() {
   const [rateCardModalOpen, setRateCardModalOpen] = useState(false);
   const [rateCardSaving, setRateCardSaving] = useState(false);
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = async (isBackground = false) => {
+    if (!isBackground && bills.length === 0) {
+      setLoading(true);
+    }
     try {
       if (isDoctor) {
-        const [billsRes, rxRes, dayCloseRes, rateRes] = await Promise.all([
-          healthcareApi.getDoctorBills(),
+        const [billsRes, rxRes, dayCloseRes, rateRes] = await Promise.allSettled([
+          healthcareApi.getDoctorBills(isBackground),
           api.get('/prescriptions'),
           healthcareApi.getDailyCollectionReport(),
-          healthcareApi.getDoctorRateCard()
+          healthcareApi.getDoctorRateCard(isBackground)
         ]);
-        if (billsRes.success) setBills(billsRes.bills || []);
-        if (Array.isArray(rxRes.data)) setPrescriptions(rxRes.data);
-        if (dayCloseRes.success) setDayCloseSummary(dayCloseRes.summary);
-        if (rateRes.success && rateRes.rateCard) setRateCard(rateRes.rateCard);
+        if (billsRes.status === 'fulfilled' && billsRes.value.success) setBills(billsRes.value.bills || []);
+        if (rxRes.status === 'fulfilled' && Array.isArray(rxRes.value.data)) setPrescriptions(rxRes.value.data);
+        if (dayCloseRes.status === 'fulfilled' && dayCloseRes.value.success) setDayCloseSummary(dayCloseRes.value.summary);
+        if (rateRes.status === 'fulfilled' && rateRes.value.success && rateRes.value.rateCard) setRateCard(rateRes.value.rateCard);
       } else {
-        const billsRes = await healthcareApi.getMyBills();
+        const billsRes = await healthcareApi.getMyBills(isBackground);
         if (billsRes.success) setBills(billsRes.bills || []);
       }
     } catch (err) {
@@ -212,7 +215,27 @@ export default function BillingPortal() {
   };
 
   useEffect(() => {
-    fetchData();
+    let hasWarmData = false;
+    // Show cached data instantly (from prefetch), then refresh in background
+    if (isDoctor) {
+      const cachedBillsRaw = getCachedData<any>('doctor_bills');
+      const cachedDayClose = getCachedData<any>('day_close_summary');
+      const cachedRateCard = getCachedData<any>('doctor_rate_card');
+      // Cache may contain the full API response { success, bills } or a raw array
+      const cachedBills = Array.isArray(cachedBillsRaw) ? cachedBillsRaw : (cachedBillsRaw?.bills || null);
+      if (cachedBills && Array.isArray(cachedBills)) { setBills(cachedBills); hasWarmData = true; }
+      if (cachedDayClose) setDayCloseSummary(cachedDayClose);
+      if (cachedRateCard) setRateCard((prev: any) => ({ ...prev, ...cachedRateCard }));
+    } else {
+      const cachedBillsRaw = getCachedData<any>('my_bills');
+      const cachedBills = Array.isArray(cachedBillsRaw) ? cachedBillsRaw : (cachedBillsRaw?.bills || null);
+      if (cachedBills && Array.isArray(cachedBills)) { setBills(cachedBills); hasWarmData = true; }
+    }
+    if (hasWarmData) {
+      setLoading(false);
+    }
+    // Refresh silently in background
+    fetchData(hasWarmData);
   }, [isDoctor]);
 
   const handleOpenQrModal = (bill: any) => {
@@ -500,7 +523,7 @@ export default function BillingPortal() {
             </>
           )}
           <IconButton 
-            onClick={fetchData} 
+            onClick={() => fetchData(false)} 
             sx={{ 
               color: textSecondary, 
               bgcolor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(42, 107, 93, 0.08)',

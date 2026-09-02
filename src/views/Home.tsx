@@ -936,10 +936,16 @@ const Home = () => {
               <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2 }}>
                 <Box
                   component="img"
-                  src="/LOGO.png"
+                  src="/logo.png"
+                  onError={(e: any) => {
+                    const target = e.currentTarget;
+                    if (!target.dataset.fallback) {
+                      target.dataset.fallback = '1';
+                      target.src = '/LOGO.png';
+                    }
+                  }}
                   alt="Medizo Logo"
-                  sx={{ width: 36, height: 36, borderRadius: '8px', border: '1px solid #38BDF8' }}
-                  onError={(e: any) => { e.target.style.display = 'none'; }}
+                  sx={{ width: 36, height: 36, borderRadius: '8px', border: '1px solid #38BDF8', objectFit: 'contain' }}
                 />
                 <Typography variant="h5" color="#FFFFFF" fontWeight={900} letterSpacing={0.5}>
                   Medizo <Box component="span" sx={{ color: '#38BDF8', fontWeight: 800 }}>Life</Box>

@@ -92,6 +92,25 @@ const DOSAGE_FORMS: DosageForm[] = [
   'Other'
 ];
 
+export const detectDosageForm = (name: string = ''): DosageForm | null => {
+  if (!name || typeof name !== 'string') return null;
+  const n = ` ${name.toLowerCase()} `;
+  if (/\b(eye\s*drops?|ear\s*drops?|nasal\s*drops?|ophthalmic|drops?)\b/i.test(n)) return 'Drops';
+  if (/\b(injection|inj|infusion|iv\s+infusion|ampoule|vial)\b/i.test(n)) return 'Injection';
+  if (/\b(suspension|susp)\b/i.test(n)) return 'Suspension';
+  if (/\b(dry\s+syrup|syrup|syp|elixir)\b/i.test(n)) return 'Syrup';
+  if (/\b(capsules?|caps?|softgels?)\b/i.test(n)) return 'Capsule';
+  if (/\b(inhaler|respules|rotacaps|inhalation)\b/i.test(n)) return 'Inhaler';
+  if (/\b(powders?|sachet|granules?)\b/i.test(n)) return 'Powder';
+  if (/\b(creams?)\b/i.test(n)) return 'Cream';
+  if (/\b(gels?|emulgels?)\b/i.test(n)) return 'Gel';
+  if (/\b(lotions?)\b/i.test(n)) return 'Lotion';
+  if (/\b(solutions?|oral\s+liquid)\b/i.test(n)) return 'Solution';
+  if (/\b(ointments?|oints?|liniments?)\b/i.test(n)) return 'Ointment';
+  if (/\b(tablets?|tabs?|caplets?|chewable|dispersible)\b/i.test(n)) return 'Tablet';
+  return null;
+};
+
 export default function PharmacyInventory({ onNotify }: PharmacyInventoryProps) {
   const { mode } = useThemeContext();
   const isDark = mode === 'dark';
@@ -956,7 +975,12 @@ export default function PharmacyInventory({ onNotify }: PharmacyInventoryProps) 
             onChange={(_, newValue) => {
               setSelectedCatalogMed(newValue);
               if (newValue) {
-                setFormData(prev => ({ ...prev, medicineName: newValue }));
+                const detected = detectDosageForm(newValue);
+                setFormData(prev => ({
+                  ...prev,
+                  medicineName: newValue,
+                  ...(detected ? { dosageForm: detected } : {})
+                }));
               }
             }}
             inputValue={catalogSearchText}

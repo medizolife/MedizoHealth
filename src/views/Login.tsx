@@ -303,7 +303,14 @@ const Login = () => {
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
                   <Box
                     component="img"
-                    src="/LOGO.png"
+                    src="/logo.png"
+                    onError={(e: any) => {
+                      const target = e.currentTarget;
+                      if (!target.dataset.fallback) {
+                        target.dataset.fallback = '1';
+                        target.src = '/LOGO.png';
+                      }
+                    }}
                     alt="Medizo Logo"
                     sx={{ 
                       width: 48, 
@@ -400,7 +407,14 @@ const Login = () => {
                 <Box sx={{ position: 'relative', display: 'inline-flex', mb: 2.5, mx: 'auto' }}>
                   <Box
                     component="img"
-                    src="/LOGO.png"
+                    src="/logo.png"
+                    onError={(e: any) => {
+                      const target = e.currentTarget;
+                      if (!target.dataset.fallback) {
+                        target.dataset.fallback = '1';
+                        target.src = '/LOGO.png';
+                      }
+                    }}
                     alt="Medizo Logo"
                     sx={{ 
                       width: 64, 
@@ -475,7 +489,14 @@ const Login = () => {
           <Box sx={{ textAlign: 'center', mb: 1.5 }}>
             <Box
               component="img"
-              src="/LOGO.png"
+              src="/logo.png"
+              onError={(e: any) => {
+                const target = e.currentTarget;
+                if (!target.dataset.fallback) {
+                  target.dataset.fallback = '1';
+                  target.src = '/LOGO.png';
+                }
+              }}
               alt="Medizo Logo"
               sx={{ 
                 width: 42, 

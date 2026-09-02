@@ -9,6 +9,7 @@ import Box from '@mui/material/Box';
 import Header from './components/Header';
 import MobileBottomNav from './components/MobileBottomNav';
 import ProtectedRoute from './components/ProtectedRoute';
+import AppPrefetcher from './components/AppPrefetcher';
 
 // Views
 import Home from './views/Home';
@@ -38,7 +39,7 @@ const AnimatedRoutes = () => {
   const location = useLocation();
 
   return (
-    <Box key={location.pathname} className="page-transition-wrapper">
+    <Box className="page-transition-wrapper" key={location.pathname}>
       <Routes location={location}>
         <Route path="/" element={<Home />} />
         <Route path="/home" element={<Home />} />
@@ -192,7 +193,8 @@ const App = () => {
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
       <CustomThemeProvider>
         <AuthProvider>
-          <Router>
+          <AppPrefetcher />
+          <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <Box sx={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column' }}>
               <Header />
               <AnimatedRoutes />

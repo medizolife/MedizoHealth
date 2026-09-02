@@ -210,7 +210,7 @@ export default function NursePortal() {
                         </Typography>
                       </Box>
                       <Chip
-                        label={s.status.replace('_', ' ').toUpperCase()}
+                        label={(s.status || 'pending').replace('_', ' ').toUpperCase()}
                         size="small"
                         sx={{
                           bgcolor: isCompleted ? 'rgba(76,175,80,0.15)' : s.status === 'in_progress' ? 'rgba(0,188,212,0.15)' : 'rgba(255,152,0,0.15)',

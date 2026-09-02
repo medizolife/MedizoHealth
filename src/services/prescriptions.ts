@@ -78,7 +78,7 @@ export const extractCleanPrescriptionId = (input: string): string => {
   return clean.split('?')[0].split('#')[0].trim();
 };
 
-export const lookupPrescriptionByCode = async (code: string): Promise<{ success: boolean; prescription: Prescription & { doctorName?: string; doctorSpecialization?: string; doctorVerified?: boolean; patientEmail?: string } }> => {
+export const lookupPrescriptionByCode = async (code: string): Promise<{ success: boolean; prescription: Prescription & { doctorName?: string; doctorSpecialization?: string; doctorVerified?: boolean; patientEmail?: string; medicationNames?: string[]; requiresBirthYearVerification?: boolean } }> => {
   const cleanCode = extractCleanPrescriptionId(code);
   if (!cleanCode) {
     throw new Error('Invalid prescription ID or QR code');
@@ -91,6 +91,18 @@ export const lookupPrescriptionByCode = async (code: string): Promise<{ success:
     const pubRes = await api.get(`/prescriptions/public/${encodeURIComponent(cleanCode)}`);
     return { success: true, prescription: pubRes.data };
   }
+};
+
+export const verifyPrescriptionBirthYear = async (
+  prescriptionId: string,
+  birthYear: number | string
+): Promise<{ success: boolean; verified: boolean; linked: boolean; message: string; prescription: Prescription & { doctorName?: string; doctorSpecialization?: string; isUnlocked?: boolean } }> => {
+  clearApiCache('doctor_patients');
+  clearApiCache('users_my_patients');
+  const response = await api.post(`/prescriptions/${encodeURIComponent(prescriptionId)}/verify-birth-year`, {
+    birthYear: parseInt(String(birthYear), 10)
+  });
+  return response.data;
 };
 
 export const uploadPrescriptionTestReport = async (prescriptionId: string, formData: FormData): Promise<{ success: boolean; message: string; report: any; testReports: any[]; prescription: Prescription }> => {

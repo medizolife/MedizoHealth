@@ -1,9 +1,10 @@
 import axios from 'axios';
 import { LoginCredentials, RegisterData, User } from '../types/auth';
+import { getCachedData, setCachedData, clearApiCache, fetchWithSWR } from './apiCache';
 
 // Base API URL resolution from environment variables
 export const getApiBaseUrl = () => {
-  const envUrl = process.env.NEXT_PUBLIC_API_URL || process.env.REACT_APP_API_URL;
+  const envUrl = typeof process !== 'undefined' && process.env ? (process.env.NEXT_PUBLIC_API_URL || process.env.REACT_APP_API_URL) : undefined;
   if (envUrl) {
     let cleanUrl = envUrl.trim().replace(/\/+$/, '');
     cleanUrl = cleanUrl.replace(/\/health(\/api)?$/, '');
@@ -107,23 +108,32 @@ export const authAPI = {
 
 // Prescriptions API
 export const prescriptionsAPI = {
-  getMyPrescriptions: async () => {
-    const response = await api.get('/prescriptions');
-    return response.data;
+  getMyPrescriptions: async (forceRefresh = false) => {
+    return fetchWithSWR('prescriptions_list', async () => {
+      const response = await api.get('/prescriptions');
+      return response.data;
+    }, { forceRefresh });
   },
   createPrescription: async (prescriptionData: any) => {
+    clearApiCache('prescriptions_');
     const response = await api.post('/prescriptions', prescriptionData);
     return response.data;
   },
   getPrescriptionById: async (id: string) => {
-    const response = await api.get(`/prescriptions/${id}`);
-    return response.data;
+    return fetchWithSWR(`prescription_${id}`, async () => {
+      const response = await api.get(`/prescriptions/${id}`);
+      return response.data;
+    });
   },
   updatePrescription: async (id: string, prescriptionData: any) => {
+    clearApiCache('prescriptions_');
+    clearApiCache(`prescription_${id}`);
     const response = await api.put(`/prescriptions/${id}`, prescriptionData);
     return response.data;
   },
   deletePrescription: async (id: string) => {
+    clearApiCache('prescriptions_');
+    clearApiCache(`prescription_${id}`);
     const response = await api.delete(`/prescriptions/${id}`);
     return response.data;
   },
@@ -166,8 +176,6 @@ export const prescriptionsAPI = {
 };
 
 // Users API
-import { getCachedData, setCachedData, clearApiCache } from './apiCache';
-
 export const usersAPI = {
   getPatients: async () => {
     const response = await api.get('/users/patients');
@@ -216,7 +224,7 @@ export const usersAPI = {
 // DigiLocker API
 // Authorize runs on primary API server (Cloudflare Workers, 0ms cold start)
 // Callback routes to Vercel (https://medizoserver.vercel.app/api/digilocker/callback) for DigiLocker domain whitelist
-const DIGILOCKER_VERCEL_SERVER = process.env.NEXT_PUBLIC_DIGILOCKER_SERVER_URL || process.env.REACT_APP_DIGILOCKER_SERVER_URL || 'https://medizoserver.vercel.app/api';
+const DIGILOCKER_VERCEL_SERVER = (typeof process !== 'undefined' && process.env ? (process.env.NEXT_PUBLIC_DIGILOCKER_SERVER_URL || process.env.REACT_APP_DIGILOCKER_SERVER_URL) : undefined) || 'https://medizoserver.vercel.app/api';
 
 export const digilockerAPI = {
   getStatus: async () => {

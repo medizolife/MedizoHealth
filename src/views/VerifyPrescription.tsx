@@ -23,7 +23,8 @@ import {
   TableRow,
   Card,
   CardContent,
-  Stack
+  Stack,
+  TextField
 } from '@mui/material';
 import {
   VerifiedUser as VerifiedIcon,
@@ -38,10 +39,13 @@ import {
   CheckCircle as CheckCircleIcon,
   CalendarToday as CalendarIcon,
   Fingerprint as FingerprintIcon,
-  MedicalServices as MedicalServicesIcon
+  MedicalServices as MedicalServicesIcon,
+  Lock as LockIcon,
+  LockOpen as LockOpenIcon,
+  Autorenew as AutorenewIcon
 } from '@mui/icons-material';
 
-import { extractCleanPrescriptionId } from '../services/prescriptions';
+import { extractCleanPrescriptionId, verifyPrescriptionBirthYear } from '../services/prescriptions';
 
 const VerifyPrescription = () => {
   const { id: routeId } = useParams<{ id: string }>();
@@ -113,6 +117,55 @@ const VerifyPrescription = () => {
     fetchVerificationData();
   }, [prescriptionId]);
 
+  // Doctor Birth Year Verification State
+  const [birthYearInput, setBirthYearInput] = useState('');
+  const [verifyingBirthYear, setVerifyingBirthYear] = useState(false);
+  const [verifyingAction, setVerifyingAction] = useState<'view' | 'continue_trail' | null>(null);
+  const [birthYearError, setBirthYearError] = useState<string | null>(null);
+  const [birthYearSuccess, setBirthYearSuccess] = useState<string | null>(null);
+
+  const handleVerifyBirthYear = async (action: 'view' | 'continue_trail' = 'view', e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const cleanYear = birthYearInput.trim();
+    const yearNum = parseInt(cleanYear, 10);
+    const currentYear = new Date().getFullYear();
+
+    if (!cleanYear || isNaN(yearNum) || yearNum < 1900 || yearNum > currentYear) {
+      setBirthYearError(`Please enter a valid 4-digit birth year between 1900 and ${currentYear}.`);
+      return;
+    }
+
+    try {
+      setVerifyingBirthYear(true);
+      setVerifyingAction(action);
+      setBirthYearError(null);
+      const res = await verifyPrescriptionBirthYear(prescription.id || prescriptionId, yearNum);
+      if (res.success && res.prescription) {
+        setPrescription({ ...res.prescription, isUnlocked: true });
+        setBirthYearSuccess('✅ Verified! Full clinical record unlocked and patient linked to your practice.');
+        if (action === 'continue_trail') {
+          setTimeout(() => {
+            navigate(`/prescriptions/new?trailRxId=${res.prescription.id || prescriptionId}&patientId=${res.prescription.patientId || prescription.patientId || ''}`);
+          }, 600);
+        }
+      } else {
+        setBirthYearError(res.message || 'Incorrect birth year. Verification failed.');
+      }
+    } catch (err: any) {
+      console.error('Birth year verification error:', err);
+      setBirthYearError(err.response?.data?.message || err.message || 'Incorrect birth year. Please confirm with the patient.');
+    } finally {
+      setVerifyingBirthYear(false);
+      setVerifyingAction(null);
+    }
+  };
+
+  const handleContinueTreatmentTrail = () => {
+    navigate(`/prescriptions/new?trailRxId=${prescription.id || prescriptionId}&patientId=${prescription.patientId || ''}`);
+  };
+
+  const isDoctorGated = user?.role === 'doctor' && prescription.doctorId !== user.id && !prescription.isUnlocked;
+
   const handleDownloadPdf = async () => {
     if (!prescriptionId) return;
     try {
@@ -128,7 +181,6 @@ const VerifyPrescription = () => {
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error('PDF download error:', err);
-      // Direct window open fallback
       window.open(`${getApiBaseUrl()}/prescriptions/public/${prescriptionId}/download`, '_blank');
     } finally {
       setDownloading(false);
@@ -259,7 +311,29 @@ const VerifyPrescription = () => {
           </Box>
         </Box>
 
-        <Stack direction="row" spacing={1.5} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+        <Stack direction="row" spacing={1.5} sx={{ width: { xs: '100%', sm: 'auto' }, flexWrap: 'wrap' }}>
+          {isAuthenticated && user?.role === 'doctor' && !isDoctorGated && (
+            <Button
+              variant="contained"
+              onClick={handleContinueTreatmentTrail}
+              startIcon={<AutorenewIcon />}
+              sx={{
+                background: 'linear-gradient(135deg, #00C896 0%, #009E77 100%)',
+                color: '#0B1315',
+                fontWeight: 900,
+                fontSize: '0.85rem',
+                borderRadius: 2,
+                px: 2.5,
+                py: 1,
+                boxShadow: '0 4px 14px rgba(0, 200, 150, 0.4)',
+                '&:hover': { background: 'linear-gradient(135deg, #00b084 0%, #008f6c 100%)' },
+                flex: { xs: 1, sm: 'initial' }
+              }}
+            >
+              Continue Treatment Trail
+            </Button>
+          )}
+
           <Button
             variant="contained"
             onClick={handleDownloadPdf}
@@ -401,8 +475,8 @@ const VerifyPrescription = () => {
             </Grid>
           </Paper>
 
-          {/* Diagnosis */}
-          {prescription.diagnosis || (prescription.provisionalDiagnosis && prescription.provisionalDiagnosis.length > 0) ? (
+          {/* Diagnosis (Only visible if not gated or already verified) */}
+          {!isDoctorGated && (prescription.diagnosis || (prescription.provisionalDiagnosis && prescription.provisionalDiagnosis.length > 0)) ? (
             <Box sx={{ mb: 3 }}>
               <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#008080', mb: 1, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
                 Diagnosis & Clinical Findings
@@ -415,7 +489,7 @@ const VerifyPrescription = () => {
             </Box>
           ) : null}
 
-          {/* Prescribed Medications */}
+          {/* Prescribed Medications (Names & Types always visible for pharmacy / safety check) */}
           {meds.length > 0 ? (
             <Box sx={{ mb: 3 }}>
               <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#008080', mb: 1.5, letterSpacing: '0.05em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -430,7 +504,7 @@ const VerifyPrescription = () => {
                       <TableCell sx={{ fontWeight: 800, color: '#2D3748' }}>Medicine Name</TableCell>
                       <TableCell sx={{ fontWeight: 800, color: '#2D3748', textAlign: 'center' }}>Dosage</TableCell>
                       <TableCell sx={{ fontWeight: 800, color: '#2D3748', textAlign: 'center' }}>Duration</TableCell>
-                      {hasAnyMedInstr && <TableCell sx={{ fontWeight: 800, color: '#2D3748' }}>Instructions</TableCell>}
+                      {hasAnyMedInstr && !isDoctorGated && <TableCell sx={{ fontWeight: 800, color: '#2D3748' }}>Instructions</TableCell>}
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -439,42 +513,18 @@ const VerifyPrescription = () => {
                       if (m.timing && m.timing !== '-') instrParts.push(m.timing);
                       if (m.mealRelation && m.mealRelation !== '-') instrParts.push(m.mealRelation);
                       if (m.instructions && m.instructions !== '-') instrParts.push(m.instructions);
-                      const instrStr = instrParts.join(' | ');
+                      const instrStr = instrParts.length > 0 ? instrParts.join(' • ') : 'As directed';
 
                       return (
                         <TableRow key={idx} sx={{ '&:nth-of-type(even)': { bgcolor: '#F8FAFC' } }}>
                           <TableCell sx={{ fontWeight: 600, color: '#718096' }}>{idx + 1}</TableCell>
-                          <TableCell>
-                            <Typography variant="body2" sx={{ fontWeight: 700, color: '#2D3748' }}>
-                              {m.name}
-                            </Typography>
-                            {m.type && (
-                              <Typography variant="caption" sx={{ color: '#718096' }}>
-                                ({m.type})
-                              </Typography>
-                            )}
+                          <TableCell sx={{ fontWeight: 700, color: '#2D3748' }}>
+                            {m.name || m.medicineName || 'Medication'}
+                            {m.type && <Chip label={m.type} size="small" sx={{ ml: 1, height: 18, fontSize: '0.65rem', bgcolor: 'rgba(0,128,128,0.1)', color: '#008080', fontWeight: 700 }} />}
                           </TableCell>
-                          <TableCell sx={{ textAlign: 'center', fontWeight: 600, color: '#2D3748' }}>
-                            {m.dosage || '-'}
-                            {m.frequency && (
-                              <Typography variant="caption" sx={{ display: 'block', color: '#718096' }}>
-                                ({m.frequency})
-                              </Typography>
-                            )}
-                          </TableCell>
-                          <TableCell sx={{ textAlign: 'center', fontWeight: 600, color: '#2D3748' }}>
-                            {m.duration || '-'}
-                            {m.quantity && (
-                              <Typography variant="caption" sx={{ display: 'block', color: '#718096' }}>
-                                [Qty: {m.quantity}]
-                              </Typography>
-                            )}
-                          </TableCell>
-                          {hasAnyMedInstr && (
-                            <TableCell sx={{ color: '#4A5568', fontSize: '0.85rem' }}>
-                              {instrStr || '-'}
-                            </TableCell>
-                          )}
+                          <TableCell sx={{ textAlign: 'center', fontWeight: 600, color: '#2D3748' }}>{m.dosage || 'Standard'}</TableCell>
+                          <TableCell sx={{ textAlign: 'center', fontWeight: 600, color: '#2D3748' }}>{m.duration || '-'}</TableCell>
+                          {hasAnyMedInstr && !isDoctorGated && <TableCell sx={{ color: '#4A5568' }}>{instrStr}</TableCell>}
                         </TableRow>
                       );
                     })}
@@ -484,8 +534,100 @@ const VerifyPrescription = () => {
             </Box>
           ) : null}
 
-          {/* Diagnostic Tests */}
-          {invs.length > 0 ? (
+          {/* Doctor Birth Year Verification Gate Card */}
+          {isDoctorGated && (
+            <Paper
+              variant="outlined"
+              sx={{
+                p: 3,
+                my: 3,
+                borderRadius: 3,
+                bgcolor: '#F0FDFA',
+                borderColor: '#008080',
+                borderWidth: 2,
+                borderStyle: 'dashed',
+                textAlign: 'center'
+              }}
+            >
+              <Box sx={{ width: 48, height: 48, borderRadius: '50%', bgcolor: 'rgba(0,128,128,0.12)', color: '#008080', display: 'flex', alignItems: 'center', justifyContent: 'center', mx: 'auto', mb: 1.5 }}>
+                <LockIcon sx={{ fontSize: 26 }} />
+              </Box>
+              <Typography variant="h6" sx={{ fontWeight: 800, color: '#0A2540', mb: 0.5 }}>
+                Full Clinical Details & Diagnosis Locked
+              </Typography>
+              <Typography variant="body2" sx={{ color: '#4A5568', mb: 2.5, maxWidth: 500, mx: 'auto' }}>
+                For patient confidentiality, full clinical diagnosis, lab investigations, and physician notes are protected. Enter the patient's <strong>Birth Year (YYYY)</strong> to unlock the complete medical record and link this patient to your practice.
+              </Typography>
+
+              <Box component="form" onSubmit={(e) => handleVerifyBirthYear('view', e)} sx={{ maxWidth: 360, mx: 'auto', display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  type="number"
+                  placeholder="Birth Year (e.g. 1995)"
+                  value={birthYearInput}
+                  onChange={(e) => setBirthYearInput(e.target.value.slice(0, 4))}
+                  inputProps={{ maxLength: 4, min: 1900, max: new Date().getFullYear() }}
+                  InputProps={{
+                    sx: { borderRadius: 2, bgcolor: '#FFFFFF', fontWeight: 800, fontSize: '1.1rem', textAlign: 'center', letterSpacing: '2px' }
+                  }}
+                  disabled={verifyingBirthYear}
+                />
+                {birthYearError && (
+                  <Alert severity="error" sx={{ borderRadius: 2, fontSize: '0.85rem', fontWeight: 600 }}>
+                    {birthYearError}
+                  </Alert>
+                )}
+                {birthYearSuccess && (
+                  <Alert severity="success" sx={{ borderRadius: 2, fontSize: '0.85rem', fontWeight: 600 }}>
+                    {birthYearSuccess}
+                  </Alert>
+                )}
+                <Box sx={{ display: 'flex', gap: 1, mt: 0.5, flexWrap: 'wrap' }}>
+                  <Button
+                    variant="outlined"
+                    type="button"
+                    onClick={(e) => handleVerifyBirthYear('view', e)}
+                    disabled={verifyingBirthYear || birthYearInput.length !== 4}
+                    startIcon={verifyingBirthYear && verifyingAction === 'view' ? <CircularProgress size={16} color="inherit" /> : <LockOpenIcon />}
+                    sx={{
+                      flex: 1,
+                      borderColor: '#008080',
+                      color: '#008080',
+                      fontWeight: 800,
+                      py: 1.1,
+                      borderRadius: 2,
+                      '&:hover': { bgcolor: 'rgba(0, 128, 128, 0.08)' }
+                    }}
+                  >
+                    {verifyingBirthYear && verifyingAction === 'view' ? 'Verifying...' : 'Unlock & View'}
+                  </Button>
+                  <Button
+                    variant="contained"
+                    type="button"
+                    onClick={(e) => handleVerifyBirthYear('continue_trail', e)}
+                    disabled={verifyingBirthYear || birthYearInput.length !== 4}
+                    startIcon={verifyingBirthYear && verifyingAction === 'continue_trail' ? <CircularProgress size={18} color="inherit" /> : <AutorenewIcon />}
+                    sx={{
+                      flex: 1.2,
+                      background: 'linear-gradient(135deg, #00C896 0%, #009E77 100%)',
+                      color: '#0B1315',
+                      fontWeight: 900,
+                      py: 1.1,
+                      borderRadius: 2,
+                      boxShadow: '0 4px 14px rgba(0, 200, 150, 0.3)',
+                      '&:hover': { background: 'linear-gradient(135deg, #00b084 0%, #008f6c 100%)' }
+                    }}
+                  >
+                    {verifyingBirthYear && verifyingAction === 'continue_trail' ? 'Verifying...' : 'Continue Trail'}
+                  </Button>
+                </Box>
+              </Box>
+            </Paper>
+          )}
+
+          {/* Diagnostic Tests (Only if not gated) */}
+          {!isDoctorGated && invs.length > 0 ? (
             <Box sx={{ mb: 3 }}>
               <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#008080', mb: 1.5, letterSpacing: '0.05em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 1 }}>
                 <ScienceIcon fontSize="small" /> Required Investigations
@@ -530,8 +672,8 @@ const VerifyPrescription = () => {
             </Box>
           ) : null}
 
-          {/* Recommendations & Lifestyle */}
-          {(diet.length > 0 || lifestyle.length > 0 || warnings.length > 0) ? (
+          {/* Recommendations & Lifestyle (Only if not gated) */}
+          {!isDoctorGated && (diet.length > 0 || lifestyle.length > 0 || warnings.length > 0) ? (
             <Box sx={{ mb: 3 }}>
               <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#008080', mb: 1.5, letterSpacing: '0.05em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 1 }}>
                 <DietIcon fontSize="small" /> Advice & Recommendations

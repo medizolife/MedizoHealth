@@ -9,6 +9,7 @@ import { digilockerAPI } from '../services/api';
 import { Patient } from '../types/auth';
 import { Prescription } from '../types/prescription';
 import QrScannerModal from '../components/QrScannerModal';
+import PrescriptionBirthYearModal from '../components/PrescriptionBirthYearModal';
 import InvestigationDetailDialog from '../components/InvestigationDetailDialog';
 import { FamilyProfile, CreateFamilyProfileData, RELATIONSHIP_LABELS, RELATIONSHIP_ICONS } from '../types/familyProfile';
 import { getProfilesByAccountId, createFamilyProfileForAccount } from '../services/familyProfiles';
@@ -121,6 +122,7 @@ import {
 import api from '../services/api';
 import { useThemeContext } from '../contexts/ThemeContext';
 import DigiLockerWarmupModal from '../components/DigiLockerWarmupModal';
+import EditPatientProfileModal from '../components/EditPatientProfileModal';
 import { CreatePrescriptionData, MedicationItem, Investigation, VitalSigns, FollowUpInfo } from '../types/prescription';
 
 const NewPrescription = () => {
@@ -376,6 +378,34 @@ const NewPrescription = () => {
     notes: ''
   });
 
+  // Prescription issued date & time state
+  const [prescriptionDate, setPrescriptionDate] = useState<string>(() => {
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  });
+
+  // Edit Patient Profile modal state
+  const [editPatientModalOpen, setEditPatientModalOpen] = useState(false);
+
+  const handlePatientProfileUpdated = (updated: any) => {
+    if (selectedProfile) {
+      setSelectedProfile(prev => prev ? ({ ...prev, ...updated }) : null);
+      setFamilyProfiles(prev => prev.map(p => p.id === updated.id ? { ...p, ...updated } : p));
+    }
+    setSelectedPatient(prev => prev ? ({ ...prev, ...updated }) : null);
+    setPatients(prev => prev.map(p => (p.id === updated.id || (p as any)._id === updated.id) ? { ...p, ...updated } : p));
+
+    if (updated.phone || updated.contactNumber) {
+      setFormData(prev => ({ ...prev, patientPhone: updated.phone || updated.contactNumber }));
+    }
+    setRxSnackbar({
+      open: true,
+      message: 'Patient profile updated successfully!',
+      severity: 'success'
+    });
+  };
+
   // ─── Indian Billing & Consultation Fee State ───
   const [generateBillEnabled, setGenerateBillEnabled] = useState(true);
   const [billingVisitType, setBillingVisitType] = useState<'standard' | 'follow_up' | 'custom'>('standard');
@@ -491,6 +521,18 @@ const NewPrescription = () => {
   const handlePatientChange = (e: SelectChangeEvent<string>) => {
     const val = e.target.value;
     setFormData(prev => ({ ...prev, patientId: val }));
+  };
+
+  const detectMedicineForm = (name: string = ''): 'Tablet' | 'Capsule' | 'Syrup' | 'Injection' | 'Ointment' | 'Drops' | null => {
+    if (!name || typeof name !== 'string') return null;
+    const n = ` ${name.toLowerCase()} `;
+    if (/\b(eye\s*drops?|ear\s*drops?|nasal\s*drops?|ophthalmic|drops?)\b/i.test(n)) return 'Drops';
+    if (/\b(injection|inj|infusion|iv\s+infusion|ampoule|vial)\b/i.test(n)) return 'Injection';
+    if (/\b(dry\s+syrup|syrup|suspension|susp|elixir|oral\s+liquid|oral\s+solution|syp)\b/i.test(n)) return 'Syrup';
+    if (/\b(capsules?|caps?|softgels?)\b/i.test(n)) return 'Capsule';
+    if (/\b(ointments?|oints?|creams?|gels?|emulgels?|lotions?|liniments?)\b/i.test(n)) return 'Ointment';
+    if (/\b(tablets?|tabs?|caplets?|chewable|dispersible)\b/i.test(n)) return 'Tablet';
+    return null;
   };
 
   const getDispensaryUnit = (medForm: string = 'Tablet') => {
@@ -793,7 +835,7 @@ const NewPrescription = () => {
   // Update selected patient when patientId changes + fetch past prescriptions
   useEffect(() => {
     if (formData.patientId) {
-      const patient = patients.find(p => p.id === formData.patientId);
+      const patient = patients.find(p => (p.id || (p as any)._id) === formData.patientId);
       setSelectedPatient(patient || null);
 
       // Fetch family profiles for this patient account
@@ -848,6 +890,10 @@ const NewPrescription = () => {
     }
   }, [formData.patientId, patients]);
 
+  // Birth Year Verification Gate for External Prescription Import
+  const [birthYearModalOpen, setBirthYearModalOpen] = useState(false);
+  const [pendingExternalRx, setPendingExternalRx] = useState<any>(null);
+
   // Handle External QR Scan Success
   const handleExternalQrScanSuccess = async (decodedText: string) => {
     setExternalQrScannerOpen(false);
@@ -861,6 +907,10 @@ const NewPrescription = () => {
         // Check if already scanned
         if (scannedExternalPrescriptions.some(s => s.id === rx.id)) {
           setRxSnackbar({ open: true, message: '⚠️ This prescription has already been added.', severity: 'warning' });
+        } else if (user?.role === 'doctor' && rx.doctorId !== user.id && !rx.isUnlocked) {
+          // Gate behind Birth Year verification (shows medicine names and patient name only)
+          setPendingExternalRx(rx);
+          setBirthYearModalOpen(true);
         } else {
           setScannedExternalPrescriptions(prev => [...prev, rx]);
           setRxSnackbar({ open: true, message: `✅ External prescription from Dr. ${(rx as any).doctorName || 'Unknown'} loaded successfully!`, severity: 'success' });
@@ -886,6 +936,10 @@ const NewPrescription = () => {
         const rx = result.prescription as Prescription;
         if (scannedExternalPrescriptions.some(s => s.id === rx.id)) {
           setRxSnackbar({ open: true, message: '⚠️ This prescription has already been added.', severity: 'warning' });
+        } else if (user?.role === 'doctor' && rx.doctorId !== user.id && !rx.isUnlocked) {
+          setPendingExternalRx(rx);
+          setBirthYearModalOpen(true);
+          setExternalLookupCode('');
         } else {
           setScannedExternalPrescriptions(prev => [...prev, rx]);
           setRxSnackbar({ open: true, message: `✅ External prescription loaded!`, severity: 'success' });
@@ -897,6 +951,51 @@ const NewPrescription = () => {
       setRxSnackbar({ open: true, message: `❌ ${msg}`, severity: 'error' });
     } finally {
       setExternalLookupLoading(false);
+    }
+  };
+
+  // Auto-load treatment trail from URL parameter (?trailRxId=...&patientId=...)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const urlParams = new URLSearchParams(window.location.search);
+    const trailRxId = urlParams.get('trailRxId');
+    const patientId = urlParams.get('patientId');
+
+    if (patientId && !formData.patientId) {
+      setFormData(prev => ({ ...prev, patientId }));
+    }
+
+    if (trailRxId) {
+      lookupPrescriptionByCode(trailRxId).then(res => {
+        if (res.success && res.prescription) {
+          const rx = res.prescription;
+          if (rx.patientId && !formData.patientId) {
+            setFormData(prev => ({ ...prev, patientId: rx.patientId }));
+          }
+          setScannedExternalPrescriptions(prev => {
+            if (prev.some(p => p.id === rx.id)) return prev;
+            return [...prev, rx];
+          });
+          setTimeout(() => {
+            handleToggleTreatmentTrail(rx);
+          }, 400);
+        }
+      }).catch(err => console.error('Error auto-loading trail Rx:', err));
+    }
+  }, []);
+
+  const handleExternalBirthYearVerified = (unlockedRx: any, action?: 'view' | 'continue_trail') => {
+    setScannedExternalPrescriptions(prev => {
+      if (prev.some(s => s.id === unlockedRx.id)) return prev;
+      return [...prev, unlockedRx];
+    });
+
+    if (action === 'view') {
+      setRxSnackbar({ open: true, message: `✅ External prescription verified!`, severity: 'success' });
+    } else {
+      // Automatically activate treatment trail into current form
+      handleToggleTreatmentTrail(unlockedRx);
+      setRxSnackbar({ open: true, message: `⚡ Treatment Trail Active! Past medications & diagnosis loaded into form.`, severity: 'success' });
     }
   };
 
@@ -1178,6 +1277,12 @@ const NewPrescription = () => {
       
       // Build prescription data with profile info if available
       const prescriptionData: any = { ...formData };
+      if (prescriptionDate) {
+        const isoDate = new Date(prescriptionDate).toISOString();
+        prescriptionData.createdAt = isoDate;
+        prescriptionData.issuedDate = isoDate;
+        prescriptionData.prescriptionDate = isoDate;
+      }
       if (selectedProfile) {
         prescriptionData.familyProfileId = selectedProfile.id;
         prescriptionData.accountId = selectedProfile.accountId;
@@ -1643,10 +1748,12 @@ const NewPrescription = () => {
                     options={patients}
                     value={patients.find(p => (p.id || (p as any)._id) === formData.patientId) || null}
                     onChange={(_, newValue) => {
+                      const newId = newValue ? (newValue.id || (newValue as any)._id) : '';
                       setFormData(prev => ({
                         ...prev,
-                        patientId: newValue ? (newValue.id || (newValue as any)._id) : ''
+                        patientId: newId
                       }));
+                      setSelectedPatient(newValue || null);
                     }}
                     getOptionLabel={(option) => {
                       if (!option) return '';
@@ -1790,6 +1897,81 @@ const NewPrescription = () => {
                       </Box>
                     }
                   />
+                </Grid>
+
+                {/* Prescription Issued Date & Time Selector */}
+                <Grid item xs={12}>
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      p: { xs: 1.8, sm: 2 },
+                      borderRadius: '18px',
+                      border: mode === 'dark' ? '1.5px solid rgba(16, 185, 129, 0.25)' : '1.5px solid rgba(16, 185, 129, 0.2)',
+                      bgcolor: mode === 'dark' ? 'rgba(15, 23, 42, 0.6)' : 'rgba(240, 253, 250, 0.7)',
+                      display: 'flex',
+                      flexDirection: { xs: 'column', md: 'row' },
+                      alignItems: { xs: 'flex-start', md: 'center' },
+                      justifyContent: 'space-between',
+                      gap: 1.5
+                    }}
+                  >
+                    <Box>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.3 }}>
+                        <EventIcon sx={{ color: mode === 'dark' ? '#34D399' : '#059669', fontSize: 20 }} />
+                        <Typography variant="subtitle2" sx={{ fontWeight: 800, color: mode === 'dark' ? '#FAF2F5' : '#0f172a' }}>
+                          Prescription Issued Date & Time
+                        </Typography>
+                      </Box>
+                      <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600, display: 'block' }}>
+                        Set the official consultation & issue date recorded on this prescription
+                      </Typography>
+                    </Box>
+
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', width: { xs: '100%', md: 'auto' } }}>
+                      <Box sx={{ display: 'flex', gap: 0.8, flexWrap: 'wrap' }}>
+                        <Chip
+                          label="Now / Today"
+                          size="small"
+                          onClick={() => {
+                            const now = new Date();
+                            const pad = (n: number) => String(n).padStart(2, '0');
+                            setPrescriptionDate(`${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`);
+                          }}
+                          clickable
+                          variant="outlined"
+                          sx={{ fontWeight: 700, borderRadius: '8px', fontSize: '0.72rem' }}
+                        />
+                        <Chip
+                          label="Yesterday"
+                          size="small"
+                          onClick={() => {
+                            const d = new Date();
+                            d.setDate(d.getDate() - 1);
+                            const pad = (n: number) => String(n).padStart(2, '0');
+                            setPrescriptionDate(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`);
+                          }}
+                          clickable
+                          variant="outlined"
+                          sx={{ fontWeight: 700, borderRadius: '8px', fontSize: '0.72rem' }}
+                        />
+                      </Box>
+
+                      <TextField
+                        type="datetime-local"
+                        size="small"
+                        value={prescriptionDate}
+                        onChange={(e) => setPrescriptionDate(e.target.value)}
+                        sx={{
+                          width: { xs: '100%', sm: 230 },
+                          '& .MuiOutlinedInput-root': {
+                            borderRadius: '12px',
+                            fontWeight: 700,
+                            bgcolor: mode === 'dark' ? 'rgba(30, 41, 59, 0.8)' : '#ffffff'
+                          }
+                        }}
+                      />
+                    </Box>
+                  </Paper>
                 </Grid>
 
                 {/* Family Profiles Bar */}
@@ -1975,10 +2157,37 @@ const NewPrescription = () => {
                             <Typography variant="caption" sx={{ color: mode === 'dark' ? '#89D7B7' : '#428475', fontWeight: 700, display: 'block' }}>
                               {selectedPatient.email}
                               {(selectedPatient as any).dateOfBirth && ` • ${new Date().getFullYear() - new Date((selectedPatient as any).dateOfBirth).getFullYear()} yrs`}
+                              {((selectedPatient as any).gender || selectedProfile?.gender) && ` • ${(selectedProfile?.gender || (selectedPatient as any).gender).toUpperCase()}`}
                             </Typography>
                           </Box>
                         </Box>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            startIcon={<EditIcon sx={{ fontSize: 14 }} />}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditPatientModalOpen(true);
+                            }}
+                            sx={{
+                              borderRadius: '12px',
+                              fontWeight: 800,
+                              fontSize: '0.74rem',
+                              py: 0.5,
+                              px: 1.5,
+                              borderColor: mode === 'dark' ? 'rgba(52, 211, 153, 0.4)' : 'rgba(16, 185, 129, 0.4)',
+                              color: mode === 'dark' ? '#34D399' : '#059669',
+                              bgcolor: mode === 'dark' ? 'rgba(52, 211, 153, 0.08)' : 'rgba(16, 185, 129, 0.06)',
+                              textTransform: 'none',
+                              '&:hover': {
+                                bgcolor: mode === 'dark' ? 'rgba(52, 211, 153, 0.18)' : 'rgba(16, 185, 129, 0.12)',
+                                borderColor: '#10B981'
+                              }
+                            }}
+                          >
+                            Edit Profile
+                          </Button>
                           {pastDoctorPrescriptions.length > 0 && (
                             <Chip
                               label={`${pastDoctorPrescriptions.length} Past Rx`}
@@ -1996,6 +2205,14 @@ const NewPrescription = () => {
                         {/* Patient Details Grid */}
                         <Box sx={{ px: 2, py: 1.5 }}>
                           <Grid container spacing={1.5}>
+                            {((selectedPatient as any).gender || selectedProfile?.gender) && (
+                              <Grid item xs={6} sm={4}>
+                                <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.62rem', display: 'block' }}>⚧ Gender</Typography>
+                                <Typography variant="body2" sx={{ fontWeight: 700, color: mode === 'dark' ? '#FAF2F5' : '#1A312C', fontSize: '0.82rem', textTransform: 'capitalize' }}>
+                                  {(selectedProfile?.gender || (selectedPatient as any).gender)}
+                                </Typography>
+                              </Grid>
+                            )}
                             {selectedPatient.contactNumber && (
                               <Grid item xs={6} sm={4}>
                                 <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.62rem', display: 'block' }}>📱 Phone</Typography>
@@ -2437,17 +2654,23 @@ const NewPrescription = () => {
               </Grid>
             </Paper>
 
-            {/* ─── 2. Vital Signs Section Card ─── */}
-            <Paper 
-              className={mode === 'dark' ? 'apple-glass-card-dark' : 'apple-glass-card'} 
-              sx={{ 
-                p: { xs: 2.2, sm: 3 }, 
-                mb: 3, 
-                borderRadius: '24px !important',
-                background: mode === 'dark' ? 'rgba(15, 23, 42, 0.85) !important' : 'rgba(255, 255, 255, 0.95) !important',
-                boxShadow: '0 10px 30px -5px rgba(16, 185, 129, 0.08) !important'
-              }}
-            >
+            {/* ─── 2. Vital Signs Section Card (Only shown when patient is selected) ─── */}
+            {Boolean(selectedPatient || formData.patientId) && (
+              <Paper 
+                className={mode === 'dark' ? 'apple-glass-card-dark' : 'apple-glass-card'} 
+                sx={{ 
+                  p: { xs: 2.2, sm: 3 }, 
+                  mb: 3, 
+                  borderRadius: '24px !important',
+                  background: mode === 'dark' ? 'rgba(15, 23, 42, 0.85) !important' : 'rgba(255, 255, 255, 0.95) !important',
+                  boxShadow: '0 10px 30px -5px rgba(16, 185, 129, 0.08) !important',
+                  animation: 'vitalSignsFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
+                  '@keyframes vitalSignsFadeIn': {
+                    '0%': { opacity: 0, transform: 'translateY(12px)' },
+                    '100%': { opacity: 1, transform: 'translateY(0)' }
+                  }
+                }}
+              >
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2.5 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Box sx={{ p: 1, borderRadius: '12px', bgcolor: 'rgba(16, 185, 129, 0.12)', color: '#10B981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -2766,6 +2989,7 @@ const NewPrescription = () => {
                 </Grid>
               </Grid>
             </Paper>
+            )}
           </Box>
         )}
 
@@ -3177,6 +3401,122 @@ const NewPrescription = () => {
                 />
               </Box>
 
+              {/* Mobile-Friendly Prescribed Items List (Displayed at top of 4. Rx) */}
+              {formData.medications && formData.medications.length > 0 && (
+                <Box sx={{ mb: 2.5, animation: 'medListFadeIn 0.3s ease-in-out', '@keyframes medListFadeIn': { '0%': { opacity: 0, transform: 'translateY(-6px)' }, '100%': { opacity: 1, transform: 'translateY(0)' } } }}>
+                  <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#34D399' : '#059669', textTransform: 'uppercase', letterSpacing: 0.6, fontSize: '0.72rem', display: 'block', mb: 1.2 }}>
+                    Prescribed Items List ({formData.medications.length})
+                  </Typography>
+                  {formData.medications.map((med, idx) => (
+                    <Card 
+                      key={idx} 
+                      variant="outlined" 
+                      className="touch-active"
+                      sx={{ 
+                        mb: 1.5, 
+                        p: 2, 
+                        borderRadius: '20px', 
+                        bgcolor: mode === 'dark' ? 'rgba(15, 23, 42, 0.85)' : '#ffffff',
+                        borderColor: mode === 'dark' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(16, 185, 129, 0.2)',
+                        boxShadow: '0 4px 16px rgba(16, 185, 129, 0.06)'
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <Box sx={{ width: '100%' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 1 }}>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 900, color: mode === 'dark' ? '#FAF2F5' : '#0F172A' }}>
+                              {idx + 1}. {med.name}
+                            </Typography>
+                            {med.type && (
+                              <Chip label={med.type} size="small" sx={{ height: 22, fontSize: '0.68rem', fontWeight: 800, bgcolor: 'rgba(16, 185, 129, 0.12)', color: mode === 'dark' ? '#34D399' : '#059669', borderRadius: '8px' }} />
+                            )}
+                          </Box>
+                          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 0.8 }}>
+                            <Chip 
+                              label={`Dosage: ${med.dosage || 'As directed'}`} 
+                              size="small" 
+                              sx={{ fontWeight: 800, bgcolor: 'rgba(16, 185, 129, 0.1)', color: '#059669', fontSize: '0.72rem', borderRadius: '8px' }} 
+                            />
+                            {med.intervalDays && Number(med.intervalDays) > 1 && (
+                              <Chip 
+                                label={`🔄 Interval: ${Number(med.intervalDays) === 2 ? 'Alternate Days (Every 2d)' : Number(med.intervalDays) === 7 ? 'Weekly (Every 7d)' : `Every ${med.intervalDays} Days`}`} 
+                                size="small" 
+                                sx={{ fontWeight: 900, background: 'linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%)', color: '#ffffff', fontSize: '0.72rem', borderRadius: '8px' }} 
+                              />
+                            )}
+                            <Chip 
+                              label={`⏱️ Duration: ${med.duration || 'N/A'}`} 
+                              size="small" 
+                              sx={{ fontWeight: 800, bgcolor: 'rgba(59, 130, 246, 0.1)', color: '#2563EB', fontSize: '0.72rem', borderRadius: '8px' }} 
+                            />
+                            {med.quantity && (
+                              <Chip 
+                                label={`📦 Quantity: ${med.quantity}`} 
+                                size="small" 
+                                sx={{ fontWeight: 800, bgcolor: 'rgba(168, 85, 247, 0.1)', color: '#9333EA', fontSize: '0.72rem', borderRadius: '8px' }} 
+                              />
+                            )}
+                          </Box>
+
+                          {med.isSOS && (
+                            <Box sx={{ mb: 0.8 }}>
+                              <Chip
+                                icon={<SosIcon sx={{ fontSize: 14, color: '#fff !important' }} />}
+                                label={`🆘 SOS (Only When Needed)${med.sosReason ? `: ${med.sosReason}` : ''}`}
+                                size="small"
+                                sx={{ fontWeight: 800, bgcolor: '#EF4444', color: '#fff', fontSize: '0.68rem', height: 22, borderRadius: '8px' }}
+                              />
+                            </Box>
+                          )}
+
+                          {med.timing && ((med.timing.morning || 0) > 0 || (med.timing.afternoon || 0) > 0 || (med.timing.evening || 0) > 0 || (med.timing.night || 0) > 0) && (
+                            <Box sx={{ display: 'flex', gap: 0.6, flexWrap: 'wrap', mb: 0.8 }}>
+                              {(med.timing.morning || 0) > 0 && (
+                                <Chip
+                                  label={`🌅 ×${med.timing.morning} Morning${med.mealRelations?.morning ? ` · ${med.mealRelations.morning}` : ''}`}
+                                  size="small"
+                                  sx={{ fontWeight: 800, bgcolor: 'rgba(245, 158, 11, 0.15)', color: '#D97706', fontSize: '0.68rem', height: 24, borderRadius: '8px' }}
+                                />
+                              )}
+                              {(med.timing.afternoon || 0) > 0 && (
+                                <Chip
+                                  label={`☀️ ×${med.timing.afternoon} Afternoon${med.mealRelations?.afternoon ? ` · ${med.mealRelations.afternoon}` : ''}`}
+                                  size="small"
+                                  sx={{ fontWeight: 800, bgcolor: 'rgba(234, 179, 8, 0.15)', color: '#CA8A04', fontSize: '0.68rem', height: 24, borderRadius: '8px' }}
+                                />
+                              )}
+                              {(med.timing.evening || 0) > 0 && (
+                                <Chip
+                                  label={`🌆 ×${med.timing.evening} Evening${med.mealRelations?.evening ? ` · ${med.mealRelations.evening}` : ''}`}
+                                  size="small"
+                                  sx={{ fontWeight: 800, bgcolor: 'rgba(249, 115, 22, 0.15)', color: '#EA580C', fontSize: '0.68rem', height: 24, borderRadius: '8px' }}
+                                />
+                              )}
+                              {(med.timing.night || 0) > 0 && (
+                                <Chip
+                                  label={`🌙 ×${med.timing.night} Night${med.mealRelations?.night ? ` · ${med.mealRelations.night}` : ''}`}
+                                  size="small"
+                                  sx={{ fontWeight: 800, bgcolor: 'rgba(99, 102, 241, 0.15)', color: '#4F46E5', fontSize: '0.68rem', height: 24, borderRadius: '8px' }}
+                                />
+                              )}
+                            </Box>
+                          )}
+
+                          {med.instructions && (
+                            <Typography variant="caption" sx={{ display: 'block', color: '#64748B', fontStyle: 'italic', mt: 0.5 }}>
+                              "{med.instructions}"
+                            </Typography>
+                          )}
+                        </Box>
+                        <IconButton size="small" onClick={() => removeMedication(idx)} sx={{ color: '#EF4444', bgcolor: 'rgba(239, 68, 68, 0.08)', ml: 1, '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.18)' } }}>
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
+                    </Card>
+                  ))}
+                </Box>
+              )}
+
               {/* Add New Medication Glass Container */}
               <Paper 
                 variant="outlined" 
@@ -3207,8 +3547,28 @@ const NewPrescription = () => {
                       onClose={() => setMedSearchOpen(false)}
                       options={filteredMedicineOptions}
                       value={newMedication.name}
-                      onInputChange={(e, val) => {
-                        setNewMedication({ ...newMedication, name: val });
+                      onChange={(_, selectedVal) => {
+                        const medName = typeof selectedVal === 'string' ? selectedVal : (selectedVal || '');
+                        const detectedType = detectMedicineForm(medName);
+                        const updatedType = detectedType || newMedication.type || 'Tablet';
+                        const updated = recalcMedication({
+                          ...newMedication,
+                          name: medName,
+                          type: updatedType
+                        });
+                        setNewMedication(updated);
+                        setMedSearchOpen(false);
+                      }}
+                      onInputChange={(e, val, reason) => {
+                        if (reason === 'reset' && !val) return;
+                        const detectedType = detectMedicineForm(val);
+                        const updatedType = detectedType || newMedication.type || 'Tablet';
+                        const updated = recalcMedication({
+                          ...newMedication,
+                          name: val,
+                          ...(detectedType ? { type: detectedType } : {})
+                        });
+                        setNewMedication(updated);
                         if (val.trim().length >= 2) {
                           setMedSearchOpen(true);
                         } else {
@@ -3236,11 +3596,13 @@ const NewPrescription = () => {
                         }
                       }}
                       renderOption={(props, option) => {
-                        const isCapsule = option.toLowerCase().includes('capsule');
-                        const isSyrup = option.toLowerCase().includes('syrup') || option.toLowerCase().includes('suspension');
-                        const isInj = option.toLowerCase().includes('injection') || option.toLowerCase().includes('inj');
-                        const isDrop = option.toLowerCase().includes('drop');
-                        const formIcon = isCapsule ? '💊' : isSyrup ? '🧪' : isInj ? '💉' : isDrop ? '💧' : '💊';
+                        const detected = detectMedicineForm(option) || 'Tablet';
+                        const formIcon = detected === 'Capsule' ? '💊' 
+                          : detected === 'Syrup' ? '🧪' 
+                          : detected === 'Injection' ? '💉' 
+                          : detected === 'Drops' ? '💧' 
+                          : detected === 'Ointment' ? '🧴' 
+                          : '💊';
                         
                         return (
                           <Box 
@@ -3255,6 +3617,7 @@ const NewPrescription = () => {
                               fontSize: '0.85rem',
                               display: 'flex',
                               alignItems: 'center',
+                              justifyContent: 'space-between',
                               gap: 1.2,
                               color: mode === 'dark' ? '#FAF2F5' : '#0F172A',
                               transition: 'all 0.15s ease',
@@ -3264,12 +3627,35 @@ const NewPrescription = () => {
                               }
                             }}
                           >
-                            <span style={{ fontSize: '1.1rem' }}>{formIcon}</span>
-                            <Box sx={{ flexGrow: 1 }}>
-                              <Typography variant="body2" sx={{ fontWeight: 700, color: 'inherit' }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2, flex: 1, minWidth: 0 }}>
+                              <span style={{ fontSize: '1.1rem', flexShrink: 0 }}>{formIcon}</span>
+                              <Typography variant="body2" sx={{ fontWeight: 700, color: 'inherit', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {option}
                               </Typography>
                             </Box>
+                            <Chip
+                              label={detected}
+                              size="small"
+                              sx={{
+                                height: 20,
+                                fontSize: '0.65rem',
+                                fontWeight: 800,
+                                flexShrink: 0,
+                                bgcolor: detected === 'Syrup' ? 'rgba(16, 185, 129, 0.15)'
+                                  : detected === 'Injection' ? 'rgba(239, 68, 68, 0.15)'
+                                  : detected === 'Capsule' ? 'rgba(139, 92, 246, 0.15)'
+                                  : detected === 'Drops' ? 'rgba(6, 182, 212, 0.15)'
+                                  : detected === 'Ointment' ? 'rgba(245, 158, 11, 0.15)'
+                                  : 'rgba(59, 130, 246, 0.15)',
+                                color: detected === 'Syrup' ? '#059669'
+                                  : detected === 'Injection' ? '#DC2626'
+                                  : detected === 'Capsule' ? '#7C3AED'
+                                  : detected === 'Drops' ? '#0891B2'
+                                  : detected === 'Ointment' ? '#D97706'
+                                  : '#2563EB',
+                                borderRadius: '6px'
+                              }}
+                            />
                           </Box>
                         );
                       }}
@@ -4128,122 +4514,6 @@ const NewPrescription = () => {
                   </Grid>
                 </Grid>
               </Paper>
-
-              {/* Mobile-Friendly Added Medication Cards */}
-              {formData.medications && formData.medications.length > 0 && (
-                <Box sx={{ mb: 3 }}>
-                  <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#34D399' : '#059669', textTransform: 'uppercase', letterSpacing: 0.6, fontSize: '0.72rem', display: 'block', mb: 1.2 }}>
-                    Prescribed Items List ({formData.medications.length})
-                  </Typography>
-                  {formData.medications.map((med, idx) => (
-                    <Card 
-                      key={idx} 
-                      variant="outlined" 
-                      className="touch-active"
-                      sx={{ 
-                        mb: 1.5, 
-                        p: 2, 
-                        borderRadius: '20px', 
-                        bgcolor: mode === 'dark' ? 'rgba(15, 23, 42, 0.85)' : '#ffffff',
-                        borderColor: mode === 'dark' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(16, 185, 129, 0.2)',
-                        boxShadow: '0 4px 16px rgba(16, 185, 129, 0.06)'
-                      }}
-                    >
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <Box sx={{ width: '100%' }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 1 }}>
-                            <Typography variant="subtitle1" sx={{ fontWeight: 900, color: mode === 'dark' ? '#FAF2F5' : '#0F172A' }}>
-                              {idx + 1}. {med.name}
-                            </Typography>
-                            {med.type && (
-                              <Chip label={med.type} size="small" sx={{ height: 22, fontSize: '0.68rem', fontWeight: 800, bgcolor: 'rgba(16, 185, 129, 0.12)', color: mode === 'dark' ? '#34D399' : '#059669', borderRadius: '8px' }} />
-                            )}
-                          </Box>
-                          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 0.8 }}>
-                            <Chip 
-                              label={`Dosage: ${med.dosage || 'As directed'}`} 
-                              size="small" 
-                              sx={{ fontWeight: 800, bgcolor: 'rgba(16, 185, 129, 0.1)', color: '#059669', fontSize: '0.72rem', borderRadius: '8px' }} 
-                            />
-                            {med.intervalDays && Number(med.intervalDays) > 1 && (
-                              <Chip 
-                                label={`🔄 Interval: ${Number(med.intervalDays) === 2 ? 'Alternate Days (Every 2d)' : Number(med.intervalDays) === 7 ? 'Weekly (Every 7d)' : `Every ${med.intervalDays} Days`}`} 
-                                size="small" 
-                                sx={{ fontWeight: 900, background: 'linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%)', color: '#ffffff', fontSize: '0.72rem', borderRadius: '8px' }} 
-                              />
-                            )}
-                            <Chip 
-                              label={`⏱️ Duration: ${med.duration || 'N/A'}`} 
-                              size="small" 
-                              sx={{ fontWeight: 800, bgcolor: 'rgba(59, 130, 246, 0.1)', color: '#2563EB', fontSize: '0.72rem', borderRadius: '8px' }} 
-                            />
-                            {med.quantity && (
-                              <Chip 
-                                label={`📦 Quantity: ${med.quantity}`} 
-                                size="small" 
-                                sx={{ fontWeight: 800, bgcolor: 'rgba(168, 85, 247, 0.1)', color: '#9333EA', fontSize: '0.72rem', borderRadius: '8px' }} 
-                              />
-                            )}
-                          </Box>
-
-                          {med.isSOS && (
-                            <Box sx={{ mb: 0.8 }}>
-                              <Chip
-                                icon={<SosIcon sx={{ fontSize: 14, color: '#fff !important' }} />}
-                                label={`🆘 SOS (Only When Needed)${med.sosReason ? `: ${med.sosReason}` : ''}`}
-                                size="small"
-                                sx={{ fontWeight: 800, bgcolor: '#EF4444', color: '#fff', fontSize: '0.68rem', height: 22, borderRadius: '8px' }}
-                              />
-                            </Box>
-                          )}
-
-                          {med.timing && ((med.timing.morning || 0) > 0 || (med.timing.afternoon || 0) > 0 || (med.timing.evening || 0) > 0 || (med.timing.night || 0) > 0) && (
-                            <Box sx={{ display: 'flex', gap: 0.6, flexWrap: 'wrap', mb: 0.8 }}>
-                              {(med.timing.morning || 0) > 0 && (
-                                <Chip
-                                  label={`🌅 ×${med.timing.morning} Morning${med.mealRelations?.morning ? ` · ${med.mealRelations.morning}` : ''}`}
-                                  size="small"
-                                  sx={{ fontWeight: 800, bgcolor: 'rgba(245, 158, 11, 0.15)', color: '#D97706', fontSize: '0.68rem', height: 24, borderRadius: '8px' }}
-                                />
-                              )}
-                              {(med.timing.afternoon || 0) > 0 && (
-                                <Chip
-                                  label={`☀️ ×${med.timing.afternoon} Afternoon${med.mealRelations?.afternoon ? ` · ${med.mealRelations.afternoon}` : ''}`}
-                                  size="small"
-                                  sx={{ fontWeight: 800, bgcolor: 'rgba(234, 179, 8, 0.15)', color: '#CA8A04', fontSize: '0.68rem', height: 24, borderRadius: '8px' }}
-                                />
-                              )}
-                              {(med.timing.evening || 0) > 0 && (
-                                <Chip
-                                  label={`🌆 ×${med.timing.evening} Evening${med.mealRelations?.evening ? ` · ${med.mealRelations.evening}` : ''}`}
-                                  size="small"
-                                  sx={{ fontWeight: 800, bgcolor: 'rgba(249, 115, 22, 0.15)', color: '#EA580C', fontSize: '0.68rem', height: 24, borderRadius: '8px' }}
-                                />
-                              )}
-                              {(med.timing.night || 0) > 0 && (
-                                <Chip
-                                  label={`🌙 ×${med.timing.night} Night${med.mealRelations?.night ? ` · ${med.mealRelations.night}` : ''}`}
-                                  size="small"
-                                  sx={{ fontWeight: 800, bgcolor: 'rgba(99, 102, 241, 0.15)', color: '#4F46E5', fontSize: '0.68rem', height: 24, borderRadius: '8px' }}
-                                />
-                              )}
-                            </Box>
-                          )}
-
-                          {med.instructions && (
-                            <Typography variant="caption" sx={{ display: 'block', color: '#64748B', fontStyle: 'italic', mt: 0.5 }}>
-                              "{med.instructions}"
-                            </Typography>
-                          )}
-                        </Box>
-                        <IconButton size="small" onClick={() => removeMedication(idx)} sx={{ color: '#EF4444', bgcolor: 'rgba(239, 68, 68, 0.08)', ml: 1, '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.18)' } }}>
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </Box>
-                    </Card>
-                  ))}
-                </Box>
-              )}
 
               {/* Medication Notes */}
               <Typography variant="caption" sx={{ fontWeight: 800, color: mode === 'dark' ? '#34D399' : '#059669', textTransform: 'uppercase', letterSpacing: 0.6, fontSize: '0.72rem', display: 'block', mb: 0.8 }}>
@@ -6484,6 +6754,14 @@ const NewPrescription = () => {
         onScanSuccess={handleExternalQrScanSuccess}
       />
 
+      {/* Birth Year Verification Modal for External Prescription */}
+      <PrescriptionBirthYearModal
+        open={birthYearModalOpen}
+        onClose={() => setBirthYearModalOpen(false)}
+        prescriptionData={pendingExternalRx}
+        onVerified={handleExternalBirthYearVerified}
+      />
+
       {/* Prescription Action Snackbar */}
       <Snackbar
         open={rxSnackbar.open}
@@ -6514,6 +6792,15 @@ const NewPrescription = () => {
       <DigiLockerWarmupModal
         open={digilockerLoading}
         onClose={() => setDigilockerLoading(false)}
+      />
+
+      {/* Edit Patient Profile Modal for Doctor */}
+      <EditPatientProfileModal
+        open={editPatientModalOpen}
+        onClose={() => setEditPatientModalOpen(false)}
+        patient={selectedProfile || selectedPatient}
+        isFamilyProfile={Boolean(selectedProfile)}
+        onPatientUpdated={handlePatientProfileUpdated}
       />
     </Container>
   );

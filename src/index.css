@@ -193,7 +193,7 @@ body {
 @keyframes slideUpFade {
   from {
     opacity: 0;
-    transform: translateY(16px) translateZ(0);
+    transform: translateY(10px) translateZ(0);
   }
   to {
     opacity: 1;
@@ -202,7 +202,8 @@ body {
 }
 
 .animate-slide-up {
-  animation: slideUpFade 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: slideUpFade 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: opacity, transform;
 }
 
 /* Dynamic GPU Wallpaper Gradient Carousel Keyframe */
@@ -230,7 +231,7 @@ body {
 @keyframes pageTransitionEnter {
   0% {
     opacity: 0;
-    transform: translateY(12px) scale(0.995) translateZ(0);
+    transform: translateY(8px) scale(0.998) translateZ(0);
   }
   100% {
     opacity: 1;
@@ -239,7 +240,7 @@ body {
 }
 
 .page-transition-wrapper {
-  animation: pageTransitionEnter 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: pageTransitionEnter 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   will-change: opacity, transform;
   width: 100%;
   contain: layout style;

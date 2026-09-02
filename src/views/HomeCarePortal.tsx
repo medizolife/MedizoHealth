@@ -184,7 +184,7 @@ export default function HomeCarePortal() {
                     <Typography sx={{ color: '#00C896', fontWeight: 800, fontFamily: 'monospace' }}>
                       {r.requestNumber}
                     </Typography>
-                    <Chip label={r.status.toUpperCase()} size="small" sx={{ bgcolor: r.status === 'completed' ? 'rgba(76,175,80,0.15)' : 'rgba(255,152,0,0.15)', color: r.status === 'completed' ? '#4CAF50' : '#FF9800', fontWeight: 800 }} />
+                    <Chip label={(r.status || 'pending').toUpperCase()} size="small" sx={{ bgcolor: r.status === 'completed' ? 'rgba(76,175,80,0.15)' : 'rgba(255,152,0,0.15)', color: r.status === 'completed' ? '#4CAF50' : '#FF9800', fontWeight: 800 }} />
                   </Box>
 
                   <Typography variant="h6" sx={{ fontWeight: 800, color: '#EBF5F3' }}>

@@ -41,6 +41,8 @@ import { Prescription } from '../types/prescription';
 import DigiLockerGuard from '../components/DigiLockerGuard';
 import DispenseHistoryModal from '../components/DispenseHistoryModal';
 
+import { getCachedData, subscribeToCache } from '../services/apiCache';
+
 interface Stats {
   total: number;
   active: number;
@@ -53,8 +55,13 @@ export default function DoctorPrescriptions() {
   const { mode } = useThemeContext();
   const { authState } = useAuth();
   const { user } = authState;
-  const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
-  const [loading, setLoading] = useState(true);
+  
+  const [prescriptions, setPrescriptions] = useState<Prescription[]>(() => {
+    const cached = getCachedData<Prescription[]>('prescriptions_list');
+    return Array.isArray(cached) ? cached : [];
+  });
+  const hasInitialCache = prescriptions.length > 0;
+  const [loading, setLoading] = useState(!hasInitialCache);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -62,14 +69,23 @@ export default function DoctorPrescriptions() {
   const [historyModalPrescription, setHistoryModalPrescription] = useState<Prescription | null>(null);
 
   useEffect(() => {
-    fetchPrescriptions();
-    const timer = setTimeout(() => fetchPrescriptions(true), 150);
-    return () => clearTimeout(timer);
+    fetchPrescriptions(hasInitialCache);
+    const unsub = subscribeToCache<Prescription[]>('prescriptions_list', (data) => {
+      if (Array.isArray(data)) {
+        let list = data;
+        if (statusFilter !== 'all') {
+          list = list.filter(p => p.status === statusFilter);
+        }
+        setPrescriptions(list);
+        calculateStats(list);
+      }
+    });
+    return () => unsub();
   }, [statusFilter]);
 
   const fetchPrescriptions = async (isBackgroundRefresh = false) => {
     try {
-      if (!isBackgroundRefresh) setLoading(true);
+      if (!isBackgroundRefresh && !hasInitialCache) setLoading(true);
       setError(null);
       
       const data = await getPrescriptions(isBackgroundRefresh);
@@ -83,11 +99,11 @@ export default function DoctorPrescriptions() {
       calculateStats(prescriptionList);
     } catch (err: any) {
       console.error('Error fetching prescriptions:', err);
-      if (!isBackgroundRefresh) {
+      if (!isBackgroundRefresh && !hasInitialCache) {
         setError(err.response?.data?.message || 'Failed to load prescriptions');
       }
     } finally {
-      if (!isBackgroundRefresh) setLoading(false);
+      setLoading(false);
     }
   };
 

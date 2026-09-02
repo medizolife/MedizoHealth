@@ -155,6 +155,9 @@ export interface Prescription {
   dispenseNotes?: string;
   dispenseHistory?: DispenseHistoryEvent[];
   dispenseCount?: number;
+  isUnlocked?: boolean;
+  medicationNames?: string[];
+  requiresBirthYearVerification?: boolean;
   createdAt: string;
   updatedAt?: string;
 }
@@ -199,6 +202,11 @@ export interface CreatePrescriptionData {
   followUpDate?: string;
   followUpInfo?: FollowUpInfo;
   emergencyHelpline?: string;
+
+  // Custom Issued Date
+  createdAt?: string;
+  issuedDate?: string;
+  prescriptionDate?: string;
 }
 
 export interface UpdatePrescriptionData {
@@ -209,6 +217,11 @@ export interface UpdatePrescriptionData {
   instructions?: string;
   notes?: string;
   status?: 'active' | 'completed' | 'cancelled';
+  
+  // Custom Issued Date
+  createdAt?: string;
+  issuedDate?: string;
+  prescriptionDate?: string;
   
   // Enhanced fields
   vitalSigns?: VitalSigns;

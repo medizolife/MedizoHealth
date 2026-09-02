@@ -16,6 +16,14 @@ export interface User {
   nurseQualifications?: string;
   phone?: string;
   address?: string;
+  clinicName?: string;
+  clinicAddress?: string;
+  clinicLatitude?: number;
+  clinicLongitude?: number;
+  clinicLocationAccuracy?: number;
+  clinicPlaceName?: string;
+  qualifications?: string;
+  experience?: string;
   contactNumber?: string;
   createdAt: string;
   updatedAt?: string;

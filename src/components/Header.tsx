@@ -202,7 +202,14 @@ export default function Header() {
           >
             <Box
               component="img"
-              src="/LOGO.png"
+              src="/logo.png"
+              onError={(e: any) => {
+                const target = e.currentTarget;
+                if (!target.dataset.fallback) {
+                  target.dataset.fallback = '1';
+                  target.src = '/LOGO.png';
+                }
+              }}
               alt="Medizo Logo"
               sx={{ 
                 width: 36, 
@@ -1524,38 +1531,6 @@ export default function Header() {
             </Box>
           )}
         </Box>
-
-        {/* Drawer Footer with Logout Action Card */}
-        {isAuthenticated && (
-          <Box sx={{ p: 2, pb: 4, pt: 1, borderTop: mode === 'dark' ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,0,0,0.06)' }}>
-            <Button
-              fullWidth
-              variant="outlined"
-              onClick={handleLogout}
-              startIcon={<ExitToAppIcon sx={{ color: '#ef4444' }} />}
-              sx={{
-                borderRadius: '16px',
-                py: 1.2,
-                px: 2,
-                fontWeight: 800,
-                fontSize: '0.88rem',
-                color: '#ef4444',
-                borderColor: 'rgba(239, 68, 68, 0.3)',
-                bgcolor: mode === 'dark' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.05)',
-                textTransform: 'none',
-                boxShadow: '0 4px 14px rgba(239, 68, 68, 0.12)',
-                '&:hover': {
-                  bgcolor: 'rgba(239, 68, 68, 0.2)',
-                  borderColor: '#ef4444',
-                  boxShadow: '0 6px 18px rgba(239, 68, 68, 0.25)',
-                  transform: 'translateY(-1px)'
-                }
-              }}
-            >
-              Log Out of Account
-            </Button>
-          </Box>
-        )}
       </Drawer>
 
       {/* DigiLocker Verification Profile Modal */}

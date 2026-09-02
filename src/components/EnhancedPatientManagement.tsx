@@ -61,7 +61,9 @@ import {
   Search as SearchIcon,
   Clear as ClearIcon,
   FilterList as FilterListIcon,
-  Sort as SortIcon
+  Sort as SortIcon,
+  EditCalendar as EditCalendarIcon,
+  Done as DoneIcon
 } from '@mui/icons-material';
 import { IconButton, Tooltip } from '@mui/material';
 import { prescriptionsAPI } from '../services/api';
@@ -71,7 +73,8 @@ import {
   getManagedPatients,
   getPatientMedicalDetails,
   updatePatientMedicalInfo
-} from '../services/patients';interface PatientFormData {
+} from '../services/patients';
+import EditPatientProfileModal from './EditPatientProfileModal';interface PatientFormData {
   firstName: string;
   lastName: string;
   email: string;
@@ -166,6 +169,91 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
   });
 
   const [downloadingPdfId, setDownloadingPdfId] = useState<string | null>(null);
+
+  // Prescription Date Change states
+  const [rxDateModalOpen, setRxDateModalOpen] = useState(false);
+  const [selectedRxForDateChange, setSelectedRxForDateChange] = useState<any>(null);
+  const [targetRxNewDate, setTargetRxNewDate] = useState('');
+  const [rxDateSaving, setRxDateSaving] = useState(false);
+  const [rxDateError, setRxDateError] = useState<string | null>(null);
+  const [rxDateSuccess, setRxDateSuccess] = useState<string | null>(null);
+
+  const handleOpenDateModal = (e: React.MouseEvent, rx: any) => {
+    e.stopPropagation();
+    setSelectedRxForDateChange(rx);
+    const currentDt = rx.createdAt ? new Date(rx.createdAt) : new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const formatted = `${currentDt.getFullYear()}-${pad(currentDt.getMonth() + 1)}-${pad(currentDt.getDate())}T${pad(currentDt.getHours())}:${pad(currentDt.getMinutes())}`;
+    setTargetRxNewDate(formatted);
+    setRxDateError(null);
+    setRxDateSuccess(null);
+    setRxDateModalOpen(true);
+  };
+
+  const handleSaveRxDate = async () => {
+    if (!selectedRxForDateChange?.id || !targetRxNewDate) return;
+    try {
+      setRxDateSaving(true);
+      setRxDateError(null);
+      const isoDate = new Date(targetRxNewDate).toISOString();
+      await prescriptionsAPI.updatePrescription(selectedRxForDateChange.id, {
+        createdAt: isoDate,
+        issuedDate: isoDate,
+        prescriptionDate: isoDate
+      });
+
+      // Update in medicalDetails.prescriptionHistory immediately
+      setMedicalDetails((prev: any) => {
+        if (!prev || !prev.prescriptionHistory) return prev;
+        return {
+          ...prev,
+          prescriptionHistory: prev.prescriptionHistory.map((item: any) => 
+            (item.id === selectedRxForDateChange.id || item._id === selectedRxForDateChange.id)
+              ? { ...item, createdAt: isoDate }
+              : item
+          )
+        };
+      });
+
+      setRxDateSuccess('Prescription issued date updated successfully!');
+      setTimeout(() => {
+        setRxDateModalOpen(false);
+        setRxDateSuccess(null);
+        setSelectedRxForDateChange(null);
+      }, 1200);
+    } catch (err: any) {
+      console.error('Failed to update prescription date:', err);
+      setRxDateError(err.response?.data?.message || err.message || 'Failed to update prescription date');
+    } finally {
+      setRxDateSaving(false);
+    }
+  };
+
+  // Edit Patient Profile modal states
+  const [editProfileModalOpen, setEditProfileModalOpen] = useState(false);
+  const [patientForProfileEdit, setPatientForProfileEdit] = useState<any>(null);
+
+  const handleOpenEditProfile = (e: React.MouseEvent, p: any) => {
+    e.stopPropagation();
+    setPatientForProfileEdit(p);
+    setEditProfileModalOpen(true);
+  };
+
+  const handlePatientProfileUpdated = (updated: any) => {
+    setPatients(prev => prev.map(p => (p.id === updated.id || (p as any)._id === updated.id) ? { ...p, ...updated } : p));
+    if (selectedPatient && (selectedPatient.id === updated.id || (selectedPatient as any)._id === updated.id)) {
+      setSelectedPatient(prev => prev ? ({ ...prev, ...updated }) : null);
+    }
+    if (medicalDetails && selectedPatient && (selectedPatient.id === updated.id || (selectedPatient as any)._id === updated.id)) {
+      setMedicalDetails((prev: any) => prev ? ({
+        ...prev,
+        bloodType: updated.bloodType || prev.bloodType,
+        emergencyContact: updated.emergencyContact || prev.emergencyContact,
+        allergies: updated.allergies || prev.allergies,
+        medicalHistory: updated.medicalHistory || prev.medicalHistory
+      }) : prev);
+    }
+  };
 
   const handleDownloadPdf = async (e: React.MouseEvent, rxId: string) => {
     e.stopPropagation();
@@ -970,16 +1058,33 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
                     </Box>
 
                     {/* Column 4: Action */}
-                    <Box sx={{ width: '16%', textAlign: 'right' }}>
+                    <Box sx={{ width: '22%', textAlign: 'right', display: 'flex', gap: 1, justifyContent: 'flex-end', alignItems: 'center' }}>
                       <Button
                         variant="outlined"
                         size="small"
-                        startIcon={<VisibilityIcon />}
+                        startIcon={<EditIcon sx={{ fontSize: 14 }} />}
+                        onClick={(e) => handleOpenEditProfile(e, patient)}
+                        sx={{
+                          borderRadius: '12px',
+                          fontWeight: 800,
+                          borderColor: isDark ? 'rgba(102, 205, 170, 0.4)' : 'rgba(26, 49, 44, 0.3)',
+                          color: isDark ? '#66CDAA' : '#1A312C',
+                          textTransform: 'none',
+                          fontSize: '0.75rem',
+                          px: 1.2
+                        }}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        startIcon={<VisibilityIcon sx={{ fontSize: 14 }} />}
                         onClick={(e) => {
                           e.stopPropagation();
                           handleViewMedicalDetails(patient);
                         }}
-                        sx={{ borderRadius: '12px', fontWeight: 800, borderColor: isDark ? '#66CDAA' : '#1A312C', color: isDark ? '#66CDAA' : '#1A312C' }}
+                        sx={{ borderRadius: '12px', fontWeight: 800, borderColor: isDark ? '#66CDAA' : '#1A312C', color: isDark ? '#66CDAA' : '#1A312C', textTransform: 'none', fontSize: '0.75rem' }}
                       >
                         Details
                       </Button>
@@ -1036,8 +1141,23 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
               
               {/* Right Action Block */}
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+                <Tooltip title="Edit Profile">
+                  <IconButton
+                    size="small"
+                    onClick={(e) => handleOpenEditProfile(e, patient)}
+                    sx={{
+                      color: isDark ? '#66CDAA' : '#1A312C',
+                      bgcolor: isDark ? 'rgba(102, 205, 170, 0.12)' : 'rgba(26, 49, 44, 0.08)',
+                      p: 0.6,
+                      borderRadius: '10px',
+                      '&:hover': { bgcolor: isDark ? 'rgba(102, 205, 170, 0.25)' : 'rgba(26, 49, 44, 0.15)' }
+                    }}
+                  >
+                    <EditIcon sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </Tooltip>
                 <Chip 
-                  label="View Details" 
+                  label="Details" 
                   size="small" 
                   sx={{ bgcolor: isDark ? '#66CDAA' : '#1A312C', color: isDark ? '#123029' : '#89D7B7', fontWeight: 800, fontSize: '0.68rem', cursor: 'pointer', height: 24 }} 
                 />
@@ -1105,8 +1225,26 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
         maxWidth="lg" 
         fullWidth
       >
-        <DialogTitle>
-          Medical Details - {selectedPatient?.firstName} {selectedPatient?.lastName}
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
+          <Typography variant="h6" sx={{ fontWeight: 800 }}>
+            Medical Details - {selectedPatient?.firstName} {selectedPatient?.lastName}
+          </Typography>
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<EditIcon sx={{ fontSize: 14 }} />}
+            onClick={(e) => handleOpenEditProfile(e, selectedPatient)}
+            sx={{
+              borderRadius: '12px',
+              fontWeight: 800,
+              fontSize: '0.75rem',
+              borderColor: isDark ? '#89D7B7' : '#134F4D',
+              color: isDark ? '#89D7B7' : '#134F4D',
+              textTransform: 'none'
+            }}
+          >
+            Edit Profile
+          </Button>
         </DialogTitle>
         <DialogContent>
           {medicalDetailsLoading ? (
@@ -1237,6 +1375,11 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
                                       <VisibilityIcon fontSize="small" />
                                     </IconButton>
                                   </Tooltip>
+                                  <Tooltip title="Change Issued Date">
+                                    <IconButton size="small" onClick={(e) => handleOpenDateModal(e, prescription)} sx={{ color: isDark ? '#89D7B7' : '#134F4D' }}>
+                                      <EditCalendarIcon fontSize="small" />
+                                    </IconButton>
+                                  </Tooltip>
                                   <Tooltip title="Download PDF">
                                     <IconButton size="small" onClick={(e) => handleDownloadPdf(e, rxId)} disabled={isDownloadingThis} sx={{ color: isDark ? '#89D7B7' : '#134F4D' }}>
                                       {isDownloadingThis ? <CircularProgress size={14} color="inherit" /> : <DownloadIcon fontSize="small" />}
@@ -1329,7 +1472,7 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
                                   </Typography>
                                 </Paper>
 
-                                {/* Action Buttons: View & Download */}
+                                {/* Action Buttons: View, Change Date & Download */}
                                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mt: 2 }}>
                                   <Button
                                     fullWidth
@@ -1346,6 +1489,24 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
                                     }}
                                   >
                                     View Prescription
+                                  </Button>
+                                  <Button
+                                    fullWidth
+                                    variant="outlined"
+                                    size="small"
+                                    startIcon={<EditCalendarIcon />}
+                                    onClick={(e) => handleOpenDateModal(e, prescription)}
+                                    sx={{
+                                      borderRadius: '12px',
+                                      fontWeight: 800,
+                                      textTransform: 'none',
+                                      borderColor: isDark ? 'rgba(137, 215, 183, 0.4)' : 'rgba(19, 79, 77, 0.4)',
+                                      color: isDark ? '#89D7B7' : '#134F4D',
+                                      bgcolor: isDark ? 'rgba(137, 215, 183, 0.05)' : 'rgba(19, 79, 77, 0.04)',
+                                      '&:hover': { bgcolor: isDark ? 'rgba(137, 215, 183, 0.12)' : 'rgba(19, 79, 77, 0.08)' }
+                                    }}
+                                  >
+                                    Change Date
                                   </Button>
                                   <Button
                                     fullWidth
@@ -1446,8 +1607,23 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
             </Box>
           )}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setMedicalDetailsOpen(false)}>Close</Button>
+        <DialogActions sx={{ p: 2, display: 'flex', justifyContent: 'space-between' }}>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<EditIcon sx={{ fontSize: 15 }} />}
+            onClick={(e) => handleOpenEditProfile(e, selectedPatient)}
+            sx={{
+              borderRadius: '12px',
+              fontWeight: 800,
+              textTransform: 'none',
+              borderColor: isDark ? '#89D7B7' : '#134F4D',
+              color: isDark ? '#89D7B7' : '#134F4D'
+            }}
+          >
+            Edit Patient Profile
+          </Button>
+          <Button onClick={() => setMedicalDetailsOpen(false)} sx={{ fontWeight: 700, textTransform: 'none' }}>Close</Button>
         </DialogActions>
       </Dialog>
 
@@ -1553,6 +1729,134 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Change Prescription Issued Date Modal from History */}
+      <Dialog
+        open={rxDateModalOpen}
+        onClose={() => !rxDateSaving && setRxDateModalOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: '24px', p: 1 } }}
+      >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ p: 1, borderRadius: '12px', bgcolor: isDark ? 'rgba(137, 215, 183, 0.15)' : 'rgba(19, 79, 77, 0.1)', color: isDark ? '#89D7B7' : '#134F4D' }}>
+              <EditCalendarIcon sx={{ fontSize: 22 }} />
+            </Box>
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 800, color: isDark ? '#FAF2F5' : '#134F4D', lineHeight: 1.2 }}>
+                Change Prescription Issued Date
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {selectedRxForDateChange?.diagnosis || selectedRxForDateChange?.medications?.[0]?.name || 'Prescription'} • #{selectedRxForDateChange?.id?.substring(0, 6)?.toUpperCase()}
+              </Typography>
+            </Box>
+          </Box>
+          <IconButton onClick={() => setRxDateModalOpen(false)} disabled={rxDateSaving} size="small">
+            <ClearIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 1.5 }}>
+          <Alert severity="info" sx={{ mb: 2, borderRadius: '14px', fontSize: '0.8rem', bgcolor: isDark ? 'rgba(137, 215, 183, 0.08)' : 'rgba(19, 79, 77, 0.06)', color: isDark ? '#89D7B7' : '#134F4D' }}>
+            Updating the issued date will modify the consultation timestamp, sorting position, and all downloaded PDF documents.
+          </Alert>
+
+          {rxDateError && (
+            <Alert severity="error" sx={{ mb: 2, borderRadius: '12px' }}>
+              {rxDateError}
+            </Alert>
+          )}
+
+          {rxDateSuccess && (
+            <Alert severity="success" sx={{ mb: 2, borderRadius: '12px', bgcolor: 'rgba(16, 185, 129, 0.15)', color: '#047857' }}>
+              {rxDateSuccess}
+            </Alert>
+          )}
+
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+            <Chip
+              label="Now / Today"
+              size="small"
+              onClick={() => {
+                const now = new Date();
+                const pad = (n: number) => String(n).padStart(2, '0');
+                setTargetRxNewDate(`${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`);
+              }}
+              clickable
+              variant="outlined"
+              sx={{ fontWeight: 700, borderRadius: '8px' }}
+            />
+            <Chip
+              label="Yesterday"
+              size="small"
+              onClick={() => {
+                const d = new Date();
+                d.setDate(d.getDate() - 1);
+                const pad = (n: number) => String(n).padStart(2, '0');
+                setTargetRxNewDate(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`);
+              }}
+              clickable
+              variant="outlined"
+              sx={{ fontWeight: 700, borderRadius: '8px' }}
+            />
+          </Box>
+
+          <TextField
+            label="Prescription Issued Date & Time"
+            type="datetime-local"
+            value={targetRxNewDate}
+            onChange={(e) => setTargetRxNewDate(e.target.value)}
+            fullWidth
+            InputLabelProps={{ shrink: true }}
+            helperText="Set the official date & time for this prescription."
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '14px',
+                fontWeight: 700
+              }
+            }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 2.5, pt: 1 }}>
+          <Button
+            onClick={() => setRxDateModalOpen(false)}
+            disabled={rxDateSaving}
+            variant="text"
+            sx={{ fontWeight: 700, textTransform: 'none', color: '#64748b' }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSaveRxDate}
+            disabled={rxDateSaving || !targetRxNewDate}
+            variant="contained"
+            startIcon={rxDateSaving ? <CircularProgress size={16} color="inherit" /> : <DoneIcon />}
+            sx={{
+              bgcolor: isDark ? '#89D7B7' : '#134F4D',
+              color: isDark ? '#0f1e1a' : '#ffffff',
+              fontWeight: 800,
+              textTransform: 'none',
+              borderRadius: '12px',
+              px: 3,
+              py: 0.9,
+              boxShadow: '0 4px 14px rgba(19, 79, 77, 0.25)',
+              '&:hover': { bgcolor: isDark ? '#6ec7a3' : '#0e3b3a' }
+            }}
+          >
+            {rxDateSaving ? 'Saving Date...' : 'Update Date'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      {/* Edit Patient Profile Modal */}
+      <EditPatientProfileModal
+        open={editProfileModalOpen}
+        onClose={() => {
+          setEditProfileModalOpen(false);
+          setPatientForProfileEdit(null);
+        }}
+        patient={patientForProfileEdit}
+        onPatientUpdated={handlePatientProfileUpdated}
+      />
     </Box>
   );
 };

@@ -309,7 +309,7 @@ export default function DispenseModal({ open, onClose, prescription, onDispensed
         if (ms.status === 'given') {
           return `${ms.medicineName}: ${ms.dispensedQuantity}/${ms.prescribedQuantity} ${ms.unit} (${ms.isFull ? 'Full' : 'Partial'})`;
         }
-        return `${ms.medicineName}: ${ms.status.replace('_', ' ')}`;
+        return `${ms.medicineName}: ${(ms.status || 'pending').replace('_', ' ')}`;
       });
 
       const notes = [
@@ -801,7 +801,7 @@ export default function DispenseModal({ open, onClose, prescription, onDispensed
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 1, mb: 1.5 }}>
                     <Box>
                       <Typography variant="subtitle1" sx={{ fontWeight: 900, color: isDark ? '#FFFFFF' : '#0F172A', letterSpacing: '0.02em', fontSize: '1.02rem' }}>
-                        💊 {med.name.toUpperCase()}
+                        💊 {(med.name || 'Medication').toUpperCase()}
                       </Typography>
                       <Box sx={{ display: 'flex', gap: 0.8, flexWrap: 'wrap', mt: 0.8 }}>
                         {med.dosage && (

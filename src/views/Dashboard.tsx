@@ -73,6 +73,7 @@ import NursePortal from './NursePortal';
 import QrScannerModal from '../components/QrScannerModal';
 import UploadPastPrescriptionModal from '../components/UploadPastPrescriptionModal';
 import DigiLockerWarmupModal from '../components/DigiLockerWarmupModal';
+import PrescriptionBirthYearModal from '../components/PrescriptionBirthYearModal';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -134,6 +135,10 @@ const Dashboard = () => {
   const [scannedRx, setScannedRx] = useState<any>(null);
   const [qrLinking, setQrLinking] = useState(false);
 
+  // Birth Year Verification Gate for Scanned Prescriptions
+  const [birthYearModalOpen, setBirthYearModalOpen] = useState(false);
+  const [scannedRxForVerification, setScannedRxForVerification] = useState<any>(null);
+
   const handleQrScanSuccess = async (scannedCode: string) => {
     setQrScannerOpen(false);
     try {
@@ -141,8 +146,14 @@ const Dashboard = () => {
       const res: any = await lookupPrescriptionByCode(scannedCode);
       const rx = res?.prescription || res;
       if (rx && rx.id) {
-        setSnackbar({ open: true, message: 'Prescription found! Redirecting...', severity: 'success' });
-        setTimeout(() => navigate(`/prescriptions/${rx.id}`), 500);
+        // If logged-in user is a Doctor and not the author of this prescription, gate behind Birth Year verification
+        if (user?.role === 'doctor' && rx.doctorId !== user.id && !rx.isUnlocked) {
+          setScannedRxForVerification(rx);
+          setBirthYearModalOpen(true);
+        } else {
+          setSnackbar({ open: true, message: 'Prescription found! Redirecting...', severity: 'success' });
+          setTimeout(() => navigate(`/prescriptions/${rx.id}`), 500);
+        }
       } else {
         setSnackbar({ open: true, message: 'Prescription not found with code: ' + scannedCode, severity: 'error' });
       }
@@ -151,6 +162,20 @@ const Dashboard = () => {
       setSnackbar({ open: true, message: err?.response?.data?.message || err.message || 'Prescription lookup failed.', severity: 'error' });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleBirthYearVerified = (unlockedRx: any, action?: 'view' | 'continue_trail') => {
+    if (action === 'continue_trail') {
+      setSnackbar({ open: true, message: '✅ Patient linked! Starting treatment trail in new prescription...', severity: 'success' });
+      setTimeout(() => {
+        navigate(`/prescriptions/new?trailRxId=${unlockedRx.id}&patientId=${unlockedRx.patientId || ''}`);
+      }, 500);
+    } else {
+      setSnackbar({ open: true, message: '✅ Patient verified and linked! Opening prescription...', severity: 'success' });
+      setTimeout(() => {
+        navigate(`/prescriptions/${unlockedRx.id}`);
+      }, 500);
     }
   };
 
@@ -1718,6 +1743,13 @@ const Dashboard = () => {
       open={qrScannerOpen}
       onClose={() => setQrScannerOpen(false)}
       onScanSuccess={handleQrScanSuccess}
+    />
+
+    <PrescriptionBirthYearModal
+      open={birthYearModalOpen}
+      onClose={() => setBirthYearModalOpen(false)}
+      prescriptionData={scannedRxForVerification}
+      onVerified={handleBirthYearVerified}
     />
 
     <Snackbar
