@@ -100,7 +100,9 @@ const PrescriptionDetail = () => {
     setPatient(prev => prev ? ({ ...prev, ...updated }) : updated);
     setPrescription(prev => prev ? ({
       ...prev,
-      patientName: `${updated.firstName || ''} ${updated.lastName || ''}`.trim() || (prev as any).patientName
+      patientName: `${updated.firstName || ''} ${updated.lastName || ''}`.trim() || (prev as any).patientName,
+      patientGender: updated.gender || (prev as any).patientGender,
+      patientDOB: updated.dateOfBirth || (prev as any).patientDOB,
     }) : prev);
   };
 
@@ -290,10 +292,10 @@ const PrescriptionDetail = () => {
     }
     if (rx.vitalSigns && Object.keys(rx.vitalSigns).some(k => (rx.vitalSigns as any)[k])) {
       const v = rx.vitalSigns as any;
-      const bpStr = v.bloodPressure ? String(v.bloodPressure).replace(/\s*mmHg/gi, '').trim() + ' mmHg' : 'N/A';
-      const pulseStr = v.pulse ? String(v.pulse).replace(/\s*bpm/gi, '').trim() + ' bpm' : 'N/A';
-      const tempStr = v.temperature ? String(v.temperature).replace(/\s*°?\s*[FC]/gi, '').trim() + ' °F' : 'N/A';
-      const spo2Str = v.spo2 ? String(v.spo2).replace(/\s*%/g, '').trim() + '%' : 'N/A';
+      const bpStr = v.bloodPressure ? String(v.bloodPressure).replace(/(?:\s*mmHg)+/gi, '').trim() + ' mmHg' : 'N/A';
+      const pulseStr = v.pulse ? String(v.pulse).replace(/(?:\s*bpm)+/gi, '').trim() + ' bpm' : 'N/A';
+      const tempStr = v.temperature ? String(v.temperature).replace(/(?:\s*°?\s*[FC])+/gi, '').trim() + ' °F' : 'N/A';
+      const spo2Str = v.spo2 ? String(v.spo2).replace(/(?:\s*%)+/g, '').trim() + '%' : 'N/A';
       text += `\n\n📊 Vital Signs:\nBP: ${bpStr} | Pulse: ${pulseStr} | Temp: ${tempStr} | SpO2: ${spo2Str}`;
     }
     if (rx.followUpDate) {
@@ -1430,6 +1432,14 @@ const PrescriptionDetail = () => {
                   <Typography variant="body2" sx={{ fontWeight: 700 }}>
                     {patient ? `${patient.firstName} ${patient.lastName}` : ((prescription as any).patientName || 'Registered Patient')}
                   </Typography>
+                  {((patient?.gender || (prescription as any).patientGender) || (patient?.dateOfBirth || (patient as any)?.age || (prescription as any).patientAge)) && (
+                    <Typography variant="caption" sx={{ color: '#134F4D', fontWeight: 700, display: 'block', textTransform: 'capitalize', fontSize: '0.72rem' }}>
+                      {[
+                        (patient?.gender || (prescription as any).patientGender) ? String(patient?.gender || (prescription as any).patientGender) : '',
+                        patient?.dateOfBirth ? `${Math.floor((Date.now() - new Date(patient.dateOfBirth).getTime()) / (365.25 * 86400000))} Yrs` : (((patient as any)?.age || (prescription as any).patientAge) ? `${(patient as any)?.age || (prescription as any).patientAge} Yrs` : '')
+                      ].filter(Boolean).join(' • ')}
+                    </Typography>
+                  )}
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 0.5, mt: 0.2 }}>
                     <Typography variant="caption" color="text.secondary">
                       Issued: {new Date(prescription.createdAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
@@ -2584,6 +2594,7 @@ const PrescriptionDetail = () => {
         onClose={() => setEditPatientModalOpen(false)}
         patient={patient || {
           id: prescription.patientId,
+          accountId: (prescription as any).accountId || prescription.patientId,
           firstName: (prescription as any).patientName?.split(' ')[0] || '',
           lastName: (prescription as any).patientName?.split(' ').slice(1).join(' ') || '',
           gender: (prescription as any).patientGender || '',

@@ -2734,10 +2734,10 @@ const NewPrescription = () => {
                         placeholder="72"
                         value={formData.vitalSigns?.pulse ? formData.vitalSigns.pulse.replace(/[^0-9]/g, '') : ''}
                         onChange={(e) => {
-                          const val = e.target.value;
+                          const val = e.target.value.replace(/[^0-9]/g, '');
                           setFormData({
                             ...formData,
-                            vitalSigns: { ...formData.vitalSigns, pulse: val ? `${val} bpm` : '' }
+                            vitalSigns: { ...formData.vitalSigns, pulse: val }
                           });
                         }}
                         InputProps={{ disableUnderline: true }}
@@ -2769,10 +2769,10 @@ const NewPrescription = () => {
                         placeholder="98.6"
                         value={formData.vitalSigns?.temperature ? formData.vitalSigns.temperature.replace(/[^0-9.]/g, '') : ''}
                         onChange={(e) => {
-                          const val = e.target.value;
+                          const val = e.target.value.replace(/[^0-9.]/g, '');
                           setFormData({
                             ...formData,
-                            vitalSigns: { ...formData.vitalSigns, temperature: val ? `${val} °F` : '' }
+                            vitalSigns: { ...formData.vitalSigns, temperature: val }
                           });
                         }}
                         InputProps={{ disableUnderline: true }}
@@ -2805,10 +2805,10 @@ const NewPrescription = () => {
                         placeholder="98"
                         value={formData.vitalSigns?.spo2 ? formData.vitalSigns.spo2.replace(/[^0-9]/g, '') : ''}
                         onChange={(e) => {
-                          const val = e.target.value;
+                          const val = e.target.value.replace(/[^0-9]/g, '');
                           setFormData({
                             ...formData,
-                            vitalSigns: { ...formData.vitalSigns, spo2: val ? `${val} %` : '' }
+                            vitalSigns: { ...formData.vitalSigns, spo2: val }
                           });
                         }}
                         InputProps={{ disableUnderline: true }}
@@ -2840,10 +2840,10 @@ const NewPrescription = () => {
                         placeholder="16"
                         value={formData.vitalSigns?.respiratoryRate ? formData.vitalSigns.respiratoryRate.replace(/[^0-9]/g, '') : ''}
                         onChange={(e) => {
-                          const val = e.target.value;
+                          const val = e.target.value.replace(/[^0-9]/g, '');
                           setFormData({
                             ...formData,
-                            vitalSigns: { ...formData.vitalSigns, respiratoryRate: val ? `${val} /min` : '' }
+                            vitalSigns: { ...formData.vitalSigns, respiratoryRate: val }
                           });
                         }}
                         InputProps={{ disableUnderline: true }}

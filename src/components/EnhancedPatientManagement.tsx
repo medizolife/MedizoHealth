@@ -258,13 +258,24 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
       setSelectedPatient(prev => prev ? ({ ...prev, ...updated }) : null);
     }
     if (medicalDetails && selectedPatient && (selectedPatient.id === updated.id || (selectedPatient as any)._id === updated.id)) {
-      setMedicalDetails((prev: any) => prev ? ({
-        ...prev,
-        bloodType: updated.bloodType || prev.bloodType,
-        emergencyContact: updated.emergencyContact || prev.emergencyContact,
-        allergies: updated.allergies || prev.allergies,
-        medicalHistory: updated.medicalHistory || prev.medicalHistory
-      }) : prev);
+      setMedicalDetails((prev: any) => {
+        if (!prev) return prev;
+        const updatedHistory = Array.isArray(prev.prescriptionHistory)
+          ? prev.prescriptionHistory.map((rx: any) => ({
+              ...rx,
+              patientGender: updated.gender || rx.patientGender,
+              patientName: `${updated.firstName || ''} ${updated.lastName || ''}`.trim() || rx.patientName
+            }))
+          : prev.prescriptionHistory;
+        return {
+          ...prev,
+          bloodType: updated.bloodType || prev.bloodType,
+          emergencyContact: updated.emergencyContact || prev.emergencyContact,
+          allergies: updated.allergies || prev.allergies,
+          medicalHistory: updated.medicalHistory || prev.medicalHistory,
+          prescriptionHistory: updatedHistory
+        };
+      });
     }
   };
 
@@ -878,17 +889,17 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
         {/* Row 2: Filter Pills (Gender, Age Groups, Rx Status) with Mobile-Optimized Horizontal Scroll */}
         <Box
           sx={{
-            mt: 1.5,
-            pt: 1.5,
+            mt: { xs: 1, sm: 1.5 },
+            pt: { xs: 1, sm: 1.5 },
             borderTop: isDark ? '1px solid rgba(102, 205, 170, 0.15)' : '1px solid rgba(137, 215, 183, 0.2)',
             display: 'flex',
             flexDirection: 'column',
-            gap: 1
+            gap: { xs: 0.7, sm: 1 }
           }}
         >
           {/* Gender row */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6, overflowX: 'auto', WebkitOverflowScrolling: 'touch', py: 0.2, '&::-webkit-scrollbar': { display: 'none' } }}>
-            <Typography variant="caption" sx={{ color: isDark ? 'rgba(255,255,255,0.6)' : '#64748b', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.66rem', flexShrink: 0, minWidth: 50 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, overflowX: 'auto', WebkitOverflowScrolling: 'touch', py: 0.1, '&::-webkit-scrollbar': { display: 'none' } }}>
+            <Typography variant="caption" sx={{ color: isDark ? 'rgba(255,255,255,0.6)' : '#64748b', fontWeight: 600, textTransform: 'uppercase', fontSize: { xs: '0.62rem', sm: '0.66rem' }, flexShrink: 0, minWidth: { xs: 44, sm: 50 } }}>
               Gender:
             </Typography>
             {[
@@ -904,10 +915,10 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
                 onClick={() => setGenderFilter(g.key as any)}
                 variant={genderFilter === g.key ? 'filled' : 'outlined'}
                 sx={{
-                  borderRadius: '8px',
-                  fontWeight: 600,
-                  fontSize: '0.7rem',
-                  height: 26,
+                  borderRadius: '6px',
+                  fontWeight: genderFilter === g.key ? 600 : 500,
+                  fontSize: { xs: '0.66rem', sm: '0.7rem' },
+                  height: { xs: 23, sm: 26 },
                   cursor: 'pointer',
                   flexShrink: 0,
                   bgcolor: genderFilter === g.key ? (isDark ? '#66CDAA' : '#1A312C') : 'transparent',
@@ -919,8 +930,8 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
           </Box>
 
           {/* Age row */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6, overflowX: 'auto', WebkitOverflowScrolling: 'touch', py: 0.2, '&::-webkit-scrollbar': { display: 'none' } }}>
-            <Typography variant="caption" sx={{ color: isDark ? 'rgba(255,255,255,0.6)' : '#64748b', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.66rem', flexShrink: 0, minWidth: 50 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, overflowX: 'auto', WebkitOverflowScrolling: 'touch', py: 0.1, '&::-webkit-scrollbar': { display: 'none' } }}>
+            <Typography variant="caption" sx={{ color: isDark ? 'rgba(255,255,255,0.6)' : '#64748b', fontWeight: 600, textTransform: 'uppercase', fontSize: { xs: '0.62rem', sm: '0.66rem' }, flexShrink: 0, minWidth: { xs: 44, sm: 50 } }}>
               Age:
             </Typography>
             {[
@@ -938,10 +949,10 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
                 onClick={() => setAgeGroupFilter(a.key as any)}
                 variant={ageGroupFilter === a.key ? 'filled' : 'outlined'}
                 sx={{
-                  borderRadius: '8px',
-                  fontWeight: 600,
-                  fontSize: '0.7rem',
-                  height: 26,
+                  borderRadius: '6px',
+                  fontWeight: ageGroupFilter === a.key ? 600 : 500,
+                  fontSize: { xs: '0.66rem', sm: '0.7rem' },
+                  height: { xs: 23, sm: 26 },
                   cursor: 'pointer',
                   flexShrink: 0,
                   bgcolor: ageGroupFilter === a.key ? (isDark ? '#66CDAA' : '#1A312C') : 'transparent',
@@ -953,8 +964,8 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
           </Box>
 
           {/* Status row */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6, overflowX: 'auto', WebkitOverflowScrolling: 'touch', py: 0.2, '&::-webkit-scrollbar': { display: 'none' } }}>
-            <Typography variant="caption" sx={{ color: isDark ? 'rgba(255,255,255,0.6)' : '#64748b', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.66rem', flexShrink: 0, minWidth: 50 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, overflowX: 'auto', WebkitOverflowScrolling: 'touch', py: 0.1, '&::-webkit-scrollbar': { display: 'none' } }}>
+            <Typography variant="caption" sx={{ color: isDark ? 'rgba(255,255,255,0.6)' : '#64748b', fontWeight: 600, textTransform: 'uppercase', fontSize: { xs: '0.62rem', sm: '0.66rem' }, flexShrink: 0, minWidth: { xs: 44, sm: 50 } }}>
               Status:
             </Typography>
             {[
@@ -970,10 +981,10 @@ const EnhancedPatientManagement: React.FC<EnhancedPatientManagementProps> = ({ m
                 onClick={() => setStatusFilter(s.key as any)}
                 variant={statusFilter === s.key ? 'filled' : 'outlined'}
                 sx={{
-                  borderRadius: '8px',
-                  fontWeight: 600,
-                  fontSize: '0.7rem',
-                  height: 26,
+                  borderRadius: '6px',
+                  fontWeight: statusFilter === s.key ? 600 : 500,
+                  fontSize: { xs: '0.66rem', sm: '0.7rem' },
+                  height: { xs: 23, sm: 26 },
                   cursor: 'pointer',
                   flexShrink: 0,
                   bgcolor: statusFilter === s.key ? (isDark ? '#66CDAA' : '#1A312C') : 'transparent',

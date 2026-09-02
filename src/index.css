@@ -23,9 +23,15 @@
 }
 
 html {
-  scrollbar-gutter: stable;
-  overflow-y: scroll;
+  scrollbar-gutter: auto;
+  overflow-y: auto;
   overflow-x: hidden;
+}
+
+@media (min-width: 900px) {
+  html {
+    scrollbar-gutter: stable;
+  }
 }
 
 html, body {
