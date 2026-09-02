@@ -103,6 +103,12 @@ const PrescriptionDetail = () => {
       patientName: `${updated.firstName || ''} ${updated.lastName || ''}`.trim() || (prev as any).patientName,
       patientGender: updated.gender || (prev as any).patientGender,
       patientDOB: updated.dateOfBirth || (prev as any).patientDOB,
+      patientAge: updated.dateOfBirth
+        ? String(Math.floor((Date.now() - new Date(updated.dateOfBirth).getTime()) / (365.25 * 86400000)))
+        : (updated.age || (prev as any).patientAge),
+      patientPhone: updated.phone || updated.contactNumber || (prev as any).patientPhone,
+      patientEmail: updated.email || (prev as any).patientEmail,
+      patientAddress: updated.address || (prev as any).patientAddress
     }) : prev);
   };
 

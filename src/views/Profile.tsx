@@ -66,7 +66,7 @@ import { getFamilyProfiles, createFamilyProfile, updateFamilyProfile, deleteFami
 import DigiLockerWarmupModal from '../components/DigiLockerWarmupModal';
 
 const Profile = () => {
-  const { authState, logout } = useAuth();
+  const { authState, logout, refreshUser } = useAuth();
   const { user } = authState;
   const navigate = useNavigate();
 
@@ -627,6 +627,12 @@ const Profile = () => {
         await usersAPI.updateProfile(patientFormData);
       }
       
+      try {
+        await refreshUser();
+      } catch (rErr) {
+        console.warn('refreshUser warning in Profile.tsx:', rErr);
+      }
+
       setSuccess(true);
       
     } catch (err) {
